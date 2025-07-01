@@ -1,14 +1,18 @@
-import comedi as c
+import DAQ
+
 
 class adc():
     def __init__(self):
-      self.device=c.comedi_open('/dev/comedi4')
-      self.max=c.comedi_get_maxdata(self.device,0,0)
-      self.range=c.comedi_get_range(self.device,0,0,0)
-    
+      self.snADC=1000034495
+      self.EDRE=DAQ.EDRE_Interface()
     def read(self,channel):
-      res,data=c.comedi_data_read(self.device,0,channel,0,c.AREF_GROUND)
-      return c.comedi_to_phys(data,self.range,self.max)
+      uVolt=DAQ.ctypes.c_long(0)
+      output=0.0
+      for i in range(10):
+          result=self.EDRE.fifo.EDRE_ADSingle(self.snADC,channel,2,0,DAQ.ctypes.byref(uVolt))
+          output=output+uVolt.value/10000.0
+      #print(result)
+      return -output
     
 if __name__=='__main__':
   myadc=adc()

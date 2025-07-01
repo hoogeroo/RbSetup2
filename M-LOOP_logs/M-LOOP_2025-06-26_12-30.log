@@ -1,0 +1,7 @@
+2025-06-26 12:30:35,628 mloop                INFO     M-LOOP version 3.3.4
+2025-06-26 12:30:35,628 mloop                DEBUG    M-LOOP Logger configured.
+2025-06-26 12:30:35,628 mloop.interfaces     DEBUG    Creating interface.
+2025-06-26 12:30:35,631 mloop.controllers    DEBUG    Controller init completed.
+2025-06-26 12:30:35,632 mloop.learners.1     WARNING  num_params not provided, setting to default value of 1.
+2025-06-26 12:30:35,632 mloop.learners.1     DEBUG    Learner init completed.
+2025-06-26 12:30:35,633 mloop.learners.1     ERROR    Shape of the trust_region does not match the number of parameters:array(1.)
