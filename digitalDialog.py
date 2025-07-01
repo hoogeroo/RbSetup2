@@ -10,7 +10,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 
 from dataTypes import *
 
-from DAQ import DAQ, daq
+from DAQ import *
 
 class digitalDialog(QtWidgets.QDialog):
     def __init__(self, channelNumber, startTime, duration, maybeEvent, parent = None):

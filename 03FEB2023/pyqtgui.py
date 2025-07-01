@@ -92,8 +92,8 @@ class MainWindow(QMainWindow):
         # adding Go menu
         go_menu=bar.addMenu('Go')
         go_menu = self.menubutton_add(go_menu,\
-          ['Go','MultiGo','MultiGo Parameters','Improved Fringe Removal'],\ # 'Blackfly Options'],\
-            [self.CW.GoAction, self.CW.MultiGo, self.mgmenu, self.ifr_menu])#, self.blackfly_option_menu])
+          ['Go','MultiGo','MultiGo Parameters','Improved Fringe Removal', 'Blackfly Options'],\
+            [self.CW.GoAction, self.CW.MultiGo, self.mgmenu, self.ifr_menu, self.blackfly_option_menu])
         
         self.filename=defaultfilename
         option_menu=bar.addMenu('Options')
@@ -104,13 +104,11 @@ class MainWindow(QMainWindow):
            self.bfcam=blackfly.blackfly()
         option_menu.addAction(self.blackfly_action)
         self.blackfly_action.triggered.connect(self.initblackfly)
+        
         self.princeton_action=QAction('Princeton Camera',checkable=True)
         option_menu.addAction(self.princeton_action)
-        blackfly_option_action=QAction('Blackfly Options')
-        option_menu.addAction(blackfly_option_action)
-        blackfly_option_action.triggered.connect(self.blackfly_option_menu)
-      
-        #self.setMaximumHeight(800)
+        
+        self.setMaximumHeight(800)
         
     def menubutton_add(self,menu, actionnames, functions):
         for i in range(len(actionnames)):

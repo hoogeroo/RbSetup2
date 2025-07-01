@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from constants import *
 from Utilities import *
 
-from DAQ import DAQ, daq
+from DAQ import *
 
 class formModuleSelect(QtWidgets.QDialog):
     

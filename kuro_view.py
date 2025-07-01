@@ -12,7 +12,7 @@ def roundstr(x,n):
         return str(round(x,n))
 
 data=[]
-with open('/home/lab/zdrive/kuroTemp/temp.fit','rb') as file:
+with open('/home/rabi/temp/kuroTemp/temp.fit','rb') as file:
   a = fits.open(file)
   data = a[0].data
 

@@ -250,3 +250,12 @@ class BottomWindow(QWidget):
         self.GoBox.setLayout(self.GoLayout)
       
       self.layout.addWidget(self.GoBox,self.hlines+self.devicelines+3, 5, 2, 4)
+import sys
+def main():
+    app = QApplication(sys.argv)
+    mw = BottomWindow()
+    mw.show()
+    sys.exit(app.exec())
+
+if __name__ == '__main__':
+    main()

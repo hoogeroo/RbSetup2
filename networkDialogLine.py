@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from Either import *
 from Parsers import *
 
-from DAQ import DAQ, daq
+from DAQ import *
 
 from dataTypes import *
 

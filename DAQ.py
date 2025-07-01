@@ -6,7 +6,7 @@ Created on Mon Mar 11 09:06:07 2019
 @author: lab
 """
 
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt6 import QtCore, QtGui, QtWidgets
 
 import ctypes
 import socket

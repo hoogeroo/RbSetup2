@@ -8,7 +8,7 @@ Created on Tue Nov 12 12:23:43 2019
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-from DAQ import DAQ, daq
+from DAQ import *
 
 from networkDDS import *
 

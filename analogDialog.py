@@ -8,7 +8,7 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-from DAQ import DAQ, daq
+from DAQ import *
 
 from dataTypes import *
 from constants import *

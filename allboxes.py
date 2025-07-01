@@ -6,10 +6,10 @@ Created on Tue Aug 16 15:00:25 2016
 """
 
 # PyQt5 classes etc
-from PyQt5.QtCore import *
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import *
+from PyQt6.QtCore import *
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import *
+from PyQt6.QtWidgets import *
 
 # Usual Math/Plotting libraries
 import numpy as np
@@ -25,7 +25,6 @@ import copy
 import glob
 
 # Misc utilities
-import threading
 from functools import partial
 
 # Timing
@@ -36,17 +35,17 @@ from datetime import datetime
 import astropy.io.fits as fits
 
 # Analogue Digital Conversion
-try:
-  import adclib
-except:
-    pass
+#try:
+#  import adclib
+#except:
+#    pass
   
 # OUR OWN CONTRIBUTING FILES
-import camera_test
+#import camera_test
 from qmsbox import *
-import EagleDAC_main as eagle
+#import EagleDAC_main as eagle
 import multigo_window as mg
-import MLOOP_machinelearning as ML
+import SEC_machinelearning as ML
 import Stages as stg
 import tek_afg as afg
 import kicklib as kl
@@ -65,12 +64,14 @@ MAX_INT=0xfff
 class allboxes(QWidget):
     def __init__(self, tables, datapath=None, parent=None):#ndacs,naoms,ntimes):
       super(allboxes, self).__init__(parent=parent)
+      """
       try:
           print(da.GetDevices()) # From qmsbox import: 'import AIOUSB as da';
                                 # This is required for all apps using the DAC
       except:
           print("DA not present")
           self.DApresent=False
+          """
       if datapath:
           self.datapath=datapath
       else:
@@ -108,7 +109,7 @@ class allboxes(QWidget):
       self.dividers = [0,5,12]#None#None#
 
       # PLOTTING STUFF
-      if hasattr(self.parent(), 'bfcam') and False: # Switch between True and False to force pdiode
+      if hasattr(self.parent(), 'bfcam') and True:#True: # Switch between True and False to force pdiode
           self.fluo_mode = 'bfcam'#'pdiode'#'bfcam'# Currently only 'bfcam' means anything; using any other string results in using the ADClib card to sample a photodiode.
                               # maybe use 'pdiode' as the other string
           if self.fluo_mode == 'bfcam' and self.parent().bfcam.connected:
@@ -127,7 +128,6 @@ class allboxes(QWidget):
       # We're going to store a set of background pics to use for fringe removal
       self.nBG_max=50
       self.BGimages=None
-      self.fringeflag=False
       # We also store the number of times images have been stored here
       self.nBGstored=0
       
@@ -139,7 +139,6 @@ class allboxes(QWidget):
       self.TheValue=QLCDNumber(0)
       self.layout.addWidget(self.TheValue)
       self.mg_plot_option=1
-      self.lowpassflag=True
       #try:
       #  s.connect((TCP_IP2, TCP_PORT))
       #  s.close()
@@ -149,7 +148,7 @@ class allboxes(QWidget):
       #  self.allAOMS=False
       
       self.optimiser = None # This will be filled with a ML model - either from scratch, or from file??
-                            
+                            # Along these lines, the ML model is handled via SEC_machinelearning (referred to as 'ML')
            
       try:
           self.adc=adclib.adc()
@@ -428,21 +427,14 @@ class allboxes(QWidget):
       
       plotlabels = ['Fluo.', 'BF Image','Atom Number']
       self.plotlayouts = self.makePlotwindow(initial)
-      #self.moreplots=self.makePlotwindow(initial)
       
       self.plotSet=QTabWidget() # Now getting the plot widgets to the right of the grid
-      self.plotSet2=QTabWidget()
       #print(f'[4] self.tek.parent() = {self.tek.parent()}')
       for layout,label in zip(self.plotlayouts,plotlabels):
           plotTab = QWidget()
           plotTab.setLayout(layout)
-          self.plotSet.addTab(plotTab, label)    
-      #for layout,label in zip(self.moreplots,plotlabels):
-      #    plotTab2=QWidget()
-      #    plotTab2.setLayout(layout)
-      #    self.plotSet2.addTab(plotTab2,label)
-      self.layout.addWidget(self.plotSet,0,2+maxcol,len(stge.DC)+3,1)
-      #self.layout.addWidget(self.plotSet2,self.hlines+self.devicelines-1,2+maxcol,6,1)
+          self.plotSet.addTab(plotTab, label)
+      self.layout.addWidget(self.plotSet,0,2+maxcol,len(stge.DC)+3,1)   
       #print(f'[5] self.tek.parent() = {self.tek.parent()}')    
       self.layout.addWidget(self.tabSet, 0, 2, len(stge.DC)+3, maxcol)#dividers[-1])
       #print(f'[6] self.tek.parent() = {self.tek.parent()}')
@@ -510,7 +502,7 @@ class allboxes(QWidget):
         #print(f'length of stagelabels: {len(self.stagelabels)}')
       # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
       # Ok, NOW we the stage labels and associated timeboxes to the top of the window
-        hspacer = QSpacerItem(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        #hspacer = QSpacerItem(QSizePolicy.Expanding, QSizePolicy.Minimum)
         
         for stgID,stage in enumerate(stge):#.stages):
           # Note column placement is 'stage ID + 2';
@@ -523,7 +515,7 @@ class allboxes(QWidget):
           for boxID,box in enumerate(stage.boxes):
             # Similarly, + 2 -> First two rows are stage labels and associated times
             layout.addWidget(box, boxID+2, stgID+2)
-            if not stgID: layout.addItem(hspacer, boxID, len(stge)+3, -1, 1)
+            #if not stgID: layout.addItem(hspacer, boxID, len(stge)+3, -1, 1)
         layout.setVerticalSpacing(1)
         layout.setContentsMargins(0,0,0,0)
         return layout
@@ -579,8 +571,8 @@ class allboxes(QWidget):
     def makePlotwindow(self, initial=False):
         import matplotlib
         import matplotlib.figure
-        from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
-
+        #from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+        from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
         grid_fluo = QGridLayout()
         grid_blackfly = QGridLayout()
         grid_atomnum = QGridLayout()
@@ -765,7 +757,7 @@ class allboxes(QWidget):
         #self.makeFluoFig()
         self.MOTTimer=QTimer(self)
         self.MOTTimer.timeout.connect(self.MOTTimerAction)
-        self.MOTTimer.start(1000*self.fluo_sampletime)
+        self.MOTTimer.start(100)# 0*self.fluo_sampletime)
         self.fluo=QLCDNumber()
         
         self.cbPictype=QComboBox()
@@ -774,10 +766,10 @@ class allboxes(QWidget):
         #\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ 
         
         self.GoLayout.addWidget(self.MOTLoadLabel,0,0)
-        self.GoLayout.addWidget(self.cbMOTLoad,0,1,alignment=Qt.AlignCenter)
+        self.GoLayout.addWidget(self.cbMOTLoad,0,1)# ,alignment=Qt.AlignCenter)
         
         self.GoLayout.addWidget(self.GOSaveLabel,1,0)
-        self.GoLayout.addWidget(self.cbGOSave,1,1,alignment=Qt.AlignCenter)
+        self.GoLayout.addWidget(self.cbGOSave,1,1)#,alignment=Qt.AlignCenter)
         
         self.GoLayout.addWidget(self.GoButton,0,2)
         self.GoLayout.addWidget(self.FluoButton,1,2)
@@ -924,147 +916,49 @@ class allboxes(QWidget):
 
 
     def OptimiseAction(self):
-      # Retrieving parameters
-      param_file = self.cbParamSet.currentText()
-
-      if self.optimiser is None or (hasattr(self.optimiser, 'param_fname') and self.optimiser.param_fname != param_file):
-        confirm = QMessageBox.question(self, 'New Param Set',
-          f"Selected parameter file '{param_file}' does not match current optimiser.\n"
-          "Load new optimiser with this parameter set?",
-          QMessageBox.Yes | QMessageBox.Cancel)
-         
-        if confirm == QMessageBox.Yes:
-          self.MLParamSetAction(reload_paramset=True)  # This will create self.optimiser
-        else:
-           return
+        # Plan of attack:
+        # - What params are we using? Find these
+        # - If no optimiser in existence, make one with param set
+        # - Does an optimiser exist? If so, do the parameter sets match? If not, stop and warn user to save,
+        #       or ask to overwrite.
+        # Once an optimiser is resumed or initialised, start trial runs if model history shorter than X
+        # - TELL USER whether progressing with trials, or applying bayesian optimisation on top of this
+        # - ALLOW USER TO CANCEL
+        # Otherwise iterate repeatedly.
+        # - PROVIDE ACCESS TO STATS/BEST PARAMETERS SO FAR (N, OD_max, cost vs param values/trial number)
+        # 
         
-         
+    # TO DO
+      stages=self.Stages.stages
+      devind = self.Stages.devIDs
+      if self.optimiser is None:
+        self.MLParamSetAction()
+      else:
+        foldA = self.optimiser.model_location.split("/")[-1]; foldB = self.cbParamSet.currentText()
+        if not foldA==foldB:
+          self.MLParamSetAction()
       
-    def OptimiseAction(self):
-        """Start MLOOP optimization process"""
-        try:
-            # Retrieving parameters
-            param_file = self.cbParamSet.currentText()
-
-            # Check if optimiser exists and matches current parameter set
-            if self.optimiser is None or (hasattr(self.optimiser, 'param_fname') and self.optimiser.param_fname != param_file):
-                confirm = QMessageBox.question(self, 'New Param Set',
-                    f"Selected parameter file '{param_file}' does not match current optimiser.\n"
-                    "Load new optimiser with this parameter set?",
-                    QMessageBox.Yes | QMessageBox.Cancel)
-                 
-                if confirm == QMessageBox.Yes:
-                    self.MLParamSetAction(reload_paramset=True)  # This will create self.optimiser
-                else:
-                    return
-            
-            # Ensure we have an optimiser
-            if self.optimiser is None:
-                self.MLParamSetAction()
-                if self.optimiser is None:
-                    QMessageBox.warning(self, 'Error', 'Failed to create optimiser. Please check parameter file.')
-                    return
-            
-            # Update training steps if needed
-            npts = self.sbMLNSteps.value()
-            self.checkMLParams(trainingsteps=npts)
-            
-            # Update UI to show optimization is starting
-            self.updateMLLabels(f'MLOOP optimization starting...', 'Preparing parameters...')
-            
-            # Start MLOOP optimization
-            print('Starting MLOOP optimization...')
-            self.optimiser.iterate_start()
-            
-            # Start the MLOOP controller in a separate thread to avoid blocking the UI
-            self.start_mloop_controller()
-            
-        except Exception as e:
-            print(f'Error starting optimization: {e}')
-            QMessageBox.critical(self, 'Optimization Error', f'Failed to start optimization:\n{str(e)}')
-            self.OptimiseButton.setChecked(False)
-            self.OptimiseButton.setText('Optimise')
-    
-    def start_mloop_controller(self):
-        """Start the MLOOP controller in a separate thread"""
-        try:
-            # Create and configure the controller
-            controller_dict = self.optimiser.mloop_parameter_dict.copy()
-            
-            # Set the interface
-            controller_dict['interface'] = self.optimiser
-            
-            # Choose controller type (default to gaussian_process if not specified)
-            controller_type = getattr(self.optimiser, 'controller_type', 'gaussian_process')
-            
-            # Import MLOOP controllers
-            import mloop.controllers as mlc
-            
-            # Create the controller based on type
-            if controller_type == 'gaussian_process':
-                self.mloop_controller = mlc.create_controller(controller_dict)
-            elif controller_type == 'random':
-                controller_dict['controller_type'] = 'random'
-                self.mloop_controller = mlc.create_controller(controller_dict)
-            else:
-                print(f'Unknown controller type: {controller_type}, defaulting to gaussian_process')
-                self.mloop_controller = mlc.create_controller(controller_dict)
-            
-            # Start optimization in a separate thread
-            self.mloop_thread = threading.Thread(target=self.run_mloop_optimization)
-            self.mloop_thread.daemon = True
-            self.mloop_thread.start()
-            
-        except Exception as e:
-            print(f'Error starting MLOOP controller: {e}')
-            import traceback
-            traceback.print_exc()
-            self.OptimiseButton.setChecked(False)
-            self.OptimiseButton.setText('Optimise')
-    
-    def run_mloop_optimization(self):
-        """Run MLOOP optimization in separate thread"""
-        try:
-            print('MLOOP controller starting optimization...')
-            self.mloop_controller.optimize()
-            print('MLOOP optimization completed')
-            
-            # Update UI on completion
-            QTimer.singleShot(0, self.on_mloop_finished)
-            
-        except Exception as e:
-            print(f'Error during MLOOP optimization: {e}')
-            import traceback
-            traceback.print_exc()
-            QTimer.singleShot(0, self.on_mloop_error)
-    
-    def on_mloop_finished(self):
-        """Called when MLOOP optimization finishes successfully"""
-        self.OptimiseButton.setChecked(False)
-        self.OptimiseButton.setText('Optimise')
-        self.updateMLLabels('MLOOP optimization completed', f'Best result found after {self.optimiser.run_num} runs')
-        
-        # Show completion message
-        QMessageBox.information(self, 'Optimization Complete', 
-                               f'MLOOP optimization completed successfully!\n'
-                               f'Total runs: {self.optimiser.run_num}\n'
-                               f'Check the results in the ML plots.')
-    
-    def on_mloop_error(self):
-        """Called when MLOOP optimization encounters an error"""
-        self.OptimiseButton.setChecked(False)
-        self.OptimiseButton.setText('Optimise')
-        self.updateMLLabels('MLOOP optimization failed', 'Check console for error details')
-        
-        QMessageBox.warning(self, 'Optimization Error', 
-                           'MLOOP optimization encountered an error. Check the console for details.')
-    
-    def updateMLLabels(self, train_text, bayes_text):
-        """Update the ML status labels"""
-        if hasattr(self, 'MLTrainLabel'):
-            self.MLTrainLabel.setText(train_text)
-        if hasattr(self, 'MLBayesLabel'):
-            self.MLBayesLabel.setText(bayes_text)
+      #eid=self.cbParamSet.currentIndex()
+      npts=self.sbMLNSteps.value()
+      
+      self.checkMLParams(trainingsteps = npts) # This compares the optimiser's current parameter set with the one in the selected .mgo file
+      
+      self.optimiser.iterate_start()
+      #t_i = time.perf_counter()
+      
+      # Okay, so the above is identical to self.MultiGo currently.
+      
+      #if self.optimiser.niter < self.optimiser.trainingsteps:
+      #  self.optimiser.obtain_training_data()
+      #else:
+      #  self.optimiser.train_model()
+      #  self.optimiser.iterate(N=npts)#1 default, might want to select this? same number as trainingsteps?
+      #
+      # 
+      #QApplication.processEvents()
+      #self.updateDC()
+      # 
+      #return
     
     def saveOptData(self,foldstring, niter):
         filename=f'{foldstring}/Data_{str(niter)}.fit'
@@ -1162,7 +1056,7 @@ class allboxes(QWidget):
         # Otherwise, reset the optimiser and begin optimisation
         if self.optimiser is None:
           # If we don't have an optimiser, no problem; make it!
-            self.optimiser = ML.MLOOPInterface(mlfullpars.params, trainingsteps = trainingsteps, filename = fname, parent=self)
+            self.optimiser = ML.ExptOptimiser(mlfullpars.params, trainingsteps = trainingsteps, filename = fname, parent=self)
         else:
           if self.optimiser.niter < self.optimiser.trainingsteps:
             self.optimiser.trainingsteps = trainingsteps
@@ -1260,7 +1154,7 @@ class allboxes(QWidget):
         
         if not self.optimiser:
           trainingsteps = self.sbMLNSteps.value() 
-          self.optimiser = ML.MLOOPInterface(mlpars.params, trainingsteps = trainingsteps, filename = fname, folder=path, parent=self)
+          self.optimiser = ML.ExptOptimiser(mlpars.params, trainingsteps = trainingsteps, filename = fname, folder=path, parent=self)
         
         if os.path.isfile(f'{fullname[:-4]}.pkl'):
           self.optimiser.load(mlpars.params, name=f'{fullname[:-4]}.pkl')
@@ -1500,13 +1394,11 @@ class allboxes(QWidget):
           bfcam.end_stream()
           print('Ended stream...')
         elif not bfcam.connected:
-        #  bfcam.conn()
-           print('Blackfly not connected')
+          bfcam.conn()
         
         wait(0.2)
-        if bfcam.connected:
-          bfcam.take_pics() # NOTE: Blackfly cam needs ~1sec after turning on trigger mode (which is a part of camera set-up on server when take_pics() is used) before it is ready
-          wait(2) # Need at least 1sec before blackfly ready for pictures; I'm trying to keep this as short as possible while still working
+        bfcam.take_pics() # NOTE: Blackfly cam needs ~1sec after turning on trigger mode (which is a part of camera set-up on server when take_pics() is used) before it is ready
+        wait(2) # Need at least 1sec before blackfly ready for pictures; I'm trying to keep this as short as possible while still working
         self.pulse_off()        
         wait(0.2)
         #try:
@@ -1547,8 +1439,7 @@ class allboxes(QWidget):
         #  plt.figure(bfcam.OD_fig.number)
         #  plt.show()
         #  plt.pause(0.001)
-        wait(1)
-        print("should do DC update here")  
+          
         self.updateDC()
         wait(0.1)
         if self.fluo_mode == 'bfcam' and bfcam.connected:
@@ -1560,19 +1451,6 @@ class allboxes(QWidget):
         self.goaction_complete = True
         wait(0.3)
         self.MOTTimer.start(round(self.fluo_sampletime*1000))
-
-        if self.ML_active and hasattr(self, 'optimiser') and self.optimiser:
-          try:
-              # Set experiment_success based on validity of results
-              if hasattr(self.parent(), 'bfcam') and self.parent().bfcam.Natoms:
-                  self.experiment_success = True
-              else:
-                  self.experiment_success = False
-          except:
-              self.experiment_success = False
-
-          self.optimiser.iterate_end()
-          self.ML_interface.continue_mloop.set() #continues mloop
     
     def FluoAction(self):
         #print(self.fluo_zero, self.fluo_max, self.fluo_percentage, self.fluo_timeout, self.fluo_sampletime)
@@ -1723,30 +1601,10 @@ class allboxes(QWidget):
                   #ax.Axes.xlabel(self.mg_params[0].mytype)
                   self.canvas_atomnum.draw()
             if self.parent().princeton_action.isChecked():
-              #self.camera.shoot(nshots)
+              self.camera.shoot(nshots)
               self.mydata=self.camera.read()
-              nmax,natoms,natomsint,data=self.plotPrinceton(ns=nshots)
-              self.camera.Natoms.append(float(natomsint))
-              self.camera.ODpeak.append(float(nmax))
-              self.textout.appendPlainText('Number of atoms: '+str(natoms))
-              self.textout.appendPlainText('Max density: '+str(nmax))
-              if self.MG_active:
-                  if self.mg_plot_option==1:
-                    self.atomnumbers.append(nmax)
-                  elif self.mg_plot_option==2:
-                    self.atomnumbers.append(natoms)
-                    print(natoms)
-                  fig = self.figure_atomnum
-                  fig.clf()
-                  ax = fig.add_subplot()
-                  plt.ion()
-                  print(self.MG_index,self.mg_params[0].myvalue)
-                  x=self.mg_params[0].myvalue[:self.MG_index]
-                  ax.plot(x,np.array(self.atomnumbers),'o')
-                  #ax.Axes.xlabel(self.mg_params[0].mytype)
-                  self.canvas_atomnum.draw()
-                
-             # Apparently this is preferred over show() for gui applications
+              plt.imshow(self.mydata)
+              plt.draw() # Apparently this is preferred over show() for gui applications
               #plt.show()
         #f=open('test.txt','w')
         #for i in range(self.data.shape[0]):
@@ -1755,7 +1613,6 @@ class allboxes(QWidget):
         #f.close()
         
     #==============================================================================================================
-    # End of DoGo
     #==============================================================================================================
           
     def mgmenu(self):
@@ -2108,72 +1965,6 @@ class allboxes(QWidget):
         #plt.show()
         #plt.pause(0.001)
         
-    def plotPrinceton(self,ns=3):
-        fig = self.figure_blackfly
-        fig.clf()
-        ax = fig.add_subplot()
-        plt.ion()
-        mydata=self.mydata.astype(float)
-        if ns==1:
-            self.thedata=mydata[0,:,:]
-        elif ns==2:
-            self.thedata=mydata[0,:,:]-mydata[1,:,:]
-        elif ns==3:
-            self.thedata=-np.log((mydata[0,:,:]-mydata[2,:,:])/(mydata[1,:,:]-mydata[2,:,:]))
-        if self.lowpassflag:
-          toplot=kl.filter_mask2(self.thedata)
-        else:
-          toplot=self.thedata
-        if self.fringeflag:
-          print('In plotprinceton, fringeflag is True')
-        temp_bg = mydata[1,:,:]-mydata[2,:,:]  
-        if self.camera.BGindex != 0:
-          bool_array = np.isin(temp_bg, self.camera.BGpics)
-          for i in range(self.camera.nBGs):
-            if np.array_equal(temp_bg, np.squeeze(self.camera.BGpics[:,:,i])) == False:
-              saved = False
-            elif np.array_equal(temp_bg, np.squeeze(self.camera.BGpics[:,:,i])) == True:
-              print('Background is already saved')
-              saved = True
-              break
-          if saved == False:
-            print('Saving new background image')
-            self.camera.BGpics[:,:,self.camera.BGindex]=temp_bg
-            self.camera.BGindex+=1
-            if self.camera.nBGs<50:
-              self.camera.nBGs+=1
-        elif self.camera.BGindex == 0:
-            print('Saving first background image')
-            self.camera.BGpics[:,:,self.camera.BGindex]=temp_bg
-            print('first array',self.camera.BGpics[:,:,self.camera.BGindex])
-            self.camera.BGindex+=1
-            if self.camera.nBGs<50:
-              self.camera.nBGs+=1
-        #print(self.camera.BGpics[:,:,self.camera.BGindex])
-        print('BG index is',self.camera.BGindex)
-        print('nBGs is ', self.camera.nBGs)
-        if self.camera.BGindex>49:
-            self.camera.BGindex=0
-        if self.fringeflag and (self.camera.nBGs>5):
-          print('FG', type(mydata))
-          print('BG', type(self.camera.BGpics))
-          BGmask=kl.prepare_bgmask()
-          toplot,t1=kl.fringeremoval_otf(mydata[0,:,:]-mydata[2,:,:],self.camera.BGpics[:,:,:self.camera.nBGs],BGmask)
-          n_atoms,n_max, n_atomsint =self.camera.getNatoms_otf(toplot)
-          #n_atoms = np.format_float_positional(n_atoms, precision = 3, unique = False, fractional = False, trim = 'k')
-          
-        else:
-          n_atoms,n_max, n_atomsint =self.camera.getNatoms(mydata)
-          #n_atoms = np.format_float_positional(n_atoms, precision = 3, unique = False, fractional = False, trim = 'k')
-
-        pic=ax.imshow(toplot,cmap=cm.inferno)
-        fig.colorbar(pic, orientation="horizontal", pad=0.2)
-        self.canvas_blackfly.draw_idle()
-        #n_max=np.max(toplot)
-        #n_atoms=0.0
-        return n_max,n_atoms,n_atomsint,toplot
-        #plt.draw() 
- 
     def plotBlackfly(self):
         fig = self.figure_blackfly
         fig.clf()
@@ -2329,7 +2120,7 @@ class allboxes(QWidget):
                 
                 
                 ax.relim()
-                #ax.set_ylim(self.fluo_zero,1.2*(max(plotdata)-self.fluo_zero)+self.fluo_zero)
+                ax.set_ylim(self.fluo_zero,1.2*(max(plotdata)-self.fluo_zero)+self.fluo_zero)
                 ax.autoscale_view()
                 
             self.canvas_fluo.draw_idle()
@@ -2343,11 +2134,7 @@ class allboxes(QWidget):
           fluo_pdiode=self.adc.read(0)
 
           if self.fluo_mode == 'bfcam' and hasattr(self.parent(),'bfcam') and type(self.parent().bfcam) != type(None) and self.parent().bfcam.connected:
-            try:
-              self.fluorescence = self.parent().bfcam.req_fluo()
-            except:
-              #print("did not get fluorescnce")
-              pass
+            self.fluorescence = self.parent().bfcam.req_fluo()
             self.fluo_bfcam.append(self.fluorescence)
             while len(self.fluo_bfcam)>self.fluo_nsamples and self.delete_old_fluo:
               del self.fluo_bfcam[0]
@@ -2423,7 +2210,7 @@ class StageLabel(QPushButton):
         #self.btn=QPushButton(name,self)
         self.setText(name)
         self.notes=notes
-        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        #self.setContextMenuPolicy(Qt.CustomContextMenu)
         
     #def mousePressEvent(self,event):
         ##print("Mhouse pressed")

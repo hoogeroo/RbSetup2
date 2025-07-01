@@ -1,6 +1,6 @@
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
-from PyQt5.QtGui import QPalette, QColor
+from PyQt6.QtCore import *
+from PyQt6.QtWidgets import *
+from PyQt6.QtGui import QPalette, QColor
 from matplotlib import cm
 import numpy as np
 import sys
@@ -40,7 +40,7 @@ class Eagle_box(QDoubleSpinBox):
             newcolor=[int(np.ceil(255*x)) for x in cmap(cmap_val)]
     
         pal=self.palette()
-        pal.setColor(QPalette.Base, QColor(newcolor[0],newcolor[1],newcolor[2]))
+        #pal.setColor(QPalette.Base, QColor(newcolor[0],newcolor[1],newcolor[2]))
         self.setPalette(pal)
 
 class Window(QWidget):

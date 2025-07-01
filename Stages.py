@@ -1,9 +1,9 @@
 import numpy as np
 import os
 
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import *
+from PyQt6.QtCore import *
+from PyQt6.QtGui import *
+from PyQt6.QtWidgets import *
 
 import astropy.io.fits as fits
 
@@ -30,6 +30,7 @@ class Stages():
         total+=len(self.devices[key])
         
     self.stages=[]
+    print(self.stages)
     self.DC=[]
     
     if not type(table)=='NoneType':
@@ -103,7 +104,7 @@ class Stages():
         DIOval=False
         if DIOstate:
           DIOval = DIOstate[iocount]
-        stagevals[i].setChecked(DIOval)
+        stagevals[i].setChecked(bool(DIOval))
         iocount+=1
       elif vals:
         if vals[valcount]<-25:

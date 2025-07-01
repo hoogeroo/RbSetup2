@@ -82,7 +82,6 @@ class blackfly():
   # SERVER STUFF
   def conn(self):
     s = socket.socket()
-    s.settimeout(2)
     try:
       s.connect((IP_BFCAM, PORT_BFCAM))
       self.server = s
@@ -96,11 +95,7 @@ class blackfly():
   
   def disconn(self):
     #self.exit_server()
-    try:
-      self.server.close()
-    except:
-      print("not connected to blackfly")
-      pass
+    self.server.close()
     self.server = None
     self.connected = False
     self.stream_on = False
