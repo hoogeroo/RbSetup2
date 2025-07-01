@@ -6,7 +6,7 @@ Created on Fri Nov  2 10:28:40 2018
 @author: lab
 """
 
-from PyQt5 import QtWidgets
+from PyQt6 import QtWidgets
 from mainWindow import Ui_MainWindow
 import sys
 

@@ -5,7 +5,7 @@ from matplotlib import cm
 import numpy as np
 import sys
 #from qmsbox import *
-import DAQ
+#import DAQ
 
 
 class Eagle_box(QDoubleSpinBox):
@@ -60,7 +60,7 @@ class EaglePanel(QGroupBox):
         self.setTitle('Eagle DACs')
         self.setLayout(self.layout)
         self.Eagle_boxes=[]
-        self.EDRE=DAQ.EDRE_Interface()
+        #self.EDRE=DAQ.EDRE_Interface()
         for i in range(3):
           for j in range(8):
             self.Eagle_boxes.append(Eagle_box(i,j))

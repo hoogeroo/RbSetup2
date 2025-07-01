@@ -13,7 +13,7 @@ from Parsers import *
 
 from dataTypes import *
 
-from DAQ import *
+from DAQ import DAQ, daq
 
 class networkDDSLine(QtWidgets.QWidget):
     

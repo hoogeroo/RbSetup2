@@ -26,16 +26,14 @@ import matplotlib.pyplot as plt
 from functools import partial
 
 # Our imports
-import DAQ
-import blackfly
+#import DAQ
+#import blackfly
 from allboxes import *
 import multigo_window as mg
 import kicklib as klb
 #\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/
 
-
-#setting data pathing
-datapath='/home/lab/Data'
+datapath='/home/lab/mydata/Data'
 defaultfilename="defaultb.fit"
 
 class MainWindow(QMainWindow):
@@ -74,11 +72,12 @@ class MainWindow(QMainWindow):
             #try:            
             motloadsetting=headers['MOTLOAD']
             phototype=headers['SHOTTYPE']      
-            #blackflysetting=headers['BLACKFLY']
+            blackflysetting=headers['BLACKFLY']
             #except:
             #  print('checkbox headers missing; skipping!')
             #  pass
             #~v~v~v~v~v~v~v~v~v~v~v~v~v~v~v~v~v~v~v~v~v~v~v~v~v~v~v~v~
+            blackflysetting=False
             if blackflysetting:
               self.bfcam=blackfly.blackfly()
               self.load_blackfly(headers)
@@ -93,6 +92,7 @@ class MainWindow(QMainWindow):
             
         self.CW.cbMOTLoad.setChecked(motloadsetting)
         self.CW.cbPictype.setCurrentIndex(phototype)
+        print("here now")
         self.setCentralWidget(self.CW) # the central widget is everything in the main window
         
         # Load the names of stages that can be duplicated/deleted
@@ -136,9 +136,9 @@ class MainWindow(QMainWindow):
         option_menu.addAction(self.fringe_action)
         self.fringe_action.triggered.connect(self.fringefunc)
         self.use_Fringe_Removal=False
-        self.bfcam.use_Fringe_Removal=self.use_Fringe_Removal
+        #self.bfcam.use_Fringe_Removal=self.use_Fringe_Removal
         self.lowpassflag=True
-        self.bfcam.lowpassflag=self.lowpassflag
+        #self.bfcam.lowpassflag=self.lowpassflag
         self.lowpass_action.setChecked(True)
         self.setMaximumHeight(800)
         
@@ -660,8 +660,9 @@ def main():
    mw = MainWindow()
    #ex = spindemo()
    mw.show()
-   sys.exit(app.exec_())
+   #sys.exit(app.exec_())
+   sys.exit(app.exec())
 
 if __name__ == '__main__':
    main()
-#   cProfile.run("main()",filename="/home/lab/mydata/Programming/newsetup/pyqtgui/profile.txt",sort="cumulative")
+   #cProfile.run("main()",filename="profile.txt",sort="cumulative")

@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import *
 import numpy as np
 import os
 
-import EagleDAC_main as edac
+# import EagleDAC_main as edac
 from qmsbox import *
 
 class MySpinBox(QSpinBox):
@@ -248,7 +248,7 @@ class Parameters():
             self.channel.setValue(y)
             self.rampcheck=QCombokBox()
             self.mytype=QComboBox()
-            types = ["EagleDAC","AOM","DAC","Time"]
+            types = ["AOM","DAC","Time"] #removed "EagleDAC"
             for devtype in types:
                 self.mytype.addItem(devtype)
 
@@ -266,7 +266,7 @@ class Parameters():
             self.rampcheck.addItem('None')
             self.mytype=QComboBox()
             #self.rampcheck.toggled.connect(self.rampchecktoggled)
-            types = ["EagleDAC","AOM","DAC","Time","RF (freq)","RF (amp)"]
+            types = ["AOM","DAC","Time","RF (freq)","RF (amp)"] #removed "EagleDAC",
             for devtype in types:
                 self.mytype.addItem(devtype)
         #def rampchecktoggled(self):
@@ -305,9 +305,9 @@ class Parameters():
         if myparam.mytype.currentText()=="Time":
           temp=Timebox()
           Vmin = temp.minimum(); Vmax = temp.maximum()
-        elif myparam.mytype.currentText()=="EagleDAC":
-          temp = edac.Eagle_box(0,0)
-          Vmin= temp.minimum(); Vmax = temp.maximum(); stepsize = temp.singleStep()
+        # elif myparam.mytype.currentText()=="EagleDAC":
+        #   temp = edac.Eagle_box(0,0)
+        #   Vmin= temp.minimum(); Vmax = temp.maximum(); stepsize = temp.singleStep()
         elif myparam.mytype.currentText()=="AOM":
           Vmin,Vmax,stepsize = self.fixAOMboxes(myparam)
         elif myparam.mytype.currentText()=="DAC":

@@ -13,24 +13,18 @@ from PyQt6.QtWidgets import *
 
 import numpy as np
 import socket
-
+import time
 from matplotlib import cm, colors
 from functools import partial
 
 # Our imports
 from dacprops import *
 
-"""try:
-    import AIOUSB as da
-except:
-    pass
-"""
-da=1
 #\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/
 
-TCP_IP = '130.216.51.242'
-TCP_IP2= '130.216.51.179'
-TCP_PORT = 8833
+#TCP_IP = '130.216.51.242'
+#TCP_IP2= '130.216.51.179'
+#TCP_PORT = 8833
 BUFFER_SIZE = 50
 
 rframpID = 7
@@ -41,23 +35,23 @@ class QMSbox(QDoubleSpinBox):
         self.tid=j
         self.cid=i
         self.rightclick_enabled = True
-        #self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self.__contextMenu)
         self.setDecimals(2)
         #self.setSingleStep(0.1)
         self.setToolTip('['+str(self.tid)+','+str(self.cid)+']')
         self.keepValue=0.0
-        
+
         self.LAmp=0.0
         self.LOffset=0.0
         self.LTc=0.0
-        
+
         self.RStart=0; self.Rmin = 0
         self.REnd=1; self.Rmax = 5
-        
+
         self.updatecolor()
         #self.setFont(QFont('Arial',7))
-        
+
     def valuechange(self):
         print(self.tid,self.cid,self.value())
     def popmenu(self):
@@ -71,8 +65,8 @@ class QMSbox(QDoubleSpinBox):
     def __contextMenu(self):
         if self.rightclick_enabled:
           self._normalMenu = self.OpenMenu()
-          self._normalMenu.exec_(QCursor.pos())
-        
+          self._normalMenu.exec(QCursor.pos())
+
     def OpenMenu(self):
         print("This")
         self.menu=QMenu(self)
@@ -87,29 +81,29 @@ class QMSbox(QDoubleSpinBox):
         self.zAction.triggered.connect(self.Lorentzaction)
         self.cAction.triggered.connect(self.ConstantAction)
         self.lAction.triggered.connect(self.RampAction)
-        #action = menu.exec_(self.mapToGlobal(position))
+        #action = self.menu.exec(self.mapToGlobal(position))
         return self.menu
-      
+
     def Lorentzaction(self):
         self.setRange(-20,20)
         if self.value()>-1:
             self.keepValue=self.value()
         self.setValue(-20)
         self.setSpecialValueText("Lrtz")
-        self.menu.setVisible(False)
+        self.menu.setVisible(True)
         thisDialog=LorentzDialog(self)
-        if thisDialog.exec_():
+        if thisDialog.exec():
             self.LOffset=thisDialog.Loffset.value()
             #print(self.Loffset)
             self.LAmp=thisDialog.LAmp.value()
             self.LTc=thisDialog.LTc.value()
-            
+
     def ConstantAction(self):
         #dac_conversions[self.cid].minv, .maxv (see dacprops.py)
         self.setSpecialValueText('')
         self.setRange(self.Rmin, self.Rmax)#dac_conversions[self.cid].minv, dac_conversions[self.cid].maxv)
         self.setValue(self.keepValue)
-        
+
     def RampAction(self):
         self.setRange(-30,30)
         if self.value()>-1:
@@ -117,19 +111,19 @@ class QMSbox(QDoubleSpinBox):
         self.setSpecialValueText("Ramp")
         self.setValue(-30)
         thisDialog=RampDialog(self)
-        if thisDialog.exec_():
+        if thisDialog.exec():
             self.RStart = thisDialog.SB_RStart.value()
             self.REnd = thisDialog.SB_REnd.value()
-            #print(self.RStart, self.REnd)
-            #print(self.RStart)
+            print(self.RStart, self.REnd)
+            print(self.RStart)
         else:
             self.ConstantAction()
-            
+
     def updatecolor(self):
         cmap = cm.get_cmap(name='RdBu')#'Spectral')#
         #only choose a number between 0.25 and 0.75
         colrange=[0.25,0.75]
-    
+
         value = self.value()
         if value==0:
             newcolor=3*[180]#[128,128,128]#'#AAAAAA'
@@ -140,10 +134,10 @@ class QMSbox(QDoubleSpinBox):
             except:
               cmap_val = 0.5
             newcolor=[int(np.ceil(255*x)) for x in cmap(cmap_val)]
-    
-        pal=self.palette()
+
+        #pal=self.palette()
         #pal.setColor(QPalette.Base, QColor(newcolor[0],newcolor[1],newcolor[2]))
-        self.setPalette(pal)
+        #self.setPalette(pal)
         #try:
         #  print(f'DAC ID:{self.DACid} - value changed to {self.value()}')
         #except Exception as e:
@@ -153,8 +147,8 @@ class Timebox(QDoubleSpinBox):
     def __init__(self):
         super(Timebox,self).__init__()
         self.setRange(0,20000)
-        self.setDecimals(1)#self.setDecimals(0)#
-        self.setSingleStep(0.1)
+        self.setDecimals(0)#self.setDecimals(0)#
+        self.setSingleStep(1)
 
 class DAC_Box(QMSbox):
     def __init__(self,i,cid):
@@ -164,16 +158,17 @@ class DAC_Box(QMSbox):
         self.adjustrange(dac_conversions[cid].minv, dac_conversions[cid].maxv)
         self.setSingleStep(dac_conversions[cid].step)
         self.valueChanged.connect(self.updatecolor)
+        print("Updating DC in DAC_BOX(QMS_BOX)",QMSbox)
         #self.Rmin = dac_conversions[self.DACid].minv # Now handled within adjustrange
         #self.Rmax = dac_conversions[self.DACid].maxv
-        
+
     def adjustrange(self, low, high):
         bot = min([low, high]); top = max([low, high])
         #print(f'Device: {self.DACid} - range={[bot, top]}')
         if self.DACid == rframpID and low != high:
           dac_conversions[rframpID].minv = bot; dac_conversions[rframpID].maxv = top
           dac_conversions[rframpID].pars[0] = -5*bot / (top - bot)
-          dac_conversions[rframpID].pars[1] = 5/(top - bot); 
+          dac_conversions[rframpID].pars[1] = 5/(top - bot);
         if self.value() > -1:
             self.setRange(bot, top)
             val = self.value()
@@ -183,7 +178,7 @@ class DAC_Box(QMSbox):
             self.setValue(val)
         self.Rmin = bot; self.Rmax = top
         self.updatecolor()
-        
+
     def convert(self):
         out=dac_conversions[self.DACid].getval(self.value())
         #print(out)
@@ -206,20 +201,44 @@ class DC_DAC_Box(DAC_Box):
         self.valueChanged.connect(self.updateDAC)
     def updateDAC(self):
         self.updatecolor()
+        import subprocess
+        with open("updatedac.py","w") as a:
+            a.write("from artiq.experiment import *\n")
+            a.write("class ChangeDAC(EnvExperiment):\n")
+            a.write("   def build(self):\n")
+            a.write("      self.setattr_device('core')\n")
+            a.write("      self.setattr_device('fastino0')\n")
+            a.write("   @kernel\n")
+            a.write("   def run(self):\n")
+            a.write("      self.core.reset()\n")
+            a.write("      self.fastino0.init()\n")
+            a.write("      delay(1e-3)\n")
+            #a.write("      a=32*[
+            #string="      self.fastino0.set_dac("+str(self.DACid)+","+str(self.value())+")\n"
+            #f"      self.fastino0.set_dac({self.DACid},{self.value()})\n"
+            a.write(f"      self.fastino0.set_dac({self.DACid},{self.value()})\n")
+            a.write("      delay(1e-3)\n")
+            a.flush()
+            a.close()
+            print("in update",self.DACid,self.value())
+            time.sleep(0.1)
+            subprocess.run(["artiq_run","updatedac.py"])
+            #time.sleep(0.1)
+
         #print(self.parent())
         #da=self.parent().da
         #EDRE.writeChannel(0,self.DACid,int(self.value()*1000000))
-        fullscale=5.0
+        #fullscale=5.0
         #print("I'm here\n",self.DACid)
-        count=np.ushort(self.convert()/fullscale*0xfff)
+        #count=np.ushort(self.convert()/fullscale*0xfff)
         #did=np.ushort(self.DACid)
-        try:
-            out=da.DACDirect(0,self.DACid,count)
-            #print("DC DAC updated")
-        except:
-            print("Issues updating DAC")
-            pass
-   
+        # try:
+        #     out=da.DACDirect(0,self.DACid,count)
+        #     #print("DC DAC updated")
+        # except:
+        #     print("Issues updating DAC")
+        #     pass
+
         #print(count,out,self.DACid)
 
 class AOM_Freq_Box(QMSbox):
@@ -228,14 +247,14 @@ class AOM_Freq_Box(QMSbox):
         if (i<4):
           self.AOMid=i
           self.DDSid=0
-          self.tcp=TCP_IP
+         # self.tcp=TCP_IP
         else:
           self.AOMid=i-4
           self.DDSid=1
-          self.tcp=TCP_IP2
-          
-        self.rightclick_enabled = False
-        
+          #self.tcp=TCP_IP2
+
+        self.rightclick_enabled = True
+
         self.setValue(val)
         self.setRange(55,105)
         self.setDecimals(0)
@@ -245,34 +264,72 @@ class AOM_Freq_Box(QMSbox):
 class DC_AOM_Freq_Box(AOM_Freq_Box):
     def __init__(self,i,j,val=80):
         super(DC_AOM_Freq_Box,self).__init__(i,j)
-        if (i<4):
-          self.AOMid=i
-          self.DDSid=0
-          self.tcp=TCP_IP
-        else:
-          self.AOMid=i-4
-          self.DDSid=1
-          self.tcp=TCP_IP2
-          
-        self.rightclick_enabled = False
-        
+        #if (i<4):
+        self.AOMid=i
+        self.DDSid=0
+          #self.tcp=TCP_IP
+        #else:
+          #self.AOMid=i-4
+          #self.DDSid=1
+          #self.tcp=TCP_IP2
+
+        self.rightclick_enabled = True
+        print("here")
         self.setValue(val)
         self.setRange(55,105)
-        self.valueChanged.connect(self.update)
-    def update(self):
-        self.updatecolor()
-        #print(self.value())
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(1)
-            s.connect((self.tcp, TCP_PORT))
-            ml='FREQ,%d,%f' % (self.AOMid , (self.value()))
-            #print(ml)
-            s.send(ml.encode())
-            s.recv(5)
-            s.close()
-        except:
-            pass
+        self.valueChanged.connect(self.update_AOM_Freq)
+    #def update(self):
+       #self.updatecolor()
+        #print(self.value(),self.AOMid)
+        
+    #######
+        
+        
+    def update_AOM_Values(self):
+        with open('amp_frequencies.json', 'r') as f:
+            current_data = json.load(f)
+        current_data[AOMid]=[self.value(),self.AOMid]
+        with open('amp_frequencies.json', 'w') as f:
+            json.dump(current_data, f, indent=3)
+            
+    #######
+            
+            
+    def new_update_AOM_Freq(self):
+        with open('amp_frequencies.json', 'r') as f:
+            
+        #update_state = 0 or 1 depending if value is the same as current
+            current_data = json.load(f)
+        current_data[AOMid]=[self.value(),self.AOMid]
+        with open('amp_frequencies.json', 'w') as f:
+            json.dump(current_data, f, indent=3)
+        with open('aom_frequencies.json', 'w') as f:
+            json.dump(current_data, f, indent=4)
+    def update_AOM_Freq(self):
+        print(self.value(),self.AOMid)
+        AOMid = self.AOMid
+        #self.updatecolor()
+        import subprocess
+        with open("update_aom_freq.py","w") as a:
+            a.write("from artiq.experiment import *\n")
+            a.write("class Update_AOM_Freq(EnvExperiment):\n")
+            a.write("    def build(self):\n")
+            a.write("        self.setattr_device('core')\n")
+            a.write("        self.setattr_device('urukul0_cpld')\n")
+            a.write(f"        self.setattr_device('urukul0_ch{AOMid}')\n")
+           # a.write(f"        self.dds = self.urukul0_ch{self.AOMid}\n")
+          #  a.write("        self.cpld = self.urukul0_cpld\n")
+            a.write("    @kernel\n")
+            a.write("    def run(self):\n")
+            a.write("        self.core.reset()\n")
+            a.write("        self.core.break_realtime()\n")
+            a.write(f"        stored_amp=self.urukul0_ch{AOMid}.asf_to_amplitude(self.urukul0_ch{AOMid}.get_mu()[2])\n")
+            a.write("        delay(20*us)\n")
+            a.write(f"        self.urukul0_ch{AOMid}.set({self.value()}*MHz, amplitude = stored_amp)\n")
+            a.flush()
+            a.close()
+            time.sleep(0.1)
+            subprocess.run(["artiq_run","update_aom_freq.py"])
 
 class DC_DIO_Box(QCheckBox):
     def __init__(self,i):
@@ -281,25 +338,25 @@ class DC_DIO_Box(QCheckBox):
         self.stateChanged.connect(self.update)
     def update(self):
         if self.checkState():
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(1)
-            s.connect((TCP_IP, TCP_PORT))
+            #s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            #s.settimeout(1)
+            #s.connect((TCP_IP, TCP_PORT))
             #ml='AMPL,%d,%f' % (self.AOMid , (self.value()))
-            ml="DCTRIG,%d,ON" % self.DIOid
+            #ml="DCTRIG,%d,ON" % self.DIOid
             print(ml)
-            s.send(ml.encode())
+            #s.send(ml.encode())
             #s.recv(5)
-            s.close()
-        else:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(1)
-            s.connect((TCP_IP, TCP_PORT))
-            #ml='AMPL,%d,%f' % (self.AOMid , (self.value()))
-            ml="DCTRIG,%d,OFF" % (self.DIOid)
-            print(ml)
-            s.send(ml.encode())
-            #s.recv(5)
-            s.close()
+            #s.close()
+      #  else:
+            #s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            #s.settimeout(1)
+            #s.connect((TCP_IP, TCP_PORT))
+            ##ml='AMPL,%d,%f' % (self.AOMid , (self.value()))
+            #ml="DCTRIG,%d,OFF" % (self.DIOid)
+            #print(ml)
+           # s.send(ml.encode())
+           # #s.recv(5)
+            #s.close()
 
 class AOM_Ampl_Box(QMSbox):
     def __init__(self,i,j,val=0.2):
@@ -308,16 +365,16 @@ class AOM_Ampl_Box(QMSbox):
         if (i<4):
           self.AOMid=i
           self.DDSid=0
-          self.tcp=TCP_IP
+          #self.tcp=TCP_IP
         else:
-          self.AOMid=i-4
-          self.DDSid=1
-          self.tcp=TCP_IP2
-        
+         self.AOMid=i-4
+         self.DDSid=1
+         # self.tcp=TCP_IP2
+
         self.rightclick_enabled = (self.AOMid == 3) or (i==4) # automatically disables context menu unless we're looking at the final AOM where ramping is allowed!
-        
-        
-        
+
+
+
         self.setValue(val)
         #self.setRange(0,1)
         self.adjustrange(aom_amp_conversions[self.convert_index].minv, \
@@ -327,43 +384,75 @@ class AOM_Ampl_Box(QMSbox):
         #self.setSingleStep(0.05)
         self.setSingleStep(aom_amp_conversions[self.convert_index].step)
         self.valueChanged.connect(self.updatecolor)
-        
+
         #self.setRange(dac_conversions[j].minv,dac_conversions[j].maxv)
         #self.setSingleStep(dac_conversions[j].step)
         #self.valueChanged.connect(self.updatecolor)
-        
+
         #self.Rmin = aom_amp_conversions[self.convert_index].minv # now handled in adjustrange
         #self.Rmax = aom_amp_conversions[self.convert_index].maxv
     def adjustrange(self, low, high):
         self.setRange(low, high)
         self.Rmin = low; self.Rmax = high
         self.updatecolor()
-        
+
     def convert(self):
         out=aom_amp_conversions[self.convert_index].getval(self.value())
         #print(out)
         return out
 
 class DC_AOM_Ampl_Box(AOM_Ampl_Box):
+
     def __init__(self,i,j,val=0.2):
         super().__init__(i,j,val=0.2)
         self.valueChanged.connect(self.update)
         self.setValue(val)
-        self.rightclick_enabled = False
+        self.rightclick_enabled = True
     def update(self):
+        import subprocess
         self.updatecolor()
+        AOMid = self.AOMid
+        self.updatecolor()
+        with open("update_aom_amp.py","w") as a:
+            a.write("from artiq.experiment import *\n")
+            a.write("class Update_AOM_Freq(EnvExperiment):\n")
+            a.write("    def build(self):\n")
+            a.write("        self.setattr_device('core')\n")
+            a.write("        self.setattr_device('urukul0_cpld')\n")
+            a.write(f"        self.setattr_device('urukul0_ch{AOMid}')\n")
+           # a.write(f"        self.dds = self.urukul0_cpld.init()\n")
+          #  a.write("        self.cpld = self.urukul0_cpld\n")
+            a.write("    @kernel\n")
+            a.write("    def run(self):\n")
+
+            a.write("        self.core.reset()\n")
+            a.write("        self.urukul0_cpld.init()\n")
+            a.write("        self.core.break_realtime()\n")
+            #a.write(f"        self.urukul0_ch{AOMid}.set_cfr1(ram_enable=0)\n")  # Disable RAM mode
+           # a.write(f"        self.urukul0_cpld.io_update.pulse_mu(20)\n")
+            #a.write(f"        self.urukul0_ch{AOMid}.sw.on()\n")
+            #a.write("        delay(0.05*ms)\n")
+            a.write(f"        f = round(self.urukul0_ch{AOMid}.get_frequency())\n")
+            a.write("        delay(20*us)\n")
+            a.write(f"        self.urukul0_ch{AOMid}.set(frequency = f*Hz, amplitude = {self.value()})\n")
+            a.write("        self.core.wait_until_mu(now_mu())\n")
+            a.flush()
+            a.close()
+            time.sleep(0.1)
+            subprocess.run(["artiq_run","update_aom_amp.py"])
+
         #print(self.value())
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(1)
-            s.connect((self.tcp, TCP_PORT))
-            ml='AMPL,%d,%f' % (self.AOMid , (self.convert()))
+        #try:
+            #s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            #s.settimeout(1)
+            #s.connect((self.tcp, TCP_PORT))
+            #ml='AMPL,%d,%f' % (self.AOMid , (self.convert()))
             #print(ml)
-            s.send(ml.encode())
-            s.recv(5)
-            s.close()
-        except:
-            pass
+           # s.send(ml.encode())
+           # s.recv(5)
+           # s.close()
+     #   except:
+       #     pass
 
 class LorentzDialog(QDialog):
     def __init__(self,parent):
@@ -392,7 +481,8 @@ class LorentzDialog(QDialog):
         self.lRising=QLabel('Rising')
         self.lo.addWidget(self.lRising,3,0)
         self.cbRising.setChecked(False)
-        QBtn = QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+        QBtn = QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+
         self.buttonBox = QDialogButtonBox(QBtn)
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(self.reject)
@@ -404,31 +494,31 @@ class RampDialog(QDialog):
         super(QDialog,self).__init__()
         self.Rmin = parent.Rmin#dac_conversions[parent.cid].minv
         self.Rmax = parent.Rmax#dac_conversions[parent.cid].maxv
-        #print(f'Rmin = {self.Rmin}; Rmax = {self.Rmax}')
-        
+        print(f'Rmin = {self.Rmin}; Rmax = {self.Rmax}')
+
         self.lo=QGridLayout()
-        
-        #print(parent.RStart)
-        rstart = parent.RStart; rend = parent.REnd 
+
+        print(parent.RStart)
+        rstart = parent.RStart; rend = parent.REnd
         for val in [rstart, rend]: # This moves moves each start/end value within the allowed range
           val = min([val, self.Rmax])
           val = max([val, self.Rmin])
-        
+
         self.SB_RStart=QDoubleSpinBox()
         self.SB_RStart.setRange(self.Rmin, self.Rmax)
         self.SB_RStart.setValue(rstart)
         l1=QLabel("Start Value")
         self.lo.addWidget(self.SB_RStart,0,1)
         self.lo.addWidget(l1,0,0)
-        
+
         self.SB_REnd=QDoubleSpinBox()
         self.SB_REnd.setRange(self.Rmin, self.Rmax)
         self.SB_REnd.setValue(rend)
         l2=QLabel("End Value")
         self.lo.addWidget(self.SB_REnd,1,1)
         self.lo.addWidget(l2,1,0)
-        
-        QBtn = QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+
+        QBtn = QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         self.buttonBox = QDialogButtonBox(QBtn)
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(self.reject)
@@ -440,7 +530,7 @@ def main():
    mw = MainWindow()
    #ex = spindemo()
    mw.show()
-   sys.exit(app.exec_())
+   sys.exit(app.exec())
 
 if __name__ == '__main__':
    #main()

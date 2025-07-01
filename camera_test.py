@@ -8,7 +8,7 @@ import numpy as np
 TCPIP='10.103.154.4'
 PORT= 54321
 BUFFER_SIZE = 512
-TMPFITS= '/home/lab/zdrive/kuroTemp/temp.fit'
+TMPFITS= '/home/rabi/temp1/kuroTemp/temp.fit'
 
 class camera():
     def __init__(self):
@@ -20,6 +20,7 @@ class camera():
             s.send(ml.encode())
             #a=s.recv(5)
             s.close()
+            print("camera connected")
         except:
             print('Camera connect failed')
 
@@ -40,7 +41,7 @@ class camera():
         imgdata=hdu[0].data
         outdata=np.array(imgdata)
         hdu.close()
-        #os.remove(TMPFITS)
+        os.remove(TMPFITS)
         return outdata
     def plot(self,data,npics):
         import matplotlib.pyplot as plt
@@ -50,15 +51,15 @@ class camera():
             plt.show()
 
 if __name__=='__main__':
-    import DAQ
-    EDRE=DAQ.EDRE_Interface()
+    #import DAQ
+    #EDRE=DAQ.EDRE_Interface()
     cam=camera()
     cam.shoot(1)
     time.sleep(0.1)
-    EDRE.writeChannel(0,19,5000000)
+    #EDRE.writeChannel(0,19,5000000)
     time.sleep(0.01)
-    EDRE.writeChannel(0,19,0)
+    #EDRE.writeChannel(0,19,0)
     a=cam.read()
     cam.plot(a,1)
     print(a.shape)
-    
+

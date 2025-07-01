@@ -14,6 +14,7 @@ def roundstr(x,n):
 data=[]
 with open('/home/rabi/temp/kuroTemp/temp.fit','rb') as file:
   a = fits.open(file)
+  print(a[1])
   data = a[0].data
 
 npic=data.shape[0]

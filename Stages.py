@@ -30,9 +30,9 @@ class Stages():
         total+=len(self.devices[key])
         
     self.stages=[]
-    print(self.stages)
     self.DC=[]
-    
+    print(self.stages)
+    print(self.DC)
     if not type(table)=='NoneType':
       DIOstate=np.asarray(DIOstate)
       self.populate(table,curves,DIOstate,stagenames)
@@ -103,8 +103,11 @@ class Stages():
       if isinstance(stagevals[i], QCheckBox):
         DIOval=False
         if DIOstate:
-          DIOval = DIOstate[iocount]
-        stagevals[i].setChecked(bool(DIOval))
+          if (DIOstate[iocount]<0.5):
+            DIOval=False
+          else:
+            DIOval=True
+        stagevals[i].setChecked(DIOval)
         iocount+=1
       elif vals:
         if vals[valcount]<-25:
@@ -178,6 +181,7 @@ class Stages():
     
     if names:
         names.insert(0,0)
+    print(table[0])
     for j in range(1,len(table[0])):
       DIOj=[]
       if DIOstate.size:

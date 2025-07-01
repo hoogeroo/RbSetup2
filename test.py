@@ -1,57 +1,38 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Dec 12 11:28:11 2018
-
-@author: lab
-"""
-
 import sys
-from PyQt5 import QtCore, QtGui, QtWidgets
+import matplotlib as plt
+plt.use('QtAgg')  # Use the QtAgg backend for Matplotlib (works for PyQt6)
+import matplotlib.figure
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from PyQt6.QtWidgets import QApplication, QWidget, QGridLayout
 
+class PlotWindow(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        
+        self.setWindowTitle('Matplotlib in PyQt6')
+        self.setGeometry(100, 100, 800, 600)
 
-class myGUI(QtWidgets.QWidget):
-    def __init__(self):
-        super(myGUI, self).__init__()
-        self.horizontalLayout = QtWidgets.QVBoxLayout(self)
-        
-        lbl1 = QtWidgets.QLabel('This will eventually contain a paragraph of useful information', self)
-        lbl1.move(17, 0)
-        
-        self.scrollArea = QtWidgets.QScrollArea(self)
-        self.scrollArea.setWidgetResizable(True)
-        self.scrollArea.setGeometry(10,10,10,10)
-        self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 380, 280))
-        self.horizontalLayout_2 = QtWidgets.QHBoxLayout(self.scrollAreaWidgetContents)
-        self.gridLayout = QtWidgets.QGridLayout()
-        self.horizontalLayout_2.addLayout(self.gridLayout)
-        self.scrollArea.setWidget(self.scrollAreaWidgetContents)
-        
-        self.btn1 = QtWidgets.QPushButton("Button 1")
-        self.btn2 = QtWidgets.QPushButton("Button 2")
-        self.btn3 = QtWidgets.QPushButton("Button 3")
-        
-        self.horizontalLayout.addWidget(self.scrollArea)
-        self.horizontalLayout.addWidget(self.btn1)
-        self.horizontalLayout.addWidget(self.btn2)
-        self.horizontalLayout.addWidget(self.btn3)
-        
-        self.btn1.clicked.connect(self.addButtons)
-        self.setGeometry(300, 200, 500, 500)
-        self.setWindowTitle('myGUI')
+        # Create a grid layout
+        grid_fluo = QGridLayout(self)
 
-    def addButtons(self):
-        for i in range(0, 50):
-            self.r_button = QtWidgets.QPushButton("Element %s " % i)
-            self.gridLayout.addWidget(self.r_button)
+        # Create a Matplotlib figure and canvas
+        self.figure_fluo = plt.figure.Figure()
+        self.canvas_fluo = FigureCanvas(self.figure_fluo)
+        
+        # Set up the figure (this could be customized further)
+        self.makeFluoFig()
 
-def run():
+        # Add the canvas as a QWidget to the layout
+        grid_fluo.addWidget(self.canvas_fluo, 0, 0, 15, 15)
 
-    app = QtWidgets.QApplication(sys.argv)
-    ex = myGUI()
-    ex.show()
-    sys.exit(app.exec_())
+    def makeFluoFig(self):
+        """This function can be customized to add your plot to the figure."""
+        ax = self.figure_fluo.add_subplot(111)
+        ax.plot([1, 2, 3, 4], [1, 4, 9, 16])  # Example plot
+        ax.set_title('Example Plot')
 
 if __name__ == "__main__":
-      run()
+    app = QApplication(sys.argv)
+    window = PlotWindow()
+    window.show()
+    sys.exit(app.exec())

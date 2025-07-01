@@ -3,7 +3,7 @@ from PyQt6.QtGui import *
 from PyQt6.QtWidgets import *
 import sys
 
-AFG_TCP="130.216.50.181"
+#AFG_TCP="130.216.50.181"
 rframpID = 7
 
 class TekAFG(QGroupBox):
@@ -191,7 +191,7 @@ def main():
    #layout.addWidget(panel)
    #ex = spindemo()
    mw.show()
-   sys.exit(app.exec_())
+   sys.exit(app.exec())
 
 if __name__ == '__main__':
    main()
