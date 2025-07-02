@@ -10,7 +10,7 @@ Created on Tue Aug 16 15:00:25 2016
 
 """
 
-
+import json
 
 # PyQt5 classes etc
 
@@ -103,7 +103,7 @@ import kicklib as kl
 
 #BUFFER_SIZE = 50
 
-#datapath='/home/lab/mydata/Data'
+datapath='/home/rabi/lab/mydata/Data'
 
 MAX_INT=0xfff
 
@@ -120,19 +120,13 @@ MAX_INT=0xfff
 class allboxes(QWidget):
 
     def __init__(self, tables, datapath=None, parent=None):#ndacs,naoms,ntimes):
-
       super(allboxes, self).__init__(parent=parent)
-
       try:
-
           print(da.GetDevices()) # From qmsbox import: 'import AIOUSB as da';
 
                                 # This is required for all apps using the DAC
-
       except:
-
           print("DA not present")
-
           self.DApresent=False
 
       if datapath:
@@ -141,7 +135,7 @@ class allboxes(QWidget):
 
       else:
 
-          self.datapath='/home/lab/Data'
+          self.datapath='/home/rabi/lab/mydata/Data'
 
 
 
@@ -207,7 +201,7 @@ class allboxes(QWidget):
 
       # PLOTTING STUFF
 
-      if hasattr(self.parent(), 'bfcam') and True:#True: # Switch between True and False to force pdiode
+      if hasattr(self.parent(), 'bfcam') and False:#True: # Switch between True and False to force pdiode
 
           self.fluo_mode = 'bfcam'#'pdiode'#'bfcam'# Currently only 'bfcam' means anything; using any other string results in using the ADClib card to sample a photodiode.
 
@@ -261,9 +255,9 @@ class allboxes(QWidget):
 
       self.MG_active=False
       print("LCD")
-      #self.TheValue=QLCDNumber(0)
-
-      #self.layout.addWidget(self.TheValue)
+      self.TheValue=QLCDNumber(1)
+      print("LCD1")
+      self.layout.addWidget(self.TheValue)
       print("yo1")
       self.mg_plot_option=1
 
@@ -306,92 +300,48 @@ class allboxes(QWidget):
 
 
     def remakeWindow(self,initial=False):
-
       # This deletes all the old widgets from the layout, letting us start fresh
-
         layouts_full = [self.layout]#self.RFEDlayout]
-
         if not initial:
-
           layouts_full += [self.RFEDlayout] + self.plotlayouts + self.tablayouts
-
         print(layouts_full)
-
         for layout in layouts_full:
-
           for i in reversed(range(layout.count())):
-
             if layout.itemAt(i).widget() is not None:
-
               layout.itemAt(i).widget().setParent(None)
-
       # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
       # Relabel relevant stage info for easy referencing
-
         stge = self.Stages
-
         self.nstages=len(stge.stages)
-
         self.stagenames = [stage.name for stage in stge.stages]
-
-
-
       # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
       # The thematic sets of buttons/boxes have their own loading functions below
-
       # We feed in the parameter 'initial' (only =True on start-up, in theory)
-
       # If initial = True, we create and load in data.
-
       # If False, we just remake the widgets.
 
-
-
       # Design - ALWAYS want DC boxes and device labels on left
-
         self.makeDCLabels(initial, stge)
-
-
-
+        print("remakewindow, b4 goload")
       # Design - ALWAYS want stage/tab adjustments, Go/MultiGo/ML buttons available (at bottom?)
-
         self.makeGOLOADbuttons(initial)
-
         self.makeMGwindow(initial)
-
         self.makeStageButtons(initial)
-
         self.makeMLbuttons(initial)
 
-
-
       # Design - The stage/EagleDAC/RF boxes will likely be placed in tabs - keep these separate
-
         self.makeTabs(initial)
-
         #self.makeStageBoxes(initial, stge)
-
         #self.makeEDACwindow(initial)
-
         #self.makeRFwindow(initial)
-
       # Here endeth the creation of the main set of interactive boxes
 
-
-
       # Finally, we refresh the column/stage labels included in the 'Duplicate/Delete Columns'
-
       #         section of the 'Edit' drop-down menu of the main window
-
         if not initial:
-
           self.parent().refreshDupcol()
-
           self.parent().refreshDelcol()
-
-
+        print("leaving remakeWindow")
 
     def remakeTab(self, i):
 
@@ -842,16 +792,17 @@ class allboxes(QWidget):
       self.plotSet=QTabWidget() # Now getting the plot widgets to the right of the grid
 
       #print(f'[4] self.tek.parent() = {self.tek.parent()}')
+      #print(plotlabels)
+      #print(plotlayouts)
+      for layout,label in zip(self.plotlayouts,plotlabels):
 
-      #for layout,label in zip(self.plotlayouts,plotlabels):
+          plotTab = QWidget()
 
-#          plotTab = QWidget()
+          plotTab.setLayout(layout)
 
-#          plotTab.setLayout(layout)
+          self.plotSet.addTab(plotTab, label)
 
-#          self.plotSet.addTab(plotTab, label)
-
-#      self.layout.addWidget(self.plotSet,0,2+maxcol,len(stge.DC)+3,1)
+      self.layout.addWidget(self.plotSet,0,2+maxcol,len(stge.DC)+3,1)
 
       #print(f'[5] self.tek.parent() = {self.tek.parent()}')
 
@@ -1121,7 +1072,53 @@ class allboxes(QWidget):
 
 
     def makePlotwindow(self, initial=False):
+        import matplotlib as plt
+        plt.use('QtAgg')
+        import matplotlib.figure
 
+        from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+
+        grid_fluo = QGridLayout()
+        grid_blackfly = QGridLayout()
+        grid_atomnum = QGridLayout()
+
+        self.figure_fluo = plt.figure.Figure()
+        self.canvas_fluo = FigureCanvas(self.figure_fluo)
+        self.makeFluoFig()
+        #print(type(self.canvas_fluo))
+        grid_fluo.addWidget(self.canvas_fluo, 0, 0, 15, 15)
+
+        self.figure_blackfly = plt.figure.Figure()
+        self.canvas_blackfly = FigureCanvas(self.figure_blackfly)
+        grid_blackfly.addWidget(self.canvas_blackfly, 0, 0, 15, 15)
+
+        self.figure_atomnum = plt.figure.Figure()
+        self.canvas_atomnum = FigureCanvas(self.figure_atomnum)
+        grid_atomnum.addWidget(self.canvas_atomnum, 0, 0, 15, 15)
+        print("makeplotwindow")
+        return [grid_fluo, grid_blackfly, grid_atomnum]
+
+
+    def plotPrinceton(self,ns=1):
+        fig = self.figure_blackfly
+        fig.clf()
+        ax = fig.add_subplot()
+        plt.ion()
+        mydata=self.mydata.astype(float)
+        print(mydata)
+        if ns==1:
+            self.thedata=mydata[0,:,:]
+        elif ns==2:
+            self.thedata=mydata[0,:,:]-mydata[1,:,:]
+            #pass
+        elif ns==3:
+            self.thedata=-np.log((mydata[0,:,:]-mydata[2,:,:])/(mydata[1,:,:]-mydata[2,:,:]))
+            #pass
+        pic=ax.imshow(self.thedata,cmap=cm.inferno)
+        fig.colorbar(pic, orientation="horizontal", pad=0.2)
+        self.canvas_blackfly.draw_idle()
+        #plt.draw()
+        """
         import matplotlib
 
         import matplotlib.figure
@@ -1165,7 +1162,7 @@ class allboxes(QWidget):
 
 
         #return [grid_fluo, grid_blackfly, grid_atomnum]
-
+        """
 
 
     #==============================================================================================================
@@ -1491,18 +1488,16 @@ class allboxes(QWidget):
         self.fluo_sampletime = 0.1 # units: seconds
 
 
-
+        print("In makegoloadbuttons,b4 self.makefluofig()")
         #self.makeFluoFig()
-
+        print("In makegoloadbuttons,after self.makefluofig()")
         self.MOTTimer=QTimer(self)
-
         self.MOTTimer.timeout.connect(self.MOTTimerAction)
-
-        #self.MOTTimer.start(int(1000*self.fluo_sampletime))
-
+        self.MOTTimer.start(int(1000*self.fluo_sampletime))
+        print("b4 fluo=qlcd")
         self.fluo=QLCDNumber()
 
-
+        print("after fluo=qlcd")
 
         self.cbPictype=QComboBox()
 
@@ -1544,7 +1539,7 @@ class allboxes(QWidget):
 
 
 
-        #self.camera=camera_test.camera()
+        print("#self.camera=camera_test.camera()")
 
         self.cycling=False
 
@@ -1723,18 +1718,18 @@ class allboxes(QWidget):
     def updateDC(self):
 
         for DCbox in self.Stages.DC:
-
+            #print(DCbox,DC_DAC_Box)
             if isinstance(DCbox, DC_DAC_Box):
 
                 DCbox.updateDAC()
 
-                wait(0.1)#time.sleep(0.1)
+                wait(0.001)#time.sleep(0.1)
 
             elif isinstance(DCbox, DC_AOM_Freq_Box) or isinstance(DCbox, DC_AOM_Ampl_Box):
 
                 DCbox.update()
 
-                wait(0.1)#time.sleep(0.1)
+                wait(0.001)#time.sleep(0.1)
 
 
 
@@ -2377,337 +2372,236 @@ class allboxes(QWidget):
     #==============================================================================================================
 
     #==============================================================================================================
+    def calculate_lorentzian(self,loffset, lamp, ltc, t_range, timestep):
+        # Calculate the Lorentzian curve (decreasing section)
+        t = loffset + lamp / (1 + (t_range * timestep / ltc)**2)
+        return t
 
 
 
     def loadData(self):
 
-        with open("myrun.py","w") as a:
+
+        tempstages = self.Stages.stages
+
+        stages=[]
+
+        for i in range(len(tempstages)):
+
+          if tempstages[i].enabled:
+
+            stages.append(tempstages[i])
+
+
+
+        oldstages=[tempstages[i] for i in range(len(tempstages)) if tempstages[i].enabled] # Ideally this should only return the set of stages that are enabled - hopefully in order!
+
+                                                                        # This way, you can enable/disable stages at will without affecting how data is loaded/used
+
+        #print([stage.name for stage in stages])
+
+        #print(oldstages)
+
+        devIDs = self.Stages.devIDs
+
+        self.totaltime = 0.0
+
+        self.timestep = 1.0#/(1.0+0.0625e-3)
+
+        #self.totaltime=sum([stage.time.value() for stage in stages])
+
+        #for stage in stages:
+
+          #if stage.enabled:
+
+        self.totaltime=np.sum([stage.time.value() for stage in stages])
+
+        nsteps=int(self.totaltime/self.timestep) # assuming timesteps of 0.1 ms
+
+        prefire_timesteps = [int(round(dac_prefire[row]/self.timestep)) for row in range(len(self.devicenames['DAC']))]
+
+        data=np.zeros([nsteps,len(self.devicenames['DAC'])]).astype(int)
+
+        timestepstilnow=0
+
+        thetime=0.0
+
+        #msg='LOAD,' #This will be the message sent to DDS2
+
+        #msg2='LOAD,' #This will be the message sent to DDS3
+        ones_list= []
+        stage_list = []
+        #box_val_array = np.array([])
+        for tid in range(len(stages)):
+
+          #if stages[tid].enabled:
+
+            stagetime = stages[tid].time.value()
+
+            #timesteps=stagetime
+            timesteps=int(stagetime/self.timestep)
+            #print(timesteps,stagetime)
+            t_range = np.arange(timesteps)
+            #ones = np.ones((timesteps,32),dtype=float)
+
+
+            #box_val = []
+            """for row in range(len(self.devicenames['AOM'])):
+                box_val = stages[tid].boxes[row].value()
+                box_val = dac_conversions[row].getval(box_val)
+                print(box_val)"""
+            print("Printing AOM box_values")
+            if len(self.devicenames['AOM'])>0:
+              AOM_values = []
+              for AOM in range(4):#ONLY doing the first 4 AOMs #range(int(len(self.devicenames['AOM'])/2)): # Prepare message for 1st AOM
+
+                  t1=devIDs['AOM'][2*AOM]
+
+                #if tid==0: # We need a special case for the first column, we need to compare to DC value rather than previous column
+
+                  t2=AOM+10
+                  ampval=stages[tid].boxes[t1+1].value()
+                  box_val=stages[tid].boxes[t1].value()
+                  #ampval=stages[tid].boxes[t1+1].value()
+                  #print(AOM,t1,t2,devIDs)
+                  temp=aom_amp_conversions[AOM].getval(box_val)
+                  #AOM_values.append([box_val,ampval,t1])
+                  AOM_values.append([box_val,ampval])
+            if (len(self.devicenames['AOM'])>8) and self.allAOMS:
+
+              n2=int(len(self.devicenames['AOM'])/2) - 4
+
+              for AOM in range(n2):
+                  t1=devIDs['AOM'][2*AOM+8]
+
+                  ampval=stages[tid].boxes[t1+1].value()
+                  box_val=stages[tid].boxes[t1].value()
+
+                  AOM_values.append([box_val,ampval])
+            print("moving to dac values")
+            voltage_values = []
+            ones = np.ones((timesteps,32),dtype=float)
+            for row in range(len(self.devicenames['DAC'])):
+
+                #print(timesteps)
+                box_val = stages[tid].boxes[row].value()
+
+                #box_val_array = np.append(box_val_array,box_val)
+                if box_val > -10:
+                    #print(box_val)
+
+                    box_val = dac_conversions[row].getval(box_val)
+                    step_initial = timestepstilnow# - prefire_timesteps[row]
+                    step_final = step_initial + timesteps
+                    #print("intial steps:",step_initial,",final steps:",)
+
+                if box_val < -25:
+                    rstart = dac_conversions[row].getval(stages[tid].boxes[row].RStart)
+                    rend = dac_conversions[row].getval(stages[tid].boxes[row].REnd)
+                    #print(f'Device = {self.devicenames["DAC"][row]}: rstart={rstart}; rend={rend}, with box_val:{box_val}')
+                    #print("Rstart & Rend:",rstart,rend)
+                    #rstart=stages[tid].boxes[row].RStart
+                    #rend=stages[tid].boxes[row].REnd
+                    #t_range = np.linspace(rstart,rend, timesteps,dtype=float)
+                    t1 = np.linspace(rstart, rend, int(timesteps))  # Ensure final value is `rend`
+                    t1 = [round(entry, 4) for entry in t1]
+                    print(t1)
+                    #print(t1)
+                    #temp = dac_conversions[row].getval(t1)
+                    #print(f"box val{box_val} with temp:", temp)
+                    #print(f'Device = {self.devicenames["DAC"][row]}: rstart={rstart}; rend={rend}, with box_val:{box_val}, Timesteps:{timesteps}')
+                    #print(rstart,":",rend, "rstart : rend|",t1,"t1|",temp,"temp|",t_range,"t_range|")
+                    ones[:,row]=t1
+                    #print(ones)
+                elif (box_val < -15):
+                     #print(box_val)
+
+
+                     loffset=dac_conversions[row].getval(stages[tid].boxes[row].LOffset)
+                     lamp=dac_conversions[row].getval(stages[tid].boxes[row].LAmp)
+                     ltc=stages[tid].boxes[row].LTc
+                     t1 = self.calculate_lorentzian(loffset, lamp, ltc, t_range, self.timestep)
+                     #t1=loffset+lamp/(1+(t_range*self.timestep/ltc)**2)
+                     t1 = [round(entry, 4) for entry in t1]
+
+                     #temp=dac_conversions[row].getval(t1)
+                     ones[:,row]= t1
+                     #print(f"box val{box_val} with temp:", temp)
+                     #print(temp,"temp")
+
+                elif ((box_val>=0.0) and (box_val<=5.0)):
+                    #ones_val_array = np.array((ones*box_val))
+                    ones[:,row]= box_val
+                    #temp = np.array((ones*box_val))
+                    #voltage_values.append(box_val)
+
+                #data[step_initial : step_final, row] = np.round(temp * MAX_INT/5.0).astype(int)#[:]
+                #print(data)
+                #print(ones)
+
+            ones_array = ones.tolist()
+                #stage_list.append([voltage_values,AOM_values,timesteps,ones_array])
+            stage_list.append([ones_array,AOM_values])
+            #print(ones_array)
+        timestepstilnow+=timesteps
+        self.data=data
+        #Here we write the values set in the pyqtgui2.py gui. These are written into stages.json as arrays. It is not recommended to open the json file unless you do the following
+        #In the gui, click on each stage until only one is active
+        # decrease the number of timesteps to a small amount (less than 30)
+        # then press the go button
+        #then you can read the json file, this is all done to avoid opening the json file when it contains thousands of values, as it will usually crash your ide/reader. If you want to see how multiple stages work, you can enable another stage and set its timesteps to a smaller value as well, then press go.
+        with open("stages.json", "w") as f:
+            json.dump(stage_list, f)
+            f.close()
+        #the following is the original myrun.py file which is ran with artiq_run through a seperate terminal. Orignally this was done by writing some values directly into the myrun.py file, however this is no longer needed as we use the stages.json file to store values. If the myrun.py file is ever corrupted or breaks, you can uncomment the below code and press go on the pyqtgui2.py, it will write this to the file as long as myrun.py exists in the same directory.
+        """
+        with open("myrun.py", "w") as a:
             a.write("from artiq.experiment import *\n")
-            a.write("import numpy as np \n")
-            a.write("class Fastino_Single_Output(EnvExperiment):\n")
+            a.write("from artiq.language import *\n")
+            a.write("import numpy as np\n")
+            a.write("import json\n")
+            a.write("class Fastino_Multi_Output(EnvExperiment):\n")
             a.write("    def build(self):\n")
             a.write("        self.setattr_device('core')\n")
+            a.write("        self.setattr_device('core_dma')\n")
             a.write("        self.setattr_device('fastino0')\n")
+            a.write("        self.setattr_device('urukul0_cpld')\n")
+            a.write("        self.setattr_device('urukul0_ch0')\n")
+            a.write("        self.setattr_device('urukul0_ch1')\n")
+            a.write("        self.setattr_device('urukul0_ch2')\n")
+            a.write("        self.setattr_device('urukul0_ch3')\n")
+            a.write("        self.setattr_device('urukul1_cpld')\n")
+            a.write("        self.setattr_device('urukul1_ch0')\n")
+            a.write("        self.setattr_device('urukul1_ch1')\n")
+            a.write("        self.setattr_device('urukul1_ch2')\n")
+            a.write("        self.setattr_device('urukul1_ch3')\n")
             a.write("        self.setattr_device('ttl4')\n")
             a.write("    def prepare(self):\n")
-            a.write("        self.x=np.arange(100)/10\n")
-            a.write("        self.y=np.sin(self.x)\n")
+            a.write("        with open(\"stages.json\", \"r\") as f:\n")
+            a.write("            stages = json.load(f)\n")
+            a.write("        self.voltage_arrays = [np.array(stage[0], dtype=float) for stage in stages]\n")
+            a.write("        self.AOM_arrays = [np.array(stage[1], dtype=float) for stage in stages]\n")
             a.write("    @kernel\n")
-            a.write("    def run(self):\n") 
+            a.write("    def run(self):\n")
             a.write("        self.core.reset()\n")
+            a.write("        self.urukul0_cpld.init()\n")
+            a.write("        self.urukul0_ch0.sw.on()\n")
             a.write("        self.core.break_realtime()\n")
-            a.write("        self.fastino0.init()\n")
-            tempstages = self.Stages.stages
-    
-            stages=[]
-    
-            for i in range(len(tempstages)):
-    
-              if tempstages[i].enabled:
-    
-                stages.append(tempstages[i])
-    
-    
-    
-            oldstages=[tempstages[i] for i in range(len(tempstages)) if tempstages[i].enabled] # Ideally this should only return the set of stages that are enabled - hopefully in order!
-    
-                                                                            # This way, you can enable/disable stages at will without affecting how data is loaded/used
-    
-            #print([stage.name for stage in stages])
-    
-            #print(oldstages)
-    
-            devIDs = self.Stages.devIDs
-    
-            self.totaltime=0.0
-    
-            self.timestep=0.05#/(1.0+0.0625e-3)
-    
-            #self.totaltime=sum([stage.time.value() for stage in stages])
-    
-            #for stage in stages:
-    
-              #if stage.enabled:
-    
-            self.totaltime=np.sum([stage.time.value() for stage in stages])
-    
-            nsteps=int(self.totaltime/self.timestep) # assuming timesteps of 0.1 ms
-    
-            prefire_timesteps = [int(round(dac_prefire[row]/self.timestep)) for row in range(len(self.devicenames['DAC']))]
-    
-            #data=np.zeros([nsteps,len(self.devicenames['DAC'])]).astype(int)
-    
-            timestepstilnow=0
-    
-            thetime=0.0
-    
-            msg='LOAD,' #This will be the message sent to DDS2
-    
-            msg2='LOAD,' #This will be the message sent to DDS3
-            
-            for tid in range(len(stages)):
-    
-              #if stages[tid].enabled:
-    
-                stagetime = stages[tid].time.value()
-    
-                timesteps=int(stagetime/self.timestep)
-
-                #ones_array = np.array(time)
-                t_range = np.arange(timesteps)
-                a.write("        with parallel:\n")
-                #box_val_array = np.array()
-                for row in range(len(self.devicenames['DAC'])):
-                    #print(timesteps)
-                    box_val = stages[tid].boxes[row].value()
-                    
-    
-    
-                    if box_val > -10:
-    
-                        box_val = dac_conversions[row].getval(box_val)
-    
-    
-    
-                    step_initial = timestepstilnow# - prefire_timesteps[row]
-    
-                    step_final = step_initial + timesteps
-    
-                    #if row == 2:
-    
-                        #print(f'Device = {self.devicenames["DAC"][row]}: val = {box_val}')
-    
-    
-    
-                    if (box_val < -25):
-    
-                        rstart = dac_conversions[row].getval(stages[tid].boxes[row].RStart)
-    
-                        rend = dac_conversions[row].getval(stages[tid].boxes[row].REnd)
-    
-                        #print(f'Device = {self.devicenames["DAC"][row]}: rstart={rstart}; rend={rend}')
-    
-                        rstart=stages[tid].boxes[row].RStart
-    
-                        rend=stages[tid].boxes[row].REnd
-    
-                        t1 = rstart + ((rend-rstart)/timesteps) * t_range
-    
-                        temp = dac_conversions[row].getval(t1)
-    
-                    elif (box_val < -15):
-    
-                         loffset=dac_conversions[row].getval(stages[tid].boxes[row].LOffset)
-    
-                         lamp=dac_conversions[row].getval(stages[tid].boxes[row].LAmp)
-    
-                         ltc=stages[tid].boxes[row].LTc
-    
-                         t1=loffset+lamp/(1+(t_range*self.timestep/ltc)**2)
-    
-                         temp=dac_conversions[row].getval(t1)
-    
-                    #    offset = dac_conversions[row].getval(stages[tid].boxes[row].LOffset)
-    
-                    #    lAmp = dac_conversions[row].getval(stages[tid].boxes[row].LAmp)
-    
-                    #    lTc = dac_conversions[row].getval(stages[tid].boxes[row].LTc)
-    
-                    #
-    
-                    #    temp = offset + lAmp/(1.0+(t_range * self.timestep/lTc)**2)
-    
-    
-    
-                    elif ((box_val>=0.0) and (box_val<=5.0)):
-                        a.write(f"          t = {box_val} * np.ones({timesteps})\n")
-    
-                    a.write(f"          for i in range({timesteps}):\n")
-    
-                    a.write(f"              self.fastino0.set_dac({row},t[i])\n")
-                    string= "              delay("+str(self.timestep)+"*ms)\n"
-                    a.write(string)
-    
-                # End of DAC loop
-
-                timestepstilnow+=timesteps
-
-    
-    
-    
-    
-                time_aom = round(thetime*10)*100
-                print("a")
-                if len(self.devicenames['AOM'])>0:
-    
-                  for AOM in range(4):#ONLY doing the first 4 AOMs #range(int(len(self.devicenames['AOM'])/2)): # Prepare message for 1st AOM
-    
-                    t1=devIDs['AOM'][2*AOM]
-    
-                    if tid==0: # We need a special case for the first column, we need to compare to DC value rather than previous column
-    
-                        t2=AOM+10
-    
-                        temp=stages[tid].boxes[t1].value()
-    
-                        if round(temp-self.Stages.DC[t1].value())!=0:
-    
-                            msg=msg+str(t2)+','+'FREQ,'+str(AOM)+','+str(temp)+','
-    
-    
-    
-                        ampval=stages[tid].boxes[t1+1].value()
-    
-                        temp=aom_amp_conversions[AOM].getval(ampval)
-    
-                        if round(100*(ampval-self.Stages.DC[t1+1].value()))!=0: # Be aware - fstring formatting is to force 2dp rounding so that DDS doesnt get upset
-    
-                            msg=msg+str(t2)+','+'AMPL,'+str(AOM)+','+f'{temp:.2f}'+','#str(temp)+','
-    
-                    else:
-    
-                        temp=stages[tid].boxes[t1].value()
-    
-                        if round(temp-stages[tid-1].boxes[t1].value())!=0:
-    
-                            msg=msg+str(time_aom+AOM)+','+'FREQ,'+str(AOM)+','+str(temp)+','
-    
-    
-    
-                        ampval=stages[tid].boxes[t1+1].value()
-    
-                        temp=aom_amp_conversions[AOM].getval(ampval)
-    
-                        if round(100*(ampval-stages[tid-1].boxes[t1+1].value()))!=0: # Be aware - fstring formatting is to force 2dp rounding so that DDS doesnt get upset
-    
-                            msg=msg+str(time_aom+AOM)+','+'AMPL,'+str(AOM)+','+f'{temp:.2f}'+','#str(temp)+','
-    
-    
-    
-                  for num,DIOid in enumerate(devIDs['DIO']):
-    
-                    if tid==0:
-    
-                        t1=self.Stages.DC[DIOid].isChecked()
-    
-                    else:
-    
-                        t1=stages[tid-1].boxes[DIOid].isChecked()
-    
-                    t2=stages[tid].boxes[DIOid].isChecked()
-    
-                    if (t1 != t2):
-    
-                        msg=msg+str(time_aom+14+num)+",TRIG,"+str(num)+','+str(int(t2))+','
-    
-    
-    
-                if (len(self.devicenames['AOM'])>8) and self.allAOMS:
-    
-                  n2=int(len(self.devicenames['AOM'])/2) - 4
-    
-                  for AOM in range(n2): # Same for second AOM
-    
-                    #t1=2*AOM+self.nDACs+8
-    
-                    t1=devIDs['AOM'][2*AOM+8]
-    
-                    if tid==0:
-    
-                        temp=stages[tid].boxes[t1].value()
-    
-                        #print(temp,t1,stages[tid].boxes[t1].value())
-    
-                        if round(temp-self.Stages.DC[t1].value())!=0:
-    
-                            msg2=msg2+'10,FREQ,'+str(AOM)+','+f'{temp:.0f}'+','
-    
-    
-    
-                        ampval=stages[tid].boxes[t1+1].value()
-    
-                        temp=aom_amp_conversions[AOM+4].getval(ampval)
-    
-                        if temp < -20:
-    
-                            rbox = stages[tid].boxes[t1+1]
-    
-                            #print(f'ramp start: {rbox.Rstart}; ramp end: {rbox.REnd}; stage time: {stagetime}')
-    
-                            msg2 += f'10,RAMP,{str(AOM)},{rbox.RStart},{rbox.REnd},{stagetime},'
-    
-                        elif round(100*(ampval - self.Stages.DC[t1+1].value()))!=0:
-    
-                            #print(f'tid:{tid}, AOM = {AOM}: value = {ampval}, adjusted = {temp:.3f}')
-    
-                            msg2=msg2+'10,AMPL,'+str(AOM)+','+f'{temp:.3f}'+','
-    
-                    else:
-    
-                        temp=stages[tid].boxes[t1].value()
-    
-                        if round(temp-stages[tid-1].boxes[t1].value())!=0:
-    
-                            msg2=msg2+str(time_aom)+',FREQ,'+str(AOM)+','+f'{temp:.0f}'+','
-    
-    
-    
-                        ampval=stages[tid].boxes[t1+1].value()
-    
-                        temp=aom_amp_conversions[AOM+4].getval(ampval)
-    
-                        if temp < -20:
-    
-                            rbox = stages[tid].boxes[t1+1]
-    
-                            msg2 += f'{str(time_aom)},RAMP,{str(AOM)},{rbox.RStart},{rbox.REnd},{stagetime},'
-    
-                        elif round(100*(ampval - stages[tid-1].boxes[t1+1].value()))!=0:
-    
-                            #print(f'tid:{tid}, AOM = {AOM}: value = {ampval}, adjusted = {temp:.3f}')
-    
-                            msg2=msg2+str(time_aom)+',AMPL,'+str(AOM)+','+f'{temp:.3f}'+','
-    
-                thetime=thetime+stagetime
-    
-            msg=msg+"F"
-    
-            msg2=msg2+"F"
-            print("msg:",msg)
-            print("msg2:",msg2)
-            if (len(msg)>6):
-    
-                #print(msg)
-    
-                #s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    
-                #s.connect((TCP_IP, TCP_PORT))
-    
-                #s.send(msg.encode())
-    
-                #print(s.recv(5))
-    
-                s.close()
-    
-            if (len(msg2)>6) and self.allAOMS:
-    
-                #print(msg2)
-    
-                #s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    
-                #s.connect((TCP_IP2, TCP_PORT))
-    
-                #s.send(msg2.encode())
-    
-                #s.recv(5)
-    
-                s.close()
-    
-            self.nsamples=timestepstilnow
+            a.write("        for i in range(len(self.voltage_arrays)):\n")
+            a.write("            voltages = self.voltage_arrays[i]\n")
+            a.write("            AOM_array = self.AOM_arrays[i]\n")
+            a.write("            u_params = [(AOM_array[j][0], AOM_array[j][1]) for j in range(8)]\n")
+            a.write("            self.ttl4.on()\n")
+            a.write("            for v in voltages:\n")
+            a.write("                self.fastino0.set_group(0, v)\n")
+            a.write("                delay(10*ns)\n")
+            a.write("            channels = [self.urukul0_ch0, self.urukul0_ch1, self.urukul0_ch2, self.urukul0_ch3,\n")
+            a.write("                        self.urukul1_ch0, self.urukul1_ch1, self.urukul1_ch2, self.urukul1_ch3]\n")
+            a.write("            for j in range(8):\n")
+            a.write("                channels[j].set(frequency=int(u_params[j][0]) * MHz, amplitude=u_params[j][1])\n")
+            a.write("            self.ttl4.off()\n")
             a.flush()
-            a.close()
-
+            a.close()"""
 
     #==============================================================================================================
 
@@ -2727,119 +2621,44 @@ class allboxes(QWidget):
 
         self.MOTTimer.stop()
 
-        #bfcam = self.parent().bfcam
-
-        # Making sure our server connection is sorted
-
-        #if self.fluo_mode == 'bfcam' and bfcam.connected:
-
-          #bfcam.end_stream()
-
-          #print('Ended stream...')
-
-        #elif not bfcam.connected:
-
-          #bfcam.conn()
-
-
-
-        wait(0.2)
-
-        #bfcam.take_pics() # NOTE: Blackfly cam needs ~1sec after turning on trigger mode (which is a part of camera set-up on server when take_pics() is used) before it is ready
-
-        #wait(2) # Need at least 1sec before blackfly ready for pictures; I'm trying to keep this as short as possible while still working
 
         self.pulse_off()
 
-        wait(0.2)
-
-        #try:
-
-        #    s.connect((TCP_IP2, TCP_PORT))
-
-        #    s.close()
-
-        #    self.allAOMS=True
-
-        #except:
-
-        #    print("Check whether 2nd DDS box is available (controls beam for absorption imaging)\n Currently disabled!")
-
-        #    self.allAOMS=False
-
-
-
-        #start_time=time.time()
-
         self.loadData()
+
+        wait(0.01)
+        #print("Running Artiq subprocess...")
+        #import subprocess
+        #subprocess.run(["artiq_run","myrun.py"])
 
         #end_time=time.time()
 
-        #elapsed=end_time-start_time
-
-        #print("Elapsed for Loaddata ", elapsed)
-
-        #wait(0.1)
-
-
-
-
-
-
 
         #self.pulse_off()
-
         plt.close('all')
-
-
 
         self.doGo(check_trap = check_trap)
 
-
-
-        #plt.show()
-
+        plt.show()
         #plt.pause(0.001)
 
-
-
         if self.cbGOSave.checkState() and self.MOTfull_flag and not (self.MG_active or self.ML_active):
-
           mydate=datetime.now().strftime('%Y%m%d%H%M')
-
           nfolds=len([f for f in os.listdir(self.datapath) if f.startswith(mydate) and f.endswith('.fit')])
-
           if not nfolds:
-
             filename=f'{self.datapath}/0 Individual Images/Go_{mydate}.fit'
-
           else:
-
             filename=f'{self.datapath}/0 Individual Images/Go_{mydate}_{nfolds}.fit'
-
           self.parent().mysave(filename)
+        #self.updateDC()
 
+        #wait(0.01)
 
-
-        #if not self.MG_active:
-
-        #  plt.figure(bfcam.OD_fig.number)
-
-        #  plt.show()
-
-        #  plt.pause(0.001)
-
-
-
-        self.updateDC()
-
-        wait(0.1)
-
-        if self.fluo_mode == 'bfcam' and bfcam.connected:
+        """if self.fluo_mode == 'bfcam' and bfcam.connected:
 
           print('Restarting stream')
 
-          bfcam.start_stream()
+          bfcam.start_stream()"""
 
 
 
@@ -2848,10 +2667,10 @@ class allboxes(QWidget):
           self.pulse_on()
 
         self.goaction_complete = True
+        print("Go complete")
+        #wait(0.03)
 
-        wait(0.3)
-
-        self.MOTTimer.start(round(self.fluo_sampletime*1000))
+        """self.MOTTimer.start(round(self.fluo_sampletime*1000))"""
 
 
 
@@ -2953,98 +2772,74 @@ class allboxes(QWidget):
 
 
 
-    def doGo(self, check_trap = False):
-
+    def doGo(self, check_trap = True):
         #self.pulse_off()
-
         #This function just sends the EXPT command to the DDSs and starts the outputProcess on the DAC
-
         #Finally it sends a shoot command to the camera
-
         self.MOTfull_flag = True #If we skip checking the trap, this makes sure that everything remains happy.
-
         self.change_RF_stage()
-
-
-
         # Checking whether MOT is sufficiently populated
-
         # If not enough fluorescence by time-out, we forget about attempting this.
-
         if False:#check_trap:
-
             self.MOTfull_flag = False# Note that this starts off set to False at the beginning of each expt attempt.
-
              # We can subsequently check elsewhere whether the last attempt failed due to low population using 'if not self.MOTfull_flag:'
-
             fullflag = self.checkMOTFull()
-
             if not fullflag:
-
                 return
-
         #self.pulse_off() # Only stop loading once we know we have enough particles!
-
-        #wait(0.5)#time.sleep(1)
-
-
-
-        # - - - - -
-
+        wait(0.5)#time.sleep(1)
+        #print("#- - - - -",nshots)
         nshots=self.cbPictype.currentIndex()
-
+        print("#- - - - -",nshots)
         plt.close()
-
         if (nshots>0):
-
+            pass
             if self.parent().blackfly_action.isChecked():
-
-              self.parent().bfcam.remove_old_photos()#shoot(nshots)
-
+              print("#self.parent().bfcam.remove_old_photos()#shoot(nshots)","passing")
               #a=1
-
+              pass
             if self.parent().princeton_action.isChecked():
+              print("#self.camera.shoot(nshots)","passing")
+              pass
 
-              self.camera.shoot(nshots)
 
 
+       # msg='EXPT'
 
-        msg='EXPT'
+        #with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-
-            s.connect((TCP_IP, TCP_PORT))
+            #s.connect((TCP_IP, TCP_PORT))
 
             #s.setblocking(0)
 
-            s.send(msg.encode())
+            #s.send(msg.encode())
 
             #print(s.recv(5))
 
-        wait(0.1)#time.sleep(0.1)
+       # wait(0.1)#time.sleep(0.1)
 
 
 
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        #with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
-            if len(self.devicenames['AOM'])>8  and self.allAOMS:
+         #   if len(self.devicenames['AOM'])>8  and self.allAOMS:
 
-                s.connect((TCP_IP2, TCP_PORT))
+                #s.connect((TCP_IP2, TCP_PORT))
 
-                s.send(msg.encode())
+                #s.send(msg.encode())
 
                 #s.setblocking(0)
 
                 #print(s.recv(5))
 
-        wait(0.1)#time.sleep(0.1)
+        #wait(0.1)#time.sleep(0.1)
 
 
 
         #print(f'self.data[400][1] = {self.data[400][1]}')
 
 
-
+       # print(data)
         nsamples=self.data.shape[0]
 
         data = self.data.flatten('C').astype(np.ushort)
@@ -3071,98 +2866,54 @@ class allboxes(QWidget):
 
 
 
-        result=da.DACOutputProcess(0,freq,datalen,data) # SEE AIOUSB.py
+        #result=da.DACOutputProcess(0,freq,datalen,data) # SEE AIOUSB.py
 
         #wait(1)#time.sleep(1) # give time for the photos to arrive
 
         #print(data[-16:])
 
 
-
+        print(nshots)
         if (nshots>0):
-
             if self.parent().blackfly_action.isChecked():
-
               #self.parent().bfcam.shoot(nshots)
-
               #print(self.BGimages)
-
               if self.BGimages is None:
-
                 self.BGimages=np.zeros([\
-
                   self.parent().bfcam.dims[0]-2*self.parent().bfcam.lowpassflag,\
-
                   self.parent().bfcam.dims[1]-2*self.parent().bfcam.lowpassflag,\
-
                   self.nBG_max])
-
                 self.nBGstored = 0
 
-
-
               result = self.parent().bfcam.show(nshots,self.BGimages,self.nBGstored)
-
               self.plotBlackfly()
 
-
-
               if result is not None:
-
                 self.BGimages, bg_resetflag, n_atoms, nmax = result
-
                 #self.BGimages, bg_resetflag, n_atoms = result
-
                 if bg_resetflag:
-
                   self.nBGstored = 1
-
                 else:
-
                   self.nBGstored+=1
-
                 self.TheValue.display(n_atoms)
-
                 if self.MG_active:
-
                   if self.mg_plot_option==1:
-
                     self.atomnumbers.append(nmax)
-
                   elif self.mg_plot_option==2:
-
                     self.atomnumbers.append(n_atoms)
-
                   fig = self.figure_atomnum
-
                   fig.clf()
-
                   ax = fig.add_subplot()
-
                   plt.ion()
-
                   print(self.MG_index,self.mg_params[0].myvalue)
-
                   x=self.mg_params[0].myvalue[:self.MG_index]
-
                   ax.plot(x,self.atomnumbers,'o')
-
                   #ax.Axes.xlabel(self.mg_params[0].mytype)
-
                   self.canvas_atomnum.draw()
-
             if self.parent().princeton_action.isChecked():
-
-              self.camera.shoot(nshots)
-
-              self.mydata=self.camera.read()
-
-              plt.imshow(self.mydata)
-
-              plt.draw() # Apparently this is preferred over show() for gui applications
-
-              #plt.show()
-
+              #self.camera.shoot(nshots)
+              self.mydata = self.read_from_file('/home/rabi/temp1/kuroTemp/temp.fit')#self.mydata=self.camera.read()
+              self.plotPrinceton(ns=nshots)
         #f=open('test.txt','w')
 
         #for i in range(self.data.shape[0]):
@@ -3173,6 +2924,14 @@ class allboxes(QWidget):
 
         #f.close()
 
+    def read_from_file(self,filepath):
+        # Open the FITS file and extract the image data
+        with fits.open(filepath) as hdu:
+            imgdata = hdu[0].data
+        # Convert to a numpy array (if not already)
+        return np.array(imgdata)
+
+    # Usage:
 
 
     #==============================================================================================================
@@ -3394,7 +3153,7 @@ class allboxes(QWidget):
             if not p.mytype=='Time' and not p.mytype=='RF (amp)':
 
                 p.cid = p.channel.currentIndex()
-
+                """
             #this stuff below to be updated
 
             #elif mytype=='RF (freq)' or mytype=='RF (amp)':
@@ -3445,7 +3204,7 @@ class allboxes(QWidget):
 
                     #self.tek.Change_RF_amplitude()
 
-
+    """
 
     def MG_update_params(self): # can just use self.loadOptParams(self.mg_params)
 
@@ -3507,7 +3266,7 @@ class allboxes(QWidget):
 
       #self.loadData()
 
-      #self.doGo()
+      self.doGo()
 
       #self.updateDC()
 
@@ -3723,7 +3482,7 @@ class allboxes(QWidget):
 
         ##self.pulse_off()
 
-        #self.doGo(check_trap = True)
+        self.doGo(check_trap = True)
 
 
 
@@ -4043,7 +3802,7 @@ class allboxes(QWidget):
 
         self.canvas_blackfly.draw_idle()
 
-        #plt.draw() # Apparently this is preferred over show() for gui applications
+        """#plt.draw() # Apparently this is preferred over show() for gui applications
 
         #plt.show()
 
@@ -4086,7 +3845,7 @@ class allboxes(QWidget):
         #     #plt.draw() # Apparently this is preferred over show() for gui applications
 
         #     plt.show()
-
+"""
 
 
     def plotFluo(self):
@@ -4212,9 +3971,10 @@ class allboxes(QWidget):
           self.t_final = time.time()
 
 
-
-          fluo_pdiode=self.adc.read(0)
-
+          try:
+              fluo_pdiode=self.adc.read(0)
+          except:
+              fluo_pdiode = 0
 
 
           if self.fluo_mode == 'bfcam' and hasattr(self.parent(),'bfcam') and type(self.parent().bfcam) != type(None) and self.parent().bfcam.connected:
@@ -4288,52 +4048,45 @@ class allboxes(QWidget):
          #if self.MG_active and self.MOTfull_flag:
 
           #  self.MG_MOTfull_action()
-
-
-
-
-
-
-
     def pulse_on(self):
+        wait(0.1)#time.sleep(0.1)
+        #s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        #s.connect((TCP_IP, TCP_PORT))
 
-        s.connect((TCP_IP, TCP_PORT))
+        #ml='PULSE,ON'
 
-        ml='PULSE,ON'
-
-        s.send(ml.encode())
+        #s.send(ml.encode())
 
         #s.recv(5)
 
-        s.close()
+        #s.close()
 
-        wait(0.1)#time.sleep(0.1)
+        #wait(0.1)#time.sleep(0.1)
 
 
 
     def pulse_off(self, dontclose=False):
+        wait(0.1)#time.sleep(0.1)
+        #s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        #s.connect((TCP_IP, TCP_PORT))
 
-        s.connect((TCP_IP, TCP_PORT))
+      #  ml='PULSE,OFF'
 
-        ml='PULSE,OFF'
-
-        s.send(ml.encode())
+        #s.send(ml.encode())
 
         #s.recv(5)
 
-        if dontclose:
+       # if dontclose:
 
-          return s
+          #return s
 
-        else:
+       # else:
 
-          s.close()
+          #s.close()
 
-          wait(0.1)#time.sleep(0.1)
+
 
 
 
@@ -4350,15 +4103,6 @@ class allboxes(QWidget):
 #        super(QPushButton,self).__init__(name)
 
 
-
-
-
-
-
-
-
-
-
 class StageLabel(QPushButton):
 
     def __init__(self, name,notes="",parent=None):
@@ -4371,7 +4115,7 @@ class StageLabel(QPushButton):
 
         self.notes=notes
 
-        #self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
 
 
 
@@ -4427,7 +4171,8 @@ class LabelDialog(QDialog):
 
           self.layout.addWidget(self.notesbox,1,1)
 
-          QBtn = QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+          QBtn = QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+
 
           self.buttonBox = QDialogButtonBox(QBtn)
 
@@ -4579,7 +4324,7 @@ class FluoDialog(QDialog):
 
     def currentFluorescenceAction(self,i):
 
-        fluo = self.get_current_fluo()
+        fluo = 500#fluo = self.get_current_fluo()
 
         self.boxes[i].setValue(fluo)
 
