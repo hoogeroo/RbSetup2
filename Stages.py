@@ -1,9 +1,9 @@
 import numpy as np
 import os
 
-from PyQt6.QtCore import *
-from PyQt6.QtGui import *
-from PyQt6.QtWidgets import *
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 
 import astropy.io.fits as fits
 
@@ -31,8 +31,7 @@ class Stages():
         
     self.stages=[]
     self.DC=[]
-    print(self.stages)
-    print(self.DC)
+    
     if not type(table)=='NoneType':
       DIOstate=np.asarray(DIOstate)
       self.populate(table,curves,DIOstate,stagenames)
@@ -103,10 +102,7 @@ class Stages():
       if isinstance(stagevals[i], QCheckBox):
         DIOval=False
         if DIOstate:
-          if (DIOstate[iocount]<0.5):
-            DIOval=False
-          else:
-            DIOval=True
+          DIOval = DIOstate[iocount]
         stagevals[i].setChecked(DIOval)
         iocount+=1
       elif vals:
@@ -181,7 +177,6 @@ class Stages():
     
     if names:
         names.insert(0,0)
-    print(table[0])
     for j in range(1,len(table[0])):
       DIOj=[]
       if DIOstate.size:

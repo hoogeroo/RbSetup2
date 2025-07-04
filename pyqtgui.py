@@ -11,9 +11,9 @@ It reads and writes the data as fits files.
 """
 #\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/
 # PACKAGE IMPORTS
-from PyQt6.QtCore import *
-from PyQt6.QtGui import *
-from PyQt6.QtWidgets import *
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 
 import cProfile
 import sys
@@ -26,8 +26,8 @@ import matplotlib.pyplot as plt
 from functools import partial
 
 # Our imports
-#import DAQ
-#import blackfly
+import DAQ
+import blackfly
 from allboxes import *
 import multigo_window as mg
 import kicklib as klb
@@ -61,7 +61,9 @@ class MainWindow(QMainWindow):
         self.column_del = edit_menu.addMenu('Delete Column')
         
         # NOW we make the central widget
-        blackflysetting=False; motloadsetting=False; phototype=0# Comes from headers
+        blackflysetting=True; 
+        motloadsetting=False; 
+        phototype=0# Comes from headers
                
         if os.path.exists(defaultfilename):
         # First we see if the default file exists, and if yes, we take the number of rows and columns from it.
@@ -77,8 +79,7 @@ class MainWindow(QMainWindow):
             #  print('checkbox headers missing; skipping!')
             #  pass
             #~v~v~v~v~v~v~v~v~v~v~v~v~v~v~v~v~v~v~v~v~v~v~v~v~v~v~v~v~
-            blackflysetting=False
-            if blackflysetting:
+            if True: # blackflysetting: We seem to need the blackfly structure
               self.bfcam=blackfly.blackfly()
               self.load_blackfly(headers)
             self.CW = allboxes(tables, datapath = datapath, parent = self)
@@ -92,7 +93,6 @@ class MainWindow(QMainWindow):
             
         self.CW.cbMOTLoad.setChecked(motloadsetting)
         self.CW.cbPictype.setCurrentIndex(phototype)
-        print("here now")
         self.setCentralWidget(self.CW) # the central widget is everything in the main window
         
         # Load the names of stages that can be duplicated/deleted
@@ -145,10 +145,19 @@ class MainWindow(QMainWindow):
     def lowpassfunc(self):
         if self.lowpass_action.isChecked():
           self.bfcam.lowpassflag=True
+          self.CW.lowpassflag=True
+          print('Turning on Low pass')
         else:
           self.bfcam.lowpassflag=False
+          self.CW.lowpassflag=False
+          print('Turning off Low pass')
         if self.blackfly_action.isChecked():
           self.CW.plotBlackfly()
+        else:
+          if self.princeton_action.isChecked():
+            self.CW.plotPrinceton()
+            print('Redrawing')
+            
     def mg_plot_option_natoms_function(self):
       if self.mg_plot_option_natoms.isChecked():
         self.mg_plot_option_nmax.setChecked(False)
@@ -161,10 +170,22 @@ class MainWindow(QMainWindow):
     def fringefunc(self):
         if self.fringe_action.isChecked():
           self.bfcam.fringeflag=True
+          self.CW.fringeflag=True
+          print('Turning on Fringe reduction')
         else:
           self.bfcam.fringeflag=False
+          self.CW.fringeflag=False
+          print('Turning off Fringe reduction')
         if self.blackfly_action.isChecked():
           self.CW.plotBlackfly()
+        else:
+          if self.princeton_action.isChecked():
+            try:
+              self.CW.plotPrinceton()
+              print('Redrawing Fringe')
+            except:
+              print("No pic active")
+              pass
         
     def menubutton_add(self,menu, actionnames, functions):
         for i in range(len(actionnames)):
@@ -224,13 +245,13 @@ class MainWindow(QMainWindow):
             self.bfopt.close()
 
     def initblackfly(self):  # Blackfly camera initialisation
-        if self.blackfly_action.isChecked():
+        if self.blackfly_action.isChecked() and False:
           if self.bfcam == None:
             self.bfcam=blackfly.blackfly()
         else:
           if self.bfcam is not None:
             self.bfcam.disconn()
-            self.bfcam=None
+            #self.bfcam=None Let's not kill it because it causes issues
             
 #==============================================================================================================
 #==============================================================================================================
@@ -302,6 +323,8 @@ class MainWindow(QMainWindow):
             if make_jpg:
                 pic = self.bfcam.OD_fig
                 pic.savefig(f'{filename.rstrip(".fit")}.jpg')
+        elif (self.princeton_action.isChecked()):
+            Imhdu=fits.PrimaryHDU(self.CW.mydata)
         else:
             Imhdu=fits.PrimaryHDU(np.arange(100.0))
     #\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/          
@@ -660,9 +683,7 @@ def main():
    mw = MainWindow()
    #ex = spindemo()
    mw.show()
-   #sys.exit(app.exec_())
-   sys.exit(app.exec())
+   sys.exit(app.exec_())
 
 if __name__ == '__main__':
-   main()
-   #cProfile.run("main()",filename="profile.txt",sort="cumulative")
+   cProfile.run("main()",filename="/home/lab/mydata/Programming/newsetup/pyqtgui/profile.txt",sort="cumulative")
