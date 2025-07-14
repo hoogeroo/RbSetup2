@@ -24,7 +24,7 @@
             #ps.json
             ps.scikit-learn
             ps.pyvisa 
-            #ps.pyside6
+            ps.pyside6
             #ps.daqprops
                 
 
