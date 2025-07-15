@@ -17,15 +17,15 @@
             ps.pyqt6
             ps.pip
             ps.matplotlib
-            ps.astropy
-            ps.spyder-kernels
-            ps.spyder
-            ps.pandas
-            #ps.json
-            ps.scikit-learn
-            ps.pyvisa 
-            ps.pyside6
-            #ps.daqprops
+            # ps.numba
+            # ps.astropy
+            # ps.spyder-kernels
+            # ps.spyder
+            # ps.pandas
+            # ps.json
+            # ps.scikit-learn
+            # ps.pyvisa
+            # ps.daqprops
                 
 
             #ps.paramiko  # needed if and only if flashing boards remotely (artiq_flash -H)
@@ -36,7 +36,7 @@
             # The NixOS package collection contains many other packages that you may find
             # interesting. Here are some examples:
             #ps.pandas
-            #ps.numba
+            
             
             
             # or if you need Qt (will recompile):

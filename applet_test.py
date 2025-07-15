@@ -1,21 +1,31 @@
-from artiq.applets.simple import SimpleApplet
+import os
+import time
 
-from PySide6.QtWidgets import *
-from PySide6.QtCore import Slot
+from artiq.experiment import *
 
-class Window(QDialog):
-    def __init__(self, parent=None):
-        super(Window, self).__init__(parent)
-        self.setWindowTitle("My Form")
 
-        self.label = QLabel("Hello World!")
-        self.button = QPushButton("Click me")
+# Do the applet source code path determination on import.
+# ARTIQ imports the experiment, then changes the current
+# directory to the results, then instantiates the experiment.
+# In Python __file__ is a relative path which is not updated
+# when the current directory is changed.
+custom_applet = os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                             "applet_test_gui.py"))
 
-        layout = QVBoxLayout(self)
-        layout.addWidget(self.label)
-        layout.addWidget(self.button)
 
-        self.setLayout(layout)
+class CreateCodeApplet(EnvExperiment):
+    def build(self):
+        self.setattr_device("ccb")
 
-applet = SimpleApplet(Window())
-applet.run()
+    def run(self):
+        print("starting up")
+
+        with open(custom_applet) as f:
+            self.ccb.issue("create_applet", "code_applet_example",
+               "code_applet_dataset", code=f.read(), group="autoapplet")
+            for i in reversed(range(10)):
+                self.set_dataset("code_applet_dataset", i,
+                                 broadcast=True, archive=False)
+                time.sleep(1)
+            self.ccb.issue("disable_applet", "code_applet_example",
+                           group="autoapplet")
