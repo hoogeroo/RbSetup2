@@ -1,28 +1,20 @@
 from artiq.experiment import *
 
 from PyQt6.QtWidgets import *
-
-# Important:
-# You need to run the following command to generate the ui_form.py file
-#     pyuic6 form.ui -o ui_form.py
-# from ui_form import Ui_Widget
+from PyQt6.uic import loadUi
 
 class Gui(QDialog):
     def __init__(self, device):
-        self.device = device
-
         super(Gui, self).__init__()
-        self.setWindowTitle("My Form")
+        self.device = device
+        
+        # to see what this does you can run `pyuic6 gui.ui | code -`
+        loadUi('gui.ui', self)
 
-        self.label = QLabel("Hello World!")
-        self.button = QPushButton("Click me")
-        self.button.clicked.connect(self.pulse)
+        self.submit.clicked.connect(self.submit_function)
 
-        layout = QVBoxLayout(self)
-        layout.addWidget(self.label)
-        layout.addWidget(self.button)
-
-        self.setLayout(layout)
+    def submit_function(self):
+        self.textdisplay.setText(f"Input 1: {self.input1.text()}\nInput 2: {self.input2.text()}")
 
     def pulse(self):
         self.device.pulse()
