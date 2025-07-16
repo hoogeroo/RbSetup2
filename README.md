@@ -12,3 +12,9 @@ If pinging the core device works but communication with the core device doesn't 
 
 * To edit the gui open [`gui.ui`](gui.ui) in [qt creator](https://snapcraft.io/qtcreator-ros) or qt designer
 * It seems you can't hop between host and device more than once, i.e device -> host -> device won't work. However some functions like `print` seem to be handled specially and do work
+
+## Resources
+
+- <https://github.com/Hanros94/IonTrap-WIPM/blob/master/Manual%20for%20Developers(English%20Version).md>
+- <https://github.com/whichislovely/Hosten-group-Quantrol-Control-system>
+
