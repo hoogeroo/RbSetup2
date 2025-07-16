@@ -1,0 +1,272 @@
+Some things that are included in this:
+
+#networking
+#flashing
+
+
+
+Currently we have managed to build firmware and gateware:
+
+
+as per
+
+https://m-labs.hk/artiq/manual/building_developing.html
+
+
+For Kasli-SoC:
+$ gateware/kasli_soc.py -g ../build/gateware <description.json>
+$ make TARGET=kasli_soc GWARGS="path/to/description.json" <fw-type>
+
+currently I am trying to run the command 
+
+$HOME/artiq-zynq/:  ./local_run.sh -i
+
+but it is producing the error
+
+[rabi@artiq:~/artiq-zynq]$ ./local_run.sh -i
+Open On-Chip Debugger 0.12.0
+Licensed under GNU GPL v2
+For bug reports, read
+        http://openocd.org/doc/doxygen/bugs.html
+DEPRECATED! use 'ftdi device_desc' not 'ftdi_device_desc'
+DEPRECATED! use 'ftdi vid_pid' not 'ftdi_vid_pid'
+DEPRECATED! use 'ftdi channel' not 'ftdi_channel'
+DEPRECATED! use 'ftdi layout_init' not 'ftdi_layout_init'
+Zynq CPU1.
+DEPRECATED! use 'ftdi layout_signal' not 'ftdi_layout_signal'
+Error: no device found
+Error: unable to open ftdi device with vid 0403, pid 6011, description 'Quad RS232-HS', serial '*' at bus location '*'
+
+
+
+fixed, need ethernet and usb
+
+now stuck on 
+
+rabi@artiq ~/artiq-zynq (master) [127]> openocd
+Open On-Chip Debugger 0.12.0
+Licensed under GNU GPL v2
+For bug reports, read
+        http://openocd.org/doc/doxygen/bugs.html
+embedded:startup.tcl:28: Error: Can't find openocd.cfg
+in procedure 'script' 
+at file "embedded:startup.tcl", line 28
+Info : Listening on port 6666 for tcl connections
+Info : Listening on port 4444 for telnet connections
+Error: Debug Adapter has to be specified, see "adapter driver" command
+embedded:startup.tcl:28: Error: 
+in procedure 'script' 
+at file "embedded:startup.tcl", line 28
+rabi@artiq ~/artiq-zynq (master) [1]> nix develop
+warning: Git tree '/home/rabi/artiq-zynq' is dirty
+
+
+#flashing
+
+Method for flashing device:
+
+Main PC OS: NIXOS
+
+Artiq Device: Artiq-Zynq, Kasli_SOC (Zynq models are just special, so have different git repo's)
+
+Required programs: Vivado (2022.2/what ever is in the artiq git repo's flake.nix folder).
+
+I did an incrimental build as described in: https://m-labs.hk/artiq/manual/building_developing.html#zynq-jtag-boot
+
+This requires you to clone both the artiq git-repo (https://git.m-labs.hk/M-Labs/artiq.git), and the artiq-zynq (https://git.m-labs.hk/M-Labs/artiq-zynq.git).
+
+The artiq-zynq git repo pulls from the mainline artiq repository. In order to do this method you must change this so that your artiq-zynq repository on the local machine pulls from your local aritq repo. This is done by changing the flake.nix file in the artiq-zynq repo. Changing the inputs.artiq.url path to be:
+ inputs.artiq.url ="path:/home/rabi/artiq";
+
+This allows for subsequent changes to your local artiq flake to be realised.
+
+Next you need to change the nix config of your aritq-repo. This is found at the bottom of the flake.nix file:
+
+  nixConfig = {
+    extra-trusted-public-keys = "nixbld.m-labs.hk-1:5aSRVA5b320xbNvu30tqxVPXpld73bhtOeH6uAjRyHc=";
+    extra-substituters = "https://nixbld.m-labs.hk";
+    extra-sandbox-paths = "/home/rabi/Xilinx"; #Path to your vivado instilation.
+  };
+}
+
+This must also be mirrored in your trusted_settings.json file of your opperating system
+
+
+
+Most things must be done in the artiq-zynq shell, which you enter by running nix develop. If you do not have nix flakes enabled, I recommend searching up how to enable them, or do the equivalent of whatever opperating system you are using (I have not used anything else).
+
+First generate the gateware and firmware:
+1. [rabi@~/artiq-zynq]: nix develop
+1.5 cd src
+2. gateware/kasli_soc.py -g ../build/gateware auckland.json 
+3. make TARGET=kasli_soc GWARGS="/home/rabi/auckland.json" runtime
+
+After generating gateware and runtime, cd into ~/artiq-zynq/ while in the nix env and type:
+
+./local_run.sh -i -b 192.168.1.75
+
+
+Here auckland.json is the name of my device description, you might have one for your machine, or you can use the default ones and or build your own as described in the mlabs documentation: https://m-labs.hk/artiq/manual/building_developing.html#building-artiq
+
+Now that we have the fireware/gateware there are multiple methods of getting it onto your device, all of which are in: https://m-labs.hk/artiq/manual/building_developing.html#zynq-jtag-boot.
+
+My method was to use Ethernet/JTAG. This requires the artiq Kasli_SOC to be plugged in via ethernet and micro-usb (data-transfer capable). This method also requires two small switches to be flipped on the core device's pcb. The switches are next to one another and have JTAG/SD written next to them.
+
+Once in the Ethernet/JTAG mode cd back to you artiq-zynq 
+
+
+
+7pm jan 17th:
+
+
+Issue arrised today when using the save as default option in file dropdown. This resulted in the pyqtgui not opening.
+turns out this was due to how it deletes the current defaultb.fit file from the current directory. Need to fix
+
+
+Got box vals to work by making big array for timesteps x 32 array. Works with any ramps.
+
+
+
+
+
+
+This portion will cover my understanding of the main artiq device, that of which I spent many hours attempting to get working.
+
+
+The Kasli_SOC is a experimental control device designed specifically for usage in optical and quantum physics. The Kasli_SOC is ran through the Artiq language, primarily applied through python. This device is able to connect to various peripheral devices such a DAC(fastino), DDS(urukul ad9910), TTL. Those of which have rigerous descriptions on the mlabs forum.
+
+These devices run on a RTIO system. As found on the Zypher Project, "RTIO provides a framework for doing asynchronous operation chains with event driven I/O." Effectivly speaking, this allows for a ticket like system of events to occur. 
+
+
+
+
+
+
+
+
+
+
+
+#power off
+
+#network troubleshooting
+
+first check the obvious, is the ethernet plugged in to the artiq device, in the settings is the usb-ethernet network turned on, etc.
+
+07/04/2025
+
+If you are having problems with contacting the device, or the following few cmds on how to contact it are not working. I am also gonna type a mix of I.P and 192.168.1.75, they are the same
+
+The following cmds are to be done in the fish cmd prompt:
+
+First try:
+a) ping 192.168.1.75
+
+if you can't do this, test:
+
+b) artiq_coremgmt -D I.P -log
+
+if the second cmd returns something that isn't a timeout error, you could try the following:
+reboot the device:
+1) artiq_coremgmt -D I.P -reboot
+then try to contact again,
+
+
+if this returns nada, try the following:
+
+
+Power-cycle (unplug-plug) the device and wait 30-60s. Retry the previous contact methods, ping is easiest. If nothing works, you might need to reflash:
+
+
+Reflash:
+
+This is done two ways, first flashing over the Ethernet/Jtag, where jtag is a micro-usb cable:
+
+If all is well, you should be able to use the following command:
+
+1) CD ~artiq-zynq
+2) nix develop
+3) ./local_run.sh -i -b 192.168.1.75   #where -i is the ip address provided to the device when booting.
+
+this should then show something like:
+
+[rabi@artiq:~/artiq-zynq]$ ./local_run.sh -i -b 192.168.1.75
+Open On-Chip Debugger 0.12.0
+Licensed under GNU GPL v2
+For bug reports, read
+        http://openocd.org/doc/doxygen/bugs.html
+DEPRECATED! use 'ftdi device_desc' not 'ftdi_device_desc'
+DEPRECATED! use 'ftdi vid_pid' not 'ftdi_vid_pid'
+DEPRECATED! use 'ftdi channel' not 'ftdi_channel'
+DEPRECATED! use 'ftdi layout_init' not 'ftdi_layout_init'
+Zynq CPU1.
+DEPRECATED! use 'ftdi layout_signal' not 'ftdi_layout_signal'
+Info : clock speed 1000 kHz
+Info : JTAG tap: zynq.tap tap/device found: 0x1372c093 (mfg: 0x049 (Xilinx), part: 0x372c, ver: 0x1)
+Info : JTAG tap: zynq.dap tap/device found: 0x4ba00477 (mfg: 0x23b (ARM Ltd), part: 0xba00, ver: 0x4)
+Info : zynq.cpu.0: hardware has 6 breakpoints, 4 watchpoints
+Info : zynq.cpu.1: hardware has 6 breakpoints, 4 watchpoints
+Info : starting gdb server for zynq.cpu.0 on 3333
+Info : Listening on port 3333 for gdb connections
+Info : JTAG tap: zynq.tap tap/device found: 0x1372c093 (mfg: 0x049 (Xilinx), part: 0x372c, ver: 0x1)
+Info : JTAG tap: zynq.dap tap/device found: 0x4ba00477 (mfg: 0x23b (ARM Ltd), part: 0xba00, ver: 0x4)
+Warn : zynq.cpu.0: ran after reset and before halt ...
+Warn : zynq.cpu.1: ran after reset and before halt ...
+Info : zynq.cpu.0: MPIDR level2 0, cluster 0, core 0, multi core, no SMT
+Info : zynq.cpu.1: MPIDR level2 0, cluster 0, core 1, multi core, no SMT
+target halted in ARM state due to debug-request, current mode: Supervisor
+cpsr: 0x000001d3 pc: 0xffffff34
+MMU: disabled, D-Cache: disabled, I-Cache: disabled
+target halted in ARM state due to debug-request, current mode: System
+cpsr: 0x200001df pc: 0xffffff28
+MMU: disabled, D-Cache: disabled, I-Cache: disabled
+
+if there are issues where it complains about something missing:
+
+example: OPEN-ZYNQ variable must be set, you need to be in the nix develop enviornment, restart and follow instructions properly (this is in artiq-zynq dir)
+
+If it says there is no gateware or something is missing, in this document use the bind ctrl-f, and search for #flashing. This should explain how to make the files, all of which needs to
+be done inside the artiq-zynq/src directory. Then retry the cmd above.
+
+If all worked well, it should exit this after that last line and say nothing else. You can then type:
+
+1) exit
+2) ping 192.168.1.75 (if this doesn't work, try 192.168.1.56 #this shouldn't work either if so, contact zavier)
+
+If all goes well you can now contact the device :)
+
+If all does not go well, you might need to flash over micro-sd:
+
+This is more complicated, and requires some familiarity and comfort with touching expensive electronic equipment, and a screw-driver/sharp-object:
+
+1) unplug the artiq device, this includes the power, ethernet, jtag, and anything else plugged into the left most pannel, named the Kasli-Soc, this is the motherboard and processor of the device.
+2) Unscrew the front pannel
+3) carefully slide it out, don't try to force it too much :"(
+4) on the board you should see a small set of switches, next to them on the pcb there is the symbold sd/jtag
+5) with something small, flip the two switches so they both face towards the sd-card (if wanting to reverse this, simply switch back to ethernet/jtag).
+6) slide pannel back in and secure.
+7) plug back in ethernet and power
+8) you should now be able to ping the device.
+
+The sd card might be on old versions or settings, so if programs no longer run, or don't run as expected, such as the fastino only changing the value of the first voltage output, you can read through the documentation on the artiq wiki (which is provided above), or contact zbly162@aucklanduni.ac.nz (zavier bly)
+
+
+Hopefully all is well, if not, I recommend caution, as anything further may cause issues, when in doubt, contact! contact! contact!
+
+
+Goodluck
+
+07/04/2025 -fin
+
+
+
+
+
+If errors occur on the actual artiq crate, and you are unable to communicate via ethernet, run the following when rebooting and attempting to flash.
+stty 115200 < /dev/ttyUSB2
+cat /dev/ttyUSB2
+
+this should read out the same info as artiq_coremgmt -D IP log, but also includes extra information that the device produces when it is attempting to flash.
+
+by flashing i mean while in the artiq-zynq directory, and in the nix develop env, and running ./local_run.sh -i -b 192.168.1.75
+

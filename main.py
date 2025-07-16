@@ -7,13 +7,16 @@ from PyQt6.QtWidgets import *
 #     pyuic6 form.ui -o ui_form.py
 # from ui_form import Ui_Widget
 
-class Window(QDialog):
-    def __init__(self, parent=None):
-        super(Window, self).__init__(parent)
+class Gui(QDialog):
+    def __init__(self, device):
+        self.device = device
+
+        super(Gui, self).__init__()
         self.setWindowTitle("My Form")
 
         self.label = QLabel("Hello World!")
         self.button = QPushButton("Click me")
+        self.button.clicked.connect(self.pulse)
 
         layout = QVBoxLayout(self)
         layout.addWidget(self.label)
@@ -21,26 +24,30 @@ class Window(QDialog):
 
         self.setLayout(layout)
 
-class LED(EnvExperiment):
+    def pulse(self):
+        self.device.pulse()
+
+class Device(EnvExperiment):
     def build(self):
         self.setattr_device("core")
         self.setattr_device("ttl5")
 
-    def gui(self):
+    def run(self):
         app = QApplication([])
-        window = Window()
-        window.show()
+        gui = Gui(self)
+        gui.show()
         app.exec()
 
-        print("gui initalized")
+        self.pulse()
+        
 
     @kernel
-    def run(self):
-        self.gui()
+    def pulse(self):
+        print("Switched context")
 
         self.core.reset()
-        self.ttl5.output()
-        while True:
-          delay(2*ms)
-          self.ttl5.pulse(2*ms)
 
+        self.ttl5.pulse(0.5*s)
+        # self.core.wait_until_mu(now_mu())
+
+        print("Queued pulse!")
