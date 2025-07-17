@@ -1,3 +1,5 @@
+import numpy as np
+
 from PyQt6.QtWidgets import *
 from PyQt6.QtCore import QSize
 from PyQt6.uic import loadUi
@@ -47,7 +49,7 @@ class Gui(QMainWindow):
         self.copied_container.addWidget(spacers[2])
 
         # create widgets for each variable and add them to the layout
-        for variable in self.device.variables:            
+        for variable in self.device.variables:
             # add the widgets to the stage containers
             for i, stage in enumerate(stage_containers):
                 stage_widget = variable.widget()
@@ -72,9 +74,6 @@ class Gui(QMainWindow):
             label.setMinimumSize(QSize(0, 24))
             label.setMaximumSize(QSize(big, 24))
             self.label_container.addWidget(label)
-        
-        # connect the run button to the submit_experiment method
-        self.run_experiment.clicked.connect(self.submit_experiment)
 
         # add stretch to containers
         self.dc_container.addStretch()
@@ -82,36 +81,76 @@ class Gui(QMainWindow):
         self.copied_container.addStretch()
         for stage in stage_containers:
             stage.addStretch()
+        
+        # connect the run button to the submit_experiment method
+        self.run_experiment.clicked.connect(self.submit_experiment)
+
+        # connect the menubar actions
+        self.actionSave.triggered.connect(self.save_settings)
+        self.actionLoad.triggered.connect(self.load_settings)
+
+    # applies the current values in the widgets to the numpy arrays
+    def apply_values(self):
+        # iterate through the widgets and get their values
+        for i, variable in enumerate(self.device.variables):
+            self.device.dc[i] = variable.value(self.dc_widgets[i])
+
+            for j, stage_widgets in enumerate(self.state_widgets):
+                self.device.experiment[j, i] = variable.value(stage_widgets[i])
 
     # updates the device with the values from the widgets
     def update_dc(self):
-        # print("Updating device with:")
-
-        # iterate through the widgets and get their values
-        for i, variable in enumerate(self.device.variables):
-            value = variable.value(self.dc_widgets[i])
-            self.device.dc[i] = value
-
-            # print(f"  {variable.label}: {value}")
-
+        self.apply_values()
         self.device.update_dc()
     
     # runs the experiment and using the data from the widgets
     def submit_experiment(self):
-        # print("Running experiment with the following data:")
-
-        # iterate through the stages and get their values
-        for i, stage_widgets in enumerate(self.state_widgets):
-            for j, variable in enumerate(self.device.variables):
-                value = variable.value(stage_widgets[j])
-                self.device.experiment[i, j] = value
-
-                # print(f"  Stage {i + 1} - {variable.label}: {value}")
-
-        # run the device's run method
+        self.apply_values()
         self.device.run_experiment()
 
+    # saves the current gui settings to a file
+    def save_settings(self):
+        # open a file dialog for the user to choose a file
+        file_name, _ = QFileDialog.getSaveFileName(self, "Save Settings", "", "Numpy Array File (*.npz)")
 
+        # load the current values from the widgets into the numpy arrays
+        self.apply_values()
+
+        # save the numpy arrays to a file
+        np.savez(
+            file_name,
+            dc=self.device.dc,
+            experiment=self.device.experiment
+        )
+
+    def load_settings(self):
+        # open a file dialog for the user to choose a file
+        file_name, _ = QFileDialog.getOpenFileName(self, "Load Settings", "", "Numpy Array File (*.npz)")
+
+        # load the settings from the file
+        data = np.load(file_name)
+
+        # update the device's dc and experiment arrays
+        self.device.dc = data['dc']
+        self.device.experiment = data['experiment']
+
+        # refresh the gui and device with the new values
+        self.refresh_widgets()
+        self.device.update_dc()
+
+    def refresh_widgets(self):
+        # update the widgets with the current values in the numpy arrays
+        for i, variable in enumerate(self.device.variables):
+            # update the dc widgets
+            variable.set_value(self.dc_widgets[i], self.device.dc[i])
+
+            # update the stage widgets
+            for j, stage_widgets in enumerate(self.state_widgets):
+                variable.set_value(stage_widgets[i], self.device.experiment[j, i])
+
+'''
+abstractions over the different widget types used in the gui
+'''
 class VariableTypeBool:
     def __init__(self, label):
         self.label = label
@@ -127,6 +166,34 @@ class VariableTypeBool:
 
     def value(self, widget: QCheckBox) -> float:
         return float(widget.isChecked())
+
+    def set_value(self, widget: QCheckBox, value: float):
+        widget.setChecked(bool(value))
+
+class VariableTypeInt:
+    def __init__(self, label, minimum=0, maximum=100, step=1):
+        self.label = label
+        self.minimum = minimum
+        self.maximum = maximum
+        self.step = step
+
+    def widget(self) -> QSpinBox:
+        spinbox = QSpinBox()
+        spinbox.setMinimumSize(QSize(0, 24))
+        spinbox.setMaximumSize(QSize(big, 24))
+        spinbox.setMinimum(self.minimum)
+        spinbox.setMaximum(self.maximum)
+        spinbox.setSingleStep(self.step)
+        return spinbox
+    
+    def changed_signal(self, widget: QSpinBox):
+        return widget.valueChanged
+
+    def value(self, widget: QSpinBox) -> int:
+        return int(widget.value())
+
+    def set_value(self, widget: QSpinBox, value: float):
+        widget.setValue(int(value))
 
 class VariableTypeFloat:
     def __init__(self, label, minimum=0.0, maximum=1.0, step=0.1):
@@ -149,4 +216,7 @@ class VariableTypeFloat:
 
     def value(self, widget: QDoubleSpinBox) -> float:
         return float(widget.value())
+    
+    def set_value(self, widget: QDoubleSpinBox, value: float):
+        widget.setValue(value)
 
