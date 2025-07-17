@@ -41,8 +41,6 @@ class Device(EnvExperiment):
         self.urukul0_ch0.cfg_sw(True)
         self.urukul0_ch0.set_att(6.0 * dB)
 
-        self.update_dc()
-
     @kernel
     def update_dc(self):
         self.core.break_realtime()

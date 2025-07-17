@@ -86,8 +86,11 @@ class Gui(QMainWindow):
         self.run_experiment.clicked.connect(self.submit_experiment)
 
         # connect the menubar actions
-        self.actionSave.triggered.connect(self.save_settings)
-        self.actionLoad.triggered.connect(self.load_settings)
+        self.actionSave.triggered.connect(self.save_settings_dialog)
+        self.actionLoad.triggered.connect(self.load_settings_dialog)
+
+        # load the default values
+        self.load_settings('default.npz')
 
     # applies the current values in the widgets to the numpy arrays
     def apply_values(self):
@@ -108,27 +111,35 @@ class Gui(QMainWindow):
         self.apply_values()
         self.device.run_experiment()
 
-    # saves the current gui settings to a file
-    def save_settings(self):
+    def save_settings_dialog(self):
         # open a file dialog for the user to choose a file
         file_name, _ = QFileDialog.getSaveFileName(self, "Save Settings", "", "Numpy Array File (*.npz)")
 
+        if file_name:
+            self.save_settings(file_name)
+
+    def save_settings(self, path):
         # load the current values from the widgets into the numpy arrays
         self.apply_values()
 
         # save the numpy arrays to a file
         np.savez(
-            file_name,
+            path,
             dc=self.device.dc,
             experiment=self.device.experiment
         )
 
-    def load_settings(self):
+    def load_settings_dialog(self):
         # open a file dialog for the user to choose a file
         file_name, _ = QFileDialog.getOpenFileName(self, "Load Settings", "", "Numpy Array File (*.npz)")
 
+        if file_name:
+            self.load_settings(file_name)
+
+    # just loads the settings from a file without refreshing the gui
+    def load_settings(self, path):
         # load the settings from the file
-        data = np.load(file_name)
+        data = np.load(path)
 
         # update the device's dc and experiment arrays
         self.device.dc = data['dc']
