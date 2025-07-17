@@ -73,7 +73,10 @@ class Gui(QMainWindow):
             label.setMaximumSize(QSize(big, 24))
             self.label_container.addWidget(label)
         
-        # add strech to containers
+        # connect the run button to the submit_experiment method
+        self.run_experiment.clicked.connect(self.submit_experiment)
+
+        # add stretch to containers
         self.dc_container.addStretch()
         self.label_container.addStretch()
         self.copied_container.addStretch()
@@ -92,6 +95,22 @@ class Gui(QMainWindow):
             # print(f"  {variable.label}: {value}")
 
         self.device.update_dc()
+    
+    # runs the experiment and using the data from the widgets
+    def submit_experiment(self):
+        # print("Running experiment with the following data:")
+
+        # iterate through the stages and get their values
+        for i, stage_widgets in enumerate(self.state_widgets):
+            for j, variable in enumerate(self.device.variables):
+                value = variable.value(stage_widgets[j])
+                self.device.experiment[i, j] = value
+
+                # print(f"  Stage {i + 1} - {variable.label}: {value}")
+
+        # run the device's run method
+        self.device.run_experiment()
+
 
 class VariableTypeBool:
     def __init__(self, label):

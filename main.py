@@ -64,3 +64,32 @@ class Device(EnvExperiment):
 
         # update rf output
         self.urukul0_ch0.set(rf_freq * MHz, amplitude=rf_magnitude)
+
+    @kernel
+    def run_experiment(self):
+        self.core.break_realtime()
+
+        # iterate through the stages and get their values
+        for i in range(self.stages):
+            digital = bool(self.experiment[i, 0])
+            analog = float(self.experiment[i, 1])
+            rf_magnitude = float(self.experiment[i, 2])
+            rf_freq = float(self.experiment[i, 3])
+
+            # update digital output
+            if digital:
+                self.ttl5.on()
+            else:
+                self.ttl5.off()
+
+            # update analog output
+            self.fastino0.set_dac(0, analog)
+
+            # update rf output
+            self.urukul0_ch0.set(rf_freq * MHz, amplitude=rf_magnitude)
+
+            # wait for a short time to simulate the experiment duration
+            delay(100 * us)
+        
+        # reset the device to the dc values
+        self.update_dc()
