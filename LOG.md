@@ -7,3 +7,7 @@
 - 15/07/25 Tried working remote but couldn't connect to device so just worked on compilation
 - 16/07/25
   - Got gui communicating with artiq device
+- 17/07/25
+  - Started work on re creating the experiment controller gui using `.ui` file
+  - Got dc values gui working
+  -  

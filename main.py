@@ -20,8 +20,8 @@ class Device(EnvExperiment):
             VariableTypeFloat("Rf Freq (MHz)", 1.0, 100.0, 1.0)
         ]
 
-        dc = np.zeros(len(self.variables), dtype=np.float32)
-        experiment = np.zeros((self.stages, len(self.variables) + 1), dtype=np.float32)
+        self.dc = np.zeros(len(self.variables))
+        self.experiment = np.zeros((self.stages, len(self.variables) + 1))
 
     @host_only
     def run(self):
@@ -45,18 +45,22 @@ class Device(EnvExperiment):
 
     @kernel
     def update_dc(self):
-        pass
+        self.core.break_realtime()
 
-        # self.core.break_realtime()
+        # the indicies here need to match the order of the variables defined in `build()`
+        digital = bool(self.dc[0])
+        analog = float(self.dc[1])
+        rf_magnitude = float(self.dc[2])
+        rf_freq = float(self.dc[3])
 
-        # # update digital output
-        # if self.digital:
-        #     self.ttl5.on()
-        # else:
-        #     self.ttl5.off()
+        # update digital output
+        if digital:
+            self.ttl5.on()
+        else:
+            self.ttl5.off()
 
-        # # update analog output
-        # self.fastino0.set_dac(0, self.analog)
+        # update analog output
+        self.fastino0.set_dac(0, analog)
 
-        # # update rf output
-        # self.urukul0_ch0.set(self.rf_freq * MHz, amplitude=self.rf_magnitude)
+        # update rf output
+        self.urukul0_ch0.set(rf_freq * MHz, amplitude=rf_magnitude)

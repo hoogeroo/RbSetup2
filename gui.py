@@ -2,6 +2,9 @@ from PyQt6.QtWidgets import *
 from PyQt6.QtCore import QSize
 from PyQt6.uic import loadUi
 
+big = 16777215
+
+# initializes the gui using `gui.ui`
 class Gui(QMainWindow):
     def __init__(self, device):
         super(Gui, self).__init__()
@@ -9,9 +12,11 @@ class Gui(QMainWindow):
 
         # to see what this does you can run `pyuic6 gui.ui | code -`
         loadUi('gui.ui', self)
-        
-        # big number for maximum size
-        big = 16777215
+
+        # store reference to all the widgets to get their values later
+        self.dc_widgets = []
+        self.state_widgets = []
+        self.copy_widgets = []
 
         # create column container for each stage
         stages = self.device.stages
@@ -28,6 +33,8 @@ class Gui(QMainWindow):
             button.setMaximumSize(QSize(big, 24))
             stage.addWidget(button)
 
+            self.state_widgets.append([])
+
         # add spacers to the dc, label, and copied containers
         spacers = []
         for i in range(3):
@@ -40,32 +47,24 @@ class Gui(QMainWindow):
         self.copied_container.addWidget(spacers[2])
 
         # create widgets for each variable and add them to the layout
-        for i, variable in enumerate(self.device.variables):
-            # have to create each widget separately as widgets cannot be cloned
-            widgets = []
-            for j in range(self.device.stages + 1):
-                if isinstance(variable, VariableTypeBool):
-                    widget = QCheckBox()
-                    widget.setMinimumSize(QSize(0, 24))
-                    widget.setMaximumSize(QSize(big, 24))
-                    widgets.append(widget)
-                elif isinstance(variable, VariableTypeFloat):
-                    widget = QDoubleSpinBox()
-                    widget.setMinimumSize(QSize(0, 24))
-                    widget.setMaximumSize(QSize(big, 24))
-                    widget.setMinimum(variable.minimum)
-                    widget.setMaximum(variable.maximum)
-                    widget.setSingleStep(variable.step)
-                    widgets.append(widget)
-                else:
-                    raise ValueError(f"Unknown variable type: {type(variable)}")
-            
+        for variable in self.device.variables:            
             # add the widgets to the stage containers
-            for (i, stage) in enumerate(stage_containers):
-                stage.addWidget(widgets[i])
+            for i, stage in enumerate(stage_containers):
+                stage_widget = variable.widget()
+                stage.addWidget(stage_widget)
+                self.state_widgets[i].append(stage_widget)
 
             # add the widget to the dc container
-            self.dc_container.addWidget(widgets[stages])
+            dc_widget = variable.widget()
+            variable.changed_signal(dc_widget).connect(self.update_dc)
+            self.dc_container.addWidget(dc_widget)
+            self.dc_widgets.append(dc_widget)
+
+            # add the widget to the copied container
+            copied_widget = variable.widget()
+            copied_widget.setEnabled(False)
+            self.copied_container.addWidget(copied_widget)
+            self.copy_widgets.append(copied_widget)
 
             # add the label to the label container
             label = QLabel()
@@ -81,18 +80,34 @@ class Gui(QMainWindow):
         for stage in stage_containers:
             stage.addStretch()
 
-
+    # updates the device with the values from the widgets
     def update_dc(self):
-        for var in self.gui_variables:
-            setattr(self.device, var, getattr(self, var).value())
+        # print("Updating device with:")
 
-        print("Updating device with:")
+        # iterate through the widgets and get their values
+        for i, variable in enumerate(self.device.variables):
+            value = variable.value(self.dc_widgets[i])
+            self.device.dc[i] = value
+
+            # print(f"  {variable.label}: {value}")
 
         self.device.update_dc()
 
 class VariableTypeBool:
     def __init__(self, label):
         self.label = label
+    
+    def widget(self) -> QCheckBox:
+        checkbox = QCheckBox()
+        checkbox.setMinimumSize(QSize(0, 24))
+        checkbox.setMaximumSize(QSize(big, 24))
+        return checkbox
+
+    def changed_signal(self, widget: QCheckBox):
+        return widget.stateChanged
+
+    def value(self, widget: QCheckBox) -> float:
+        return float(widget.isChecked())
 
 class VariableTypeFloat:
     def __init__(self, label, minimum=0.0, maximum=1.0, step=0.1):
@@ -100,3 +115,19 @@ class VariableTypeFloat:
         self.minimum = minimum
         self.maximum = maximum
         self.step = step
+
+    def widget(self) -> QDoubleSpinBox:
+        spinbox = QDoubleSpinBox()
+        spinbox.setMinimumSize(QSize(0, 24))
+        spinbox.setMaximumSize(QSize(big, 24))
+        spinbox.setMinimum(self.minimum)
+        spinbox.setMaximum(self.maximum)
+        spinbox.setSingleStep(self.step)
+        return spinbox
+    
+    def changed_signal(self, widget: QDoubleSpinBox):
+        return widget.valueChanged
+
+    def value(self, widget: QDoubleSpinBox) -> float:
+        return float(widget.value())
+
