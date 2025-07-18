@@ -22,6 +22,7 @@ class camera():
             s.close()
             print("camera connected")
             self.BGpics=np.zeros((512,512,50))
+            self.FGpics=np.zeros((512,512,50))
             self.BGindex=0
             self.nBGs=0
             self.BGmask=np.zeros((512,512),dtype='int')
@@ -102,7 +103,7 @@ class camera():
                 break
             N_atoms = str(round(n, 2)) + keys[count - 1]
             NMax = round(np.max(thedata), 2)
-            return N_atoms,NMax
+            return N_atoms,NMax, n
         else: 
             return 0
         

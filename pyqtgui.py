@@ -135,6 +135,9 @@ class MainWindow(QMainWindow):
         self.fringe_action=QAction('Fringe removal',checkable=True)
         option_menu.addAction(self.fringe_action)
         self.fringe_action.triggered.connect(self.fringefunc)
+        self.PCA_action=QAction('Enhanced PCA',checkable=True)
+        option_menu.addAction(self.PCA_action)
+        self.PCA_action.triggered.connect(self.PCAfunc)
         self.use_Fringe_Removal=False
         #self.bfcam.use_Fringe_Removal=self.use_Fringe_Removal
         self.lowpassflag=True
@@ -183,6 +186,26 @@ class MainWindow(QMainWindow):
             try:
               self.CW.plotPrinceton()
               print('Redrawing Fringe')
+            except:
+              print("No pic active")
+              pass
+    
+    def PCAfunc(self):
+        if self.PCA_action.isChecked():
+          self.bfcam.PCAflag=True
+          self.CW.PCAflag=True
+          print('Turning on PCA')
+        else:
+          self.bfcam.PCAflag=False
+          self.CW.PCAflag=False
+          print('Turning off PCA')
+        if self.blackfly_action.isChecked():
+          self.CW.plotBlackfly()
+        else:
+          if self.princeton_action.isChecked():
+            try:
+              self.CW.plotPrinceton()
+              print('Redrawing PCA')
             except:
               print("No pic active")
               pass
