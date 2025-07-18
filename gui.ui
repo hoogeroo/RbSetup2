@@ -192,38 +192,34 @@
     <property name="title">
      <string>File</string>
     </property>
-    <addaction name="actionSave"/>
-    <addaction name="actionLoad"/>
-   </widget>
-   <widget class="QMenu" name="menuEdit">
-    <property name="title">
-     <string>Edit</string>
-    </property>
-    <addaction name="actionidk"/>
+    <addaction name="action_save"/>
+    <addaction name="action_load"/>
    </widget>
    <addaction name="menuFile"/>
-   <addaction name="menuEdit"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <action name="actionSave">
+  <action name="action_save">
    <property name="icon">
-    <iconset theme="document-save"/>
+    <iconset theme="document-save">
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
     <string>Save</string>
    </property>
-  </action>
-  <action name="actionidk">
-   <property name="text">
-    <string>idk</string>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
    </property>
   </action>
-  <action name="actionLoad">
+  <action name="action_load">
    <property name="icon">
-    <iconset theme="document-open"/>
+    <iconset theme="document-open">
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
     <string>Load</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+O</string>
    </property>
   </action>
  </widget>

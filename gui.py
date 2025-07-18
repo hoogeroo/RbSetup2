@@ -2,7 +2,7 @@ import numpy as np
 import json
 
 from PyQt6.QtWidgets import *
-from PyQt6.QtCore import QSize
+from PyQt6.QtCore import QSize, Qt
 from PyQt6.uic import loadUi
 
 from main import Dc, Stage
@@ -25,22 +25,9 @@ class Gui(QMainWindow):
 
         # store reference to all the widgets to get their values later
         self.dc_widgets = []
-        self.state_widgets = [[] for _ in range(self.device.stages)]
         self.copy_widgets = []
-
-        # create column container for each stage
-        stage_containers = []
-        for i in range(self.device.stages):
-            stage = QVBoxLayout()
-            self.stages_container.addLayout(stage)
-            stage_containers.append(stage)
-
-            # create a button for each stage
-            button = QPushButton()
-            button.setText(f"Stage {i + 1}")
-            button.setMinimumSize(QSize(0, 24))
-            button.setMaximumSize(QSize(big, 24))
-            stage.addWidget(button)
+        self.stage_widgets = []
+        self.stage_containers = []
 
         # add spacers to the dc, label, and copied containers
         spacers = []
@@ -53,17 +40,11 @@ class Gui(QMainWindow):
         self.label_container.addWidget(spacers[1])
         self.copied_container.addWidget(spacers[2])
 
-        # create widgets for each variable and add them to the layout
-        for j, variable in enumerate(self.device.variables):
-            # add the widgets to the stage containers
-            for i, stage in enumerate(stage_containers):
-                stage_widget = variable.widget()
-                stage.addWidget(stage_widget)
-                self.state_widgets[i].append(stage_widget)
-
+        # fill dc, label, and copied containers with widgets
+        for i, variable in enumerate(self.device.variables):
             # add the widget to the dc container
             dc_widget = variable.widget()
-            if j == 0:
+            if i == 0:
                 dc_widget.setEnabled(False)  # time doesn't make sense for dc
             variable.changed_signal(dc_widget).connect(self.update_dc)
             self.dc_container.addWidget(dc_widget)
@@ -86,51 +67,131 @@ class Gui(QMainWindow):
         self.dc_container.addStretch()
         self.label_container.addStretch()
         self.copied_container.addStretch()
-        for stage in stage_containers:
-            stage.addStretch()
         
         # connect the run button to the submit_experiment method
         self.run_experiment.clicked.connect(self.submit_experiment)
 
-        # connect the menubar actions
-        self.actionSave.triggered.connect(self.save_settings_dialog)
-        self.actionLoad.triggered.connect(self.load_settings_dialog)
+        # connect the actions
+        self.action_save.triggered.connect(self.save_settings_dialog)
+        self.action_load.triggered.connect(self.load_settings_dialog)
 
-        # load the default values into the newly created widgets
+        # load the default values (creates the needed stage widgets)
         self.load_settings('default.json')
 
     '''
     methods to get the values from the widgets and update the device.
     '''
 
-    def get_dc(self) -> Dc:
+    # extracts the values from the dc widgets and creates a Dc object
+    def extract_dc(self) -> Dc:
         # uses setattr to dynamically create a Dc object with the values from the widgets
         dc = Dc()
         for i, variable in enumerate(self.device.variables):
             setattr(dc, variable.id, variable.value(self.dc_widgets[i]))
         return dc
 
-    def get_stages(self) -> list[Stage]:
+    # extracts the values from the stage widgets and creates a list of Stage objects
+    def extract_stages(self) -> list[Stage]:
         # creates a list of Stage objects with the values from the widgets
         stages = []
-        for i in range(self.device.stages):
+        for i in range(len(self.stage_containers)):
             stage = Stage()
             for j, variable in enumerate(self.device.variables):
-                value = variable.value(self.state_widgets[i][j])
+                value = variable.value(self.stage_widgets[i][j])
                 setattr(stage, variable.id, value)
             stages.append(stage)
         return stages
 
     # updates the device with the values from the widgets
     def update_dc(self):
-        self.device.update_dc(self.get_dc())
+        self.device.update_dc(self.extract_dc())
 
     # runs the experiment and using the data from the widgets
     def submit_experiment(self):
-        self.device.run_experiment(self.get_stages())
+        self.device.run_experiment(self.extract_stages())
 
     '''
-    file save/load methods and dialogs
+    methods for renaming, copying and creating stages
+    '''
+
+    def get_stage_index(self, stage_container) -> int:
+        for i, container in enumerate(self.stage_containers):
+            if container is stage_container:
+                return i
+        return -1
+
+    # copies the right clicked stage values to the copied widgets
+    def copy_stage(self, stage_container):
+        stage_index = self.get_stage_index(stage_container)
+        if stage_index == -1:
+            print("Error: Stage container not found")
+            return
+
+        for i, variable in enumerate(self.device.variables):
+            value = variable.value(self.stage_widgets[stage_index][i])
+            variable.set_value(self.copy_widgets[i], value)
+
+    # pastes the copied values to the right clicked stage
+    def paste_stage(self, stage_container):
+        stage_index = self.get_stage_index(stage_container)
+        if stage_index == -1:
+            print("Error: Stage container not found")
+            return
+
+        for i, variable in enumerate(self.device.variables):
+            value = variable.value(self.copy_widgets[i])
+            variable.set_value(self.stage_widgets[stage_index][i], value)
+
+    # adds a new stage to the gui
+    def insert_stage(self, idx: int):
+        stage_container = QVBoxLayout()
+        self.stages_container.insertLayout(idx, stage_container)
+        self.stage_containers.insert(idx, stage_container)
+        self.stage_widgets.insert(idx, [])
+
+        # create a button at the top of the stage column
+        button = QPushButton()
+        button.setText(f"Stage {idx + 1}")
+        button.setMinimumSize(QSize(0, 24))
+        button.setMaximumSize(QSize(big, 24))
+        button.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
+        button.addAction("Copy", lambda: self.copy_stage(stage_container))
+        button.addAction("Paste", lambda: self.paste_stage(stage_container))
+        button.addAction("Insert Stage Left", lambda: self.insert_stage_left(stage_container))
+        button.addAction("Insert Stage Right", lambda: self.insert_stage_right(stage_container))
+        stage_container.addWidget(button)
+
+        # create widgets for each variable and add them to the layout
+        for variable in self.device.variables:
+            widget = variable.widget()
+            stage_container.addWidget(widget)
+            self.stage_widgets[idx].append(widget)
+        
+        # add a spacer to the stage container
+        stage_container.addStretch()
+
+    # creates a new stage to the left
+    def insert_stage_left(self, stage_container):
+        stage_index = self.get_stage_index(stage_container)
+        if stage_index == -1:
+            print("Error: Stage container not found")
+            return
+
+        self.insert_stage(stage_index)
+        self.paste_stage(self.stage_containers[stage_index])
+    
+    # creates a new stage to the right
+    def insert_stage_right(self, stage_container):
+        stage_index = self.get_stage_index(stage_container)
+        if stage_index == -1:
+            print("Error: Stage container not found")
+            return
+
+        self.insert_stage(stage_index + 1)
+        self.paste_stage(self.stage_containers[stage_index + 1])
+
+    '''
+    methods to save and load settings from a file
     '''
 
     # open a file dialog for the user to choose a file
@@ -141,23 +202,23 @@ class Gui(QMainWindow):
         if file_name:
             self.save_settings(file_name)
 
-    # save the settings to the file
-    def save_settings(self, path):
-        data = {
-            'dc': self.get_dc(),
-            'stages': self.get_stages()
-        }
-        data_json = json.dumps(data, default=lambda o: o.__dict__)
-
-        with open(path, 'w') as f:
-            f.write(data_json)
-
     # open a file dialog for the user to choose a file
     def load_settings_dialog(self):
         file_name, _ = QFileDialog.getOpenFileName(self, "Load Settings", "", "JSON File (*.json)")
 
         if file_name:
             self.load_settings(file_name)
+
+    # save the settings to the file
+    def save_settings(self, path):
+        data = {
+            'dc': self.extract_dc(),
+            'stages': self.extract_stages()
+        }
+        data_json = json.dumps(data, default=lambda o: o.__dict__)
+
+        with open(path, 'w') as f:
+            f.write(data_json)
 
     # load the settings from the file
     def load_settings(self, path):
@@ -171,16 +232,24 @@ class Gui(QMainWindow):
             else:
                 print(f"Warning: Unknown variable '{variable.id}' in dc data")
 
-        # update the stage widgets with the values from the file
+        # clear the current stage widgets
+        for stage_container in self.stage_containers:
+            for widget in stage_container:
+                widget.deleteLater()
+        self.stage_widgets.clear()
+        self.stage_containers.clear()
+
+        # create new stage widgets based on the loaded data
         for i, stage in enumerate(data['stages']):
-            if i < self.device.stages:
-                for j, variable in enumerate(self.device.variables):
-                    if variable.id in stage:
-                        variable.set_value(self.state_widgets[i][j], stage[variable.id])
-                    else:
-                        print(f"Warning: Unknown variable '{variable.id}' in stage {i} data")
-            else:
-                print(f"Warning: Extra stage data found for stage {i}, ignoring")
+            # create new column of widgets for the stage
+            self.insert_stage(i)
+
+            # fill the stage widgets with the values from the file
+            for j, variable in enumerate(self.device.variables):
+                if variable.id in stage:
+                    variable.set_value(self.stage_widgets[i][j], stage[variable.id])
+                else:
+                    print(f"Warning: Unknown variable '{variable.id}' in stage {i} data")
 
 
 '''

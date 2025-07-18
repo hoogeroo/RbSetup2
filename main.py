@@ -24,7 +24,6 @@ class Device(EnvExperiment):
         self.setattr_device('fastino0')
         self.setattr_device('urukul0_ch0')
 
-        self.stages = 5
         self.variables = [
             VariableTypeFloat("Time (ms)", "time", 0.0, 10000.0, 100.0),
             VariableTypeBool("Digital", "digital"),
