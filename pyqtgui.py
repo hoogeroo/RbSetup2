@@ -135,6 +135,9 @@ class MainWindow(QMainWindow):
         self.fringe_action=QAction('Fringe removal',checkable=True)
         option_menu.addAction(self.fringe_action)
         self.fringe_action.triggered.connect(self.fringefunc)
+        self.PCA_standard_action=QAction('Standard PCA',checkable=True)
+        option_menu.addAction(self.PCA_standard_action)
+        self.PCA_standard_action.triggered.connect(self.PCAfunc)
         self.PCA_action=QAction('Enhanced PCA',checkable=True)
         option_menu.addAction(self.PCA_action)
         self.PCA_action.triggered.connect(self.PCAfunc)
@@ -194,7 +197,12 @@ class MainWindow(QMainWindow):
         if self.PCA_action.isChecked():
           self.bfcam.PCAflag=True
           self.CW.PCAflag=True
-          print('Turning on PCA')
+          print('Turning on Enhanced PCA')
+        elif self.PCA_standard_action.isChecked():
+          self.bfcam.PCAflag=True
+          self.CW.PCAflag=True
+          self.CW.PCAstandardflag=True
+          print('Turning on Standard PCA')
         else:
           self.bfcam.PCAflag=False
           self.CW.PCAflag=False

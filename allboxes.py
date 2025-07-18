@@ -131,6 +131,7 @@ class allboxes(QWidget):
       self.BGimages=None
       self.fringeflag=False
       self.PCAflag=False
+      self.PCAstandardflag=False
       # We also store the number of times images have been stored here
       self.nBGstored=0
       
@@ -2376,7 +2377,14 @@ class allboxes(QWidget):
           print('FG', type(mydata))
           print('BG', type(self.camera.BGpics))
           BGmask=kl.prepare_bgmask()
-          toplot,t1=kl.PCAremove_otf(mydata[0,:,:]-mydata[2,:,:],self.camera.BGpics[:,:,:self.camera.nBGs], BGmask)
+          toplot,t1=kl.PCAremove_otf(mydata[0,:,:]-mydata[2,:,:],self.camera.BGpics[:,:,:self.camera.nBGs], standardPCA=False)
+          n_atoms,n_max, n_atomsint =self.camera.getNatoms_otf(toplot)
+
+        if self.PCAstandardflag and (self.camera.nBGs>5):
+          print('FG', type(mydata))
+          print('BG', type(self.camera.BGpics))
+          BGmask=kl.prepare_bgmask()
+          toplot,t1=kl.PCAremove_otf(mydata[0,:,:]-mydata[2,:,:],self.camera.BGpics[:,:,:self.camera.nBGs], standardPCA=True)
           n_atoms,n_max, n_atomsint =self.camera.getNatoms_otf(toplot)
            
         elif self.fringeflag and (self.camera.nBGs>5):

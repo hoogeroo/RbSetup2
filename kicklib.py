@@ -205,7 +205,7 @@ def fringeremoval1(foregrounds,backgrounds,bgmask):
     elapsed=time.time()-t
     return odimages,oprefs,elapsed
 
-def PCAremove_otf(FG, backgrounds,bgmask, n_components=None, variance_threshold=0.95):
+def PCAremove_otf(FG, backgrounds, standardPCA, n_components=None, variance_threshold=0.95):
     """
     PCA removal function "On the Fly" - processes one foreground against multiple backgrounds
     Similar to fringeremoval_otf but using PCA instead of linear least squares
@@ -216,8 +216,8 @@ def PCAremove_otf(FG, backgrounds,bgmask, n_components=None, variance_threshold=
         Single foreground image (with atoms)
     backgrounds : np.array, shape [npix_rows, npix_cols, nimages] 
         Stack of background/reference images (without atoms)
-    bgmask : np.array, shape [npix_rows, npix_cols]
-        Boolean mask indicating background regions for PCA analysis
+    standardPCA : boolean, 
+        determines if enhanced PCA is used
     n_components : int, optional
         Number of principal components to remove. If None, uses variance_threshold
     variance_threshold : float, default=0.95
@@ -231,14 +231,15 @@ def PCAremove_otf(FG, backgrounds,bgmask, n_components=None, variance_threshold=
         Estimated noise/reference image that was removed
     """
     from sklearn.decomposition import PCA
+    from scipy.ndimage import gaussian_filter
     
     # Get dimensions
-    k = np.nonzero(bgmask.flatten())
-    nk = np.size(k)
+    #k = np.nonzero(bgmask.flatten())
+    #nk = np.size(k)
     sx, sy, nimgs = backgrounds.shape
     
     print(f'PCA OTF: Processing 1 foreground against {nimgs} backgrounds')
-    print(f'Using {nk} background pixels for PCA analysis')
+    print(f'Using {sx*sy} background pixels for PCA analysis')
     
     # Reshape images - each row is an image, each column is a pixel
     bg_flat = backgrounds.reshape([nimgs, sx*sy]).astype(float)  # Shape: [nimgs, npixels]
@@ -274,9 +275,55 @@ def PCAremove_otf(FG, backgrounds,bgmask, n_components=None, variance_threshold=
     opref[opref <= 0] = np.min(bg_mean_flat[bg_mean_flat>0])  # Avoid log(0) or negative values
 
     odimage = -np.log(FG / opref)  # Calculate optical density image
-    
-    return odimage, opref
-   
+    if standardPCA == True:
+        return odimage, opref
+
+    ## Following code is for enhanced fourier version
+    fringe_patterns = []
+    residual_data = bg_flat.copy()
+    patterns_per_round = 8
+    n_iterations = 15
+
+    for num in range(n_iterations):
+       print('Iteration:', num + 1)
+       for pat in range(patterns_per_round):
+          # Get largest e-vector
+          pca_temp = PCA(n_components=1)
+          pca_temp.fit(residual_data)
+          largest_pc = pca_temp.components_[0].reshape(sx, sy)
+
+          # Find dominant spatial frequency
+          fft_largest_pc = np.fft.fftshift(np.fft.fft2(largest_pc))
+          fft_largest_pc[0,0] = 0 # Remove central dc peak
+          pc_peak = np.unravel_index(np.argmax(np.abs(fft_largest_pc)), fft_largest_pc.shape)
+          print(f"Dominant spatial frequency for pattern {pat + 1}: {pc_peak}")
+
+          # Apply Gaussian filter to smooth the pattern
+          fft_largest_pc = gaussian_filter(fft_largest_pc, sigma=5)
+          filtered_pattern = np.fft.ifft2(np.fft.ifftshift(fft_largest_pc))
+          fringe_patterns.append(filtered_pattern.real.flatten())
+          fringe_patterns.append(filtered_pattern.imag.flatten())
+
+          residual_data = update_residual(residual_data, filtered_pattern)
+
+    final_basis_matrix = np.array(fringe_patterns).T  # Shape: [n_patterns, n_pixels]
+
+    # Fit to foreground image
+    coeffs = np.linalg.lstsq(final_basis_matrix, fg_flat, rcond=None)[0]
+    fg_reconstructed = final_basis_matrix @ coeffs
+    opref = fg_reconstructed.reshape(sx, sy) + bg_mean_flat.reshape(sx, sy)
+    opref[opref <= 0] = np.min(bg_mean_flat[bg_mean_flat > 0])
+
+    odimage = -np.log(FG / opref)
+    if standardPCA == False:
+        return odimage, opref
+
+def update_residual(residual_data, pattern): ### Subtracts projection of pattern from residuals
+    p = pattern.real.flatten()
+    for i in range(residual_data.shape[0]):
+        coeff = np.dot(residual_data[i], p) / np.dot(p, p)
+        residual_data[i] -= coeff * p
+    return residual_data
 
 def fringeremoval_otf(FG,backgrounds,bgmask):
     import matplotlib.pyplot as plt
