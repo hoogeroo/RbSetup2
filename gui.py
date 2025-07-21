@@ -188,7 +188,7 @@ class Gui(QMainWindow):
     # renames the stage in the gui
     def rename_stage(self, idx: int):
         # get the current button text
-        button = self.stage_buttons[idx]
+        button = self.stages[idx].button
         current_text = button.text()
 
         # create a dialog to get the new name

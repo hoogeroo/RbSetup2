@@ -17,6 +17,7 @@
             ps.pyqt6
             ps.pip
             ps.matplotlib
+            ps.astropy
             # ps.numba
             # ps.astropy
             # ps.spyder-kernels
