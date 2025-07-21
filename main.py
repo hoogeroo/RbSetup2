@@ -14,8 +14,8 @@ class Dc:
 
 # same as above but for an experiment stage
 class Stage:
-    def __init__(self):
-        pass
+    def __init__(self, name):
+        self.name = name
 
 class Device(EnvExperiment):
     def build(self):

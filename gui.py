@@ -96,7 +96,7 @@ class Gui(QMainWindow):
         # creates a list of Stage objects with the values from the widgets
         stages = []
         for i in range(len(self.stage_containers)):
-            stage = Stage()
+            stage = Stage(name=self.stage_buttons[i].text())
             for j, variable in enumerate(self.device.variables):
                 value = variable.value(self.stage_widgets[i][j])
                 setattr(stage, variable.id, value)
@@ -122,6 +122,21 @@ class Gui(QMainWindow):
                 return i
         raise ValueError("Stage container not found") 
 
+    # renames the stage in the gui
+    def rename_stage(self, idx: int):
+        # get the current button text
+        button = self.stage_buttons[idx]
+        current_text = button.text()
+
+        # create a dialog to get the new name
+        new_name, ok = QInputDialog.getText(self, "Rename Stage", "Enter new stage name:", text=current_text)
+
+        if ok and new_name:
+            # set the new name to the button
+            button.setText(new_name)
+        else:
+            print("Stage rename cancelled or empty name provided")
+
     # copies the right clicked stage's values to the copied widgets
     def copy_stage(self, idx: int):
         for i, variable in enumerate(self.device.variables):
@@ -135,7 +150,7 @@ class Gui(QMainWindow):
             variable.set_value(self.stage_widgets[idx][i], value)
 
     # adds a new stage to the gui
-    def insert_stage(self, idx: int):
+    def insert_stage(self, idx: int, name=None):
         stage_container = QVBoxLayout()
         self.stages_container.insertLayout(idx, stage_container)
         self.stage_containers.insert(idx, stage_container)
@@ -143,17 +158,18 @@ class Gui(QMainWindow):
 
         # create a button at the top of the stage column
         button = QPushButton()
-        button.setText(f"Stage {idx + 1}")
+        button.setText(name if name else f"Stage {idx + 1}")
         button.setMinimumSize(QSize(0, 24))
         button.setMaximumSize(QSize(big, 24))
         button.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
+        button.addAction("Rename", lambda: self.rename_stage(self.get_stage_index(stage_container)))
         button.addAction("Copy", lambda: self.copy_stage(self.get_stage_index(stage_container)))
         button.addAction("Paste", lambda: self.paste_stage(self.get_stage_index(stage_container)))
         button.addAction("Insert Stage Left", lambda: self.insert_stage_left(self.get_stage_index(stage_container)))
         button.addAction("Insert Stage Right", lambda: self.insert_stage_right(self.get_stage_index(stage_container)))
         button.addAction("Delete", lambda: self.delete_stage(self.get_stage_index(stage_container)))
         stage_container.addWidget(button)
-        self.stage_buttons.append(button)
+        self.stage_buttons.insert(idx, button)
 
         # create widgets for each variable and add them to the layout
         for variable in self.device.variables:
@@ -230,16 +246,13 @@ class Gui(QMainWindow):
                 print(f"Warning: Unknown variable '{variable.id}' in dc data")
 
         # clear the current stage widgets
-        # for i, stage in enumerate(self.stage_widgets):
-        #     for widget in stage:
-        #         widget.deleteLater()
-        # self.stage_widgets.clear()
-        # self.stage_containers.clear()
+        for i in reversed(range(len(self.stage_containers))):
+            self.delete_stage(i)
 
         # create new stage widgets based on the loaded data
         for i, stage in enumerate(data['stages']):
             # create new column of widgets for the stage
-            self.insert_stage(i)
+            self.insert_stage(i, name=stage['name'])
 
             # fill the stage widgets with the values from the file
             for j, variable in enumerate(self.device.variables):
