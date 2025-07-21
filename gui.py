@@ -26,6 +26,7 @@ class Gui(QMainWindow):
         # store reference to all the widgets to get their values later
         self.dc_widgets = []
         self.copy_widgets = []
+        self.stage_buttons = []
         self.stage_widgets = []
         self.stage_containers = []
 
@@ -111,36 +112,27 @@ class Gui(QMainWindow):
         self.device.run_experiment(self.extract_stages())
 
     '''
-    methods for renaming, copying and creating stages
+    methods for renaming, copying, creating and deleting stages
     '''
 
+    # we need to use the object reference since the index changes when we insert or delete stages
     def get_stage_index(self, stage_container) -> int:
         for i, container in enumerate(self.stage_containers):
             if container is stage_container:
                 return i
-        return -1
+        raise ValueError("Stage container not found") 
 
-    # copies the right clicked stage values to the copied widgets
-    def copy_stage(self, stage_container):
-        stage_index = self.get_stage_index(stage_container)
-        if stage_index == -1:
-            print("Error: Stage container not found")
-            return
-
+    # copies the right clicked stage's values to the copied widgets
+    def copy_stage(self, idx: int):
         for i, variable in enumerate(self.device.variables):
-            value = variable.value(self.stage_widgets[stage_index][i])
+            value = variable.value(self.stage_widgets[idx][i])
             variable.set_value(self.copy_widgets[i], value)
 
     # pastes the copied values to the right clicked stage
-    def paste_stage(self, stage_container):
-        stage_index = self.get_stage_index(stage_container)
-        if stage_index == -1:
-            print("Error: Stage container not found")
-            return
-
+    def paste_stage(self, idx: int):
         for i, variable in enumerate(self.device.variables):
             value = variable.value(self.copy_widgets[i])
-            variable.set_value(self.stage_widgets[stage_index][i], value)
+            variable.set_value(self.stage_widgets[idx][i], value)
 
     # adds a new stage to the gui
     def insert_stage(self, idx: int):
@@ -155,11 +147,13 @@ class Gui(QMainWindow):
         button.setMinimumSize(QSize(0, 24))
         button.setMaximumSize(QSize(big, 24))
         button.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
-        button.addAction("Copy", lambda: self.copy_stage(stage_container))
-        button.addAction("Paste", lambda: self.paste_stage(stage_container))
-        button.addAction("Insert Stage Left", lambda: self.insert_stage_left(stage_container))
-        button.addAction("Insert Stage Right", lambda: self.insert_stage_right(stage_container))
+        button.addAction("Copy", lambda: self.copy_stage(self.get_stage_index(stage_container)))
+        button.addAction("Paste", lambda: self.paste_stage(self.get_stage_index(stage_container)))
+        button.addAction("Insert Stage Left", lambda: self.insert_stage_left(self.get_stage_index(stage_container)))
+        button.addAction("Insert Stage Right", lambda: self.insert_stage_right(self.get_stage_index(stage_container)))
+        button.addAction("Delete", lambda: self.delete_stage(self.get_stage_index(stage_container)))
         stage_container.addWidget(button)
+        self.stage_buttons.append(button)
 
         # create widgets for each variable and add them to the layout
         for variable in self.device.variables:
@@ -171,24 +165,27 @@ class Gui(QMainWindow):
         stage_container.addStretch()
 
     # creates a new stage to the left
-    def insert_stage_left(self, stage_container):
-        stage_index = self.get_stage_index(stage_container)
-        if stage_index == -1:
-            print("Error: Stage container not found")
-            return
+    def insert_stage_left(self, idx: int):
+        self.insert_stage(idx)
+        self.paste_stage(idx)
 
-        self.insert_stage(stage_index)
-        self.paste_stage(self.stage_containers[stage_index])
-    
     # creates a new stage to the right
-    def insert_stage_right(self, stage_container):
-        stage_index = self.get_stage_index(stage_container)
-        if stage_index == -1:
+    def insert_stage_right(self, idx: int):
+        self.insert_stage(idx + 1)
+        self.paste_stage(idx + 1)
+
+    # deletes the stage at the right clicked container
+    def delete_stage(self, idx: int):
+        stage_container = self.stage_containers.pop(idx)
+        if stage_container is None:
             print("Error: Stage container not found")
             return
-
-        self.insert_stage(stage_index + 1)
-        self.paste_stage(self.stage_containers[stage_index + 1])
+        
+        # remove the button and widgets from the layout
+        for j in reversed(range(stage_container.count())):
+            widget = stage_container.itemAt(j).widget()
+            if widget is not None:
+                widget.setParent(None)
 
     '''
     methods to save and load settings from a file
@@ -233,11 +230,11 @@ class Gui(QMainWindow):
                 print(f"Warning: Unknown variable '{variable.id}' in dc data")
 
         # clear the current stage widgets
-        for stage_container in self.stage_containers:
-            for widget in stage_container:
-                widget.deleteLater()
-        self.stage_widgets.clear()
-        self.stage_containers.clear()
+        # for i, stage in enumerate(self.stage_widgets):
+        #     for widget in stage:
+        #         widget.deleteLater()
+        # self.stage_widgets.clear()
+        # self.stage_containers.clear()
 
         # create new stage widgets based on the loaded data
         for i, stage in enumerate(data['stages']):
