@@ -14,8 +14,9 @@ class Dc:
 
 # same as above but for an experiment stage
 class Stage:
-    def __init__(self, name):
+    def __init__(self, name, enabled):
         self.name = name
+        self.enabled = enabled
 
 class Device(EnvExperiment):
     def build(self):
@@ -76,6 +77,9 @@ class Device(EnvExperiment):
 
         # iterate through the stages and get their values
         for stage in stages:
+            if not stage.enabled:
+                continue
+
             # update digital output
             if stage.digital:
                 self.ttl5.on()
