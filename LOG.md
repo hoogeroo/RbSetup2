@@ -15,3 +15,8 @@
 - 18/07/25
   - Saving and loading ui state
   - Got classes woking, refactoring to use classes instead of big numpy array for data transfer
+- 21/07/25
+  - Stage deletion, renaming and disabling
+- 22/07/25
+  - Make gui run without device so I can work on gui outside of lab
+  - Add hold value to gui
