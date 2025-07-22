@@ -5,6 +5,8 @@ from PyQt6.QtWidgets import *
 from PyQt6.QtCore import QSize, Qt
 from PyQt6.uic import loadUi
 
+from gui_types import *
+
 # dummy class used to represent the device's digital and analog outputs
 # this class will be fill with ids set in the variables array then 
 # sent to the device
@@ -19,14 +21,14 @@ class Stage:
         self.enabled = enabled
 
 class GuiStage:
-    def __init__(self, button, container, widgets, enabled=True):
+    def __init__(self, button, container, widgets, values, enabled=True):
         self.button = button
         self.container = container
         self.widgets = widgets
         self.enabled = enabled
 
-# Used to set the maximum size of the widgets
-big = 16777215
+    def update_widgets(self):
+        pass
 
 class Gui(QMainWindow):
     '''
@@ -63,7 +65,7 @@ class Gui(QMainWindow):
             dc_widget = variable.widget()
             if i == 0:
                 dc_widget.setEnabled(False)  # time doesn't make sense for dc
-            variable.changed_signal(dc_widget).connect(self.update_dc)
+            dc_widget.changed_signal().connect(self.update_dc)
             self.dc_container.addWidget(dc_widget)
             self.dc_widgets.append(dc_widget)
 
@@ -84,7 +86,7 @@ class Gui(QMainWindow):
         self.dc_container.addStretch()
         self.label_container.addStretch()
         self.copied_container.addStretch()
-        
+
         # connect the run button to the submit_experiment method
         self.run_experiment.clicked.connect(self.submit_experiment)
 
@@ -104,7 +106,7 @@ class Gui(QMainWindow):
         # uses setattr to dynamically create a Dc object with the values from the widgets
         dc = Dc()
         for i, variable in enumerate(self.device.variables):
-            setattr(dc, variable.id, variable.value(self.dc_widgets[i]))
+            setattr(dc, variable.id, self.dc_widgets[i].get_value())
         return dc
 
     # extracts the values from the stage widgets and creates a list of Stage objects
@@ -114,7 +116,7 @@ class Gui(QMainWindow):
         for i in range(len(self.stages)):
             stage = Stage(self.stages[i].button.text(), self.stages[i].enabled)
             for j, variable in enumerate(self.device.variables):
-                value = variable.value(self.stages[i].widgets[j])
+                value = self.stages[i].widgets[j].get_value()
                 setattr(stage, variable.id, value)
             stages.append(stage)
         return stages
@@ -199,14 +201,14 @@ class Gui(QMainWindow):
     # copies the right clicked stage's values to the copied widgets
     def copy_stage(self, idx: int):
         for i, variable in enumerate(self.device.variables):
-            value = variable.value(self.stages[idx].widgets[i])
-            variable.set_value(self.copy_widgets[i], value)
+            value = self.stages[idx].widgets[i].get_value()
+            self.copy_widgets[i].set_value(value)
 
     # pastes the copied values to the right clicked stage
     def paste_stage(self, idx: int):
         for i, variable in enumerate(self.device.variables):
-            value = variable.value(self.copy_widgets[i])
-            variable.set_value(self.stages[idx].widgets[i], value)
+            value = self.copy_widgets[i].get_value()
+            self.stages[idx].widgets[i].set_value(value)
 
     # creates a new stage to the left
     def insert_stage_left(self, idx: int):
@@ -268,7 +270,7 @@ class Gui(QMainWindow):
             if variable.id in data['dc']:
                 variable.set_value(self.dc_widgets[i], data['dc'][variable.id])
             else:
-                print(f"Warning: Unknown variable '{variable.id}' in dc data")
+                print(f"Warning: '{variable.id}' not in in dc data")
 
         # clear the current stage widgets
         for i in reversed(range(len(self.stages))):
@@ -292,78 +294,6 @@ abstractions over the different variable types and corresponding
 widget types used in the gui
 '''
 
-class VariableTypeBool:
-    def __init__(self, label, id):
-        self.label = label
-        self.id = id
-
-    def widget(self) -> QCheckBox:
-        checkbox = QCheckBox()
-        checkbox.setMinimumSize(QSize(0, 24))
-        checkbox.setMaximumSize(QSize(big, 24))
-        return checkbox
-
-    def changed_signal(self, widget: QCheckBox):
-        return widget.stateChanged
-
-    def value(self, widget: QCheckBox) -> bool:
-        return widget.isChecked()
-
-    def set_value(self, widget: QCheckBox, value: bool):
-        widget.setChecked(value)
-
-class VariableTypeInt:
-    def __init__(self, label, id, minimum=0, maximum=100, step=1):
-        self.label = label
-        self.id = id
-        self.minimum = minimum
-        self.maximum = maximum
-        self.step = step
-
-    def widget(self) -> QSpinBox:
-        spinbox = QSpinBox()
-        spinbox.setMinimumSize(QSize(0, 24))
-        spinbox.setMaximumSize(QSize(big, 24))
-        spinbox.setMinimum(self.minimum)
-        spinbox.setMaximum(self.maximum)
-        spinbox.setSingleStep(self.step)
-        return spinbox
-    
-    def changed_signal(self, widget: QSpinBox):
-        return widget.valueChanged
-
-    def value(self, widget: QSpinBox) -> int:
-        return widget.value()
-
-    def set_value(self, widget: QSpinBox, value: int):
-        widget.setValue(value)
-
-class VariableTypeFloat:
-    def __init__(self, label, id, minimum=0.0, maximum=1.0, step=0.1):
-        self.label = label
-        self.id = id
-        self.minimum = minimum
-        self.maximum = maximum
-        self.step = step
-
-    def widget(self) -> QDoubleSpinBox:
-        spinbox = QDoubleSpinBox()
-        spinbox.setMinimumSize(QSize(0, 24))
-        spinbox.setMaximumSize(QSize(big, 24))
-        spinbox.setMinimum(self.minimum)
-        spinbox.setMaximum(self.maximum)
-        spinbox.setSingleStep(self.step)
-        return spinbox
-    
-    def changed_signal(self, widget: QDoubleSpinBox):
-        return widget.valueChanged
-
-    def value(self, widget: QDoubleSpinBox) -> float:
-        return float(widget.value())
-    
-    def set_value(self, widget: QDoubleSpinBox, value: float):
-        widget.setValue(value)
-
 # for running the gui without the device
 if __name__ == '__main__':
     class MockDevice:
@@ -371,7 +301,7 @@ if __name__ == '__main__':
             self.variables = [
                 VariableTypeBool("Enable", "enable"),
                 VariableTypeInt("Count", "count", 0, 100, 1),
-                VariableTypeFloat("Frequency", "frequency", 0.0, 10.0, 0.1)
+                VariableTypeFloat("Frequency", "frequency", 0.0, 10.0, 0.1),
             ]
 
         def update_dc(self, dc):
