@@ -5,19 +5,6 @@ import scipy as sp
 
 from gui import *
 
-# dummy class used to represent the device's digital and analog outputs
-# this class will be fill with ids set in the variables array then 
-# sent to the device
-class Dc:
-    def __init__(self):
-        pass
-
-# same as above but for an experiment stage
-class Stage:
-    def __init__(self, name, enabled):
-        self.name = name
-        self.enabled = enabled
-
 class Device(EnvExperiment):
     def build(self):
         self.setattr_device("core")

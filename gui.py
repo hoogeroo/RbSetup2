@@ -5,10 +5,18 @@ from PyQt6.QtWidgets import *
 from PyQt6.QtCore import QSize, Qt
 from PyQt6.uic import loadUi
 
-from main import Dc, Stage
+# dummy class used to represent the device's digital and analog outputs
+# this class will be fill with ids set in the variables array then 
+# sent to the device
+class Dc:
+    def __init__(self):
+        pass
 
-# Used to set the maximum size of the widgets
-big = 16777215
+# same as above but for an experiment stage
+class Stage:
+    def __init__(self, name, enabled):
+        self.name = name
+        self.enabled = enabled
 
 class GuiStage:
     def __init__(self, button, container, widgets, enabled=True):
@@ -16,6 +24,9 @@ class GuiStage:
         self.container = container
         self.widgets = widgets
         self.enabled = enabled
+
+# Used to set the maximum size of the widgets
+big = 16777215
 
 class Gui(QMainWindow):
     '''
@@ -353,3 +364,24 @@ class VariableTypeFloat:
     def set_value(self, widget: QDoubleSpinBox, value: float):
         widget.setValue(value)
 
+# for running the gui without the device
+if __name__ == '__main__':
+    class MockDevice:
+        def __init__(self):
+            self.variables = [
+                VariableTypeBool("Enable", "enable"),
+                VariableTypeInt("Count", "count", 0, 100, 1),
+                VariableTypeFloat("Frequency", "frequency", 0.0, 10.0, 0.1)
+            ]
+
+        def update_dc(self, dc):
+            print("DC updated:", dc)
+
+        def run_experiment(self, stages):
+            print("Experiment run with stages:", stages)
+
+    app = QApplication([])
+    device = MockDevice()
+    gui = Gui(device)
+    gui.show()
+    app.exec()
