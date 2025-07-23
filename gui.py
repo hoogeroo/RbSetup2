@@ -5,6 +5,8 @@ from PyQt6.QtWidgets import *
 from PyQt6.QtCore import QSize, Qt
 from PyQt6.uic import loadUi
 
+from astropy.io import fits
+
 from gui_types import *
 
 # dummy class used to represent the device's digital and analog outputs
@@ -95,7 +97,7 @@ class Gui(QMainWindow):
         self.action_load.triggered.connect(self.load_settings_dialog)
 
         # load the default values (creates the needed stage widgets)
-        self.load_settings('default.json')
+        self.load_settings('default.fits')
 
     '''
     methods to get the values from the widgets and update the device.
@@ -237,56 +239,107 @@ class Gui(QMainWindow):
     # open a file dialog for the user to choose a file
     def save_settings_dialog(self):
         # open a file dialog for the user to choose a file
-        file_name, _ = QFileDialog.getSaveFileName(self, "Save Settings", "", "JSON File (*.json)")
+        file_name, _ = QFileDialog.getSaveFileName(self, "Save Settings", "", "FITS File (*.fits)")
 
         if file_name:
             self.save_settings(file_name)
 
     # open a file dialog for the user to choose a file
     def load_settings_dialog(self):
-        file_name, _ = QFileDialog.getOpenFileName(self, "Load Settings", "", "JSON File (*.json)")
+        file_name, _ = QFileDialog.getOpenFileName(self, "Load Settings", "", "FITS File (*.fits)")
 
         if file_name:
             self.load_settings(file_name)
 
     # save the settings to the file
     def save_settings(self, path):
-        data = {
-            'dc': self.extract_dc(),
-            'stages': self.extract_stages()
-        }
-        data_json = json.dumps(data, default=lambda o: o.__dict__)
+        columns = []
 
-        with open(path, 'w') as f:
-            f.write(data_json)
+        # add the stage name column
+        stage_names = [stage.button.text() for stage in self.stages]
+        stage_names.insert(0, 'dc')
+        columns.append(fits.Column(name='stage_name', format='A20', array=stage_names))
+        
+        # add the enabled column
+        enabled = [stage.enabled for stage in self.stages]
+        enabled.insert(0, True)  # dc is always enabled
+        columns.append(fits.Column(name='enabled', format='L', array=enabled))
+
+        # add columns for each variable in the gui
+        for i, variable in enumerate(self.device.variables):
+            col = variable.fits_column()
+
+            # gather the column of data
+            data = []
+            data.append(self.dc_widgets[i].to_fits())
+            for stage in self.stages:
+                value = stage.widgets[i].to_fits()
+                data.append(value)
+
+            col.array = np.stack(data)
+            columns.append(col)
+
+        hdu = fits.BinTableHDU.from_columns(columns)
+        hdu.writeto(path, overwrite=True)
 
     # load the settings from the file
     def load_settings(self, path):
-        with open(path, 'r') as f:
-            data = json.load(f)
+        # read the fits file
+        hdu = fits.open(path)[1]
+        data = hdu.data
 
         # update the dc widgets with the values from the file
-        for i, variable in enumerate(self.device.variables):
-            if variable.id in data['dc']:
-                variable.set_value(self.dc_widgets[i], data['dc'][variable.id])
+        for dc_widget in self.dc_widgets:
+            if dc_widget.variable.id in data.names:
+                dc_widget.from_fits(data[0][dc_widget.variable.id])
             else:
-                print(f"Warning: '{variable.id}' not in in dc data")
+                print(f"Warning: '{dc_widget.variable.id}' not in dc data")
+        data = data[1:]  # skip the first row which is the dc
 
         # clear the current stage widgets
         for i in reversed(range(len(self.stages))):
             self.delete_stage(i)
-
+        self.stages.clear()
+        
         # create new stage widgets based on the loaded data
-        for i, stage in enumerate(data['stages']):
+        for i, stage_row in enumerate(data):
             # create new column of widgets for the stage
-            self.insert_stage(i, name=stage['name'], enabled=stage.get('enabled', True))
+            stage_name = stage_row['stage_name'].strip()
+            enabled = stage_row['enabled']
+            self.insert_stage(len(self.stages), name=stage_name, enabled=enabled)
 
             # fill the stage widgets with the values from the file
-            for j, variable in enumerate(self.device.variables):
-                if variable.id in stage:
-                    variable.set_value(self.stages[i].widgets[j], stage[variable.id])
+            for widget in self.stages[i].widgets:
+                if widget.variable.id in data.names:
+                    widget.from_fits(stage_row[widget.variable.id])
                 else:
-                    print(f"Warning: Unknown variable '{variable.id}' in stage {i} data")
+                    print(f"Warning: Unknown variable '{widget.variable.id}' in stage {i} data")
+
+        # with open(path, 'r') as f:
+        #     data = json.load(f)
+
+        # # update the dc widgets with the values from the file
+        # for i, variable in enumerate(self.device.variables):
+        #     if variable.id in data['dc']:
+        #         variable.set_value(self.dc_widgets[i], data['dc'][variable.id])
+        #     else:
+        #         print(f"Warning: '{variable.id}' not in in dc data")
+
+        # # clear the current stage widgets
+        # for i in reversed(range(len(self.stages))):
+        #     self.delete_stage(i)
+
+        # # create new stage widgets based on the loaded data
+        # for i, stage in enumerate(data['stages']):
+        #     # create new column of widgets for the stage
+        #     self.insert_stage(i, name=stage['name'], enabled=stage.get('enabled', True))
+
+        #     # fill the stage widgets with the values from the file
+        #     for j, variable in enumerate(self.device.variables):
+        #         if variable.id in stage:
+        #             variable.set_value(self.stages[i].widgets[j], stage[variable.id])
+        #         else:
+        #             print(f"Warning: Unknown variable '{variable.id}' in stage {i} data")
 
 
 '''
@@ -299,9 +352,11 @@ if __name__ == '__main__':
     class MockDevice:
         def __init__(self):
             self.variables = [
-                VariableTypeBool("Enable", "enable"),
-                VariableTypeInt("Count", "count", 0, 100, 1),
-                VariableTypeFloat("Frequency", "frequency", 0.0, 10.0, 0.1),
+                VariableTypeFloat("Time (ms)", "time", 0.0, 10000.0, 100.0, 'ms'),
+                VariableTypeBool("Digital", "digital"),
+                VariableTypeFloat("Analog", "analog"),
+                VariableTypeFloat("Rf Magnitude", "rf_magnitude"),
+                VariableTypeFloat("Rf Freq (MHz)", "rf_freq", 1.0, 100.0, 1.0, 'MHz')
             ]
 
         def update_dc(self, dc):

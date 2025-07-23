@@ -1,5 +1,9 @@
+import numpy as np
+
 from PyQt6.QtWidgets import *
 from PyQt6.QtCore import QSize, Qt
+
+from astropy.io import fits
 
 # Used to set the maximum size of the widgets
 big = 16777215
@@ -16,6 +20,9 @@ class VariableTypeBool:
     def widget(self) -> QCheckBox:
         return BoolWidget(self)
 
+    def fits_column(self):
+        return fits.Column(name=self.id, format='2L', dim='(2)')
+
 class VariableTypeInt:
     def __init__(self, label, id, minimum=0, maximum=100, step=1):
         self.label = label
@@ -23,20 +30,28 @@ class VariableTypeInt:
         self.minimum = minimum
         self.maximum = maximum
         self.step = step
+        self.unit = unit
 
     def widget(self):
         return IntWidget(self)
+    
+    def fits_column(self):
+        return fits.Column(name=self.id, format='2K', dim='(2)')
 
 class VariableTypeFloat:
-    def __init__(self, label, id, minimum=0.0, maximum=1.0, step=0.1):
+    def __init__(self, label, id, minimum=0.0, maximum=1.0, step=0.1, unit=''):
         self.label = label
         self.id = id
         self.minimum = minimum
         self.maximum = maximum
         self.step = step
+        self.unit = unit
 
     def widget(self):
         return FloatWidget(self)
+    
+    def fits_column(self):
+        return fits.Column(name=self.id, format='2D', dim='(2)', unit=self.unit)
 
 '''
 custom widgets for the GUI
@@ -49,8 +64,8 @@ class BoolWidget(QWidget):
         self.variable = variable
 
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
-        self.addAction("Hold", self.set_hold)
-        self.addAction("Constant", self.set_constant)
+        self.addAction("Hold", self.mode_hold)
+        self.addAction("Constant", self.mode_constant)
 
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
@@ -59,30 +74,30 @@ class BoolWidget(QWidget):
         self.hold_label.setText("Hold")
         self.hold_label.setMinimumSize(QSize(0, 24))
         self.hold_label.setMaximumSize(QSize(big, 24))
+        self.hold_label.setVisible(False)
         layout.addWidget(self.hold_label)
 
         self.checkbox = QCheckBox()
         self.checkbox.setMinimumSize(QSize(0, 24))
         self.checkbox.setMaximumSize(QSize(big, 24))
         self.checkbox.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
-        self.checkbox.setVisible(False)
         layout.addWidget(self.checkbox)
 
         self.setLayout(layout)
 
-    def set_hold(self):
+    def mode_hold(self):
         self.checkbox.setVisible(False)
         self.hold_label.setVisible(True)
     
-    def set_constant(self):
+    def mode_constant(self):
         self.checkbox.setVisible(True)
         self.hold_label.setVisible(False)
 
     def get_value(self):
-        if self.checkbox.isVisible():
-            return BoolConstant(self.checkbox.isChecked())
-        else:
+        if self.hold_label.isVisible():
             return BoolHold()
+        else:
+            return BoolConstant(self.checkbox.isChecked())
     
     def set_value(self, value):
         if isinstance(value, BoolConstant):
@@ -94,9 +109,25 @@ class BoolWidget(QWidget):
             self.hold_label.setVisible(True)
         else:
             raise ValueError("Invalid value type for BoolWidget")
-    
+
     def changed_signal(self):
         return self.checkbox.stateChanged
+
+    def to_fits(self):
+        value = self.get_value()
+        output = np.zeros(2, dtype=np.bool_)
+        if isinstance(value, BoolConstant):
+            output[0] = True
+            output[1] = value.value
+        return output
+    
+    def from_fits(self, fits_data):
+        if fits_data[0]:
+            self.set_value(BoolConstant(fits_data[1]))
+        elif not fits_data[0]:
+            self.set_value(BoolHold())
+        else:
+            raise ValueError("Invalid FITS data for BoolWidget")
 
 class IntWidget(QWidget):
     def __init__(self, variable, *args, **kwargs):
@@ -105,8 +136,8 @@ class IntWidget(QWidget):
         self.variable = variable
 
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
-        self.addAction("Hold", self.set_hold)
-        self.addAction("Constant", self.set_constant)
+        self.addAction("Hold", self.mode_hold)
+        self.addAction("Constant", self.mode_constant)
 
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
@@ -115,6 +146,7 @@ class IntWidget(QWidget):
         self.hold_label.setText("Hold")
         self.hold_label.setMinimumSize(QSize(0, 24))
         self.hold_label.setMaximumSize(QSize(big, 24))
+        self.hold_label.setVisible(False)
         layout.addWidget(self.hold_label)
 
         self.spinbox = QSpinBox()
@@ -124,24 +156,23 @@ class IntWidget(QWidget):
         self.spinbox.setMaximum(variable.maximum)
         self.spinbox.setSingleStep(variable.step)
         self.spinbox.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
-        self.spinbox.setVisible(False)
         layout.addWidget(self.spinbox)
 
         self.setLayout(layout)
 
-    def set_hold(self):
+    def mode_hold(self):
         self.spinbox.setVisible(False)
         self.hold_label.setVisible(True)
     
-    def set_constant(self):
+    def mode_constant(self):
         self.spinbox.setVisible(True)
         self.hold_label.setVisible(False)
 
     def get_value(self):
-        if self.spinbox.isVisible():
-            return IntConstant(self.spinbox.value())
-        else:
+        if self.hold_label.isVisible():
             return IntHold()
+        else:
+            return IntConstant(self.spinbox.value())
 
     def set_value(self, value):
         if isinstance(value, IntConstant):
@@ -157,6 +188,22 @@ class IntWidget(QWidget):
     def changed_signal(self):
         return self.spinbox.valueChanged
 
+    def to_fits(self):
+        value = self.get_value()
+        output = np.zeros(2, dtype=np.int32)
+        if isinstance(value, IntConstant):
+            output[0] = 1
+            output[1] = value.value
+        return output
+
+    def from_fits(self, fits_data):
+        if fits_data[0] == 1:
+            self.set_value(IntConstant(fits_data[1]))
+        elif fits_data[0] == 0:
+            self.set_value(IntHold())
+        else:
+            raise ValueError("Invalid FITS data for IntWidget")
+
 class FloatWidget(QWidget):
     def __init__(self, variable, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -164,8 +211,8 @@ class FloatWidget(QWidget):
         self.variable = variable
 
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
-        self.addAction("Hold", self.set_hold)
-        self.addAction("Constant", self.set_constant)
+        self.addAction("Hold", self.mode_hold)
+        self.addAction("Constant", self.mode_constant)
 
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
@@ -174,6 +221,7 @@ class FloatWidget(QWidget):
         self.hold_label.setText("Hold")
         self.hold_label.setMinimumSize(QSize(0, 24))
         self.hold_label.setMaximumSize(QSize(big, 24))
+        self.hold_label.setVisible(False)
         layout.addWidget(self.hold_label)
 
         self.spinbox = QDoubleSpinBox()
@@ -183,24 +231,23 @@ class FloatWidget(QWidget):
         self.spinbox.setMaximum(self.variable.maximum)
         self.spinbox.setSingleStep(self.variable.step)
         self.spinbox.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
-        self.spinbox.setVisible(False)
         layout.addWidget(self.spinbox)
 
         self.setLayout(layout)
 
-    def set_hold(self):
+    def mode_hold(self):
         self.spinbox.setVisible(False)
         self.hold_label.setVisible(True)
     
-    def set_constant(self):
+    def mode_constant(self):
         self.spinbox.setVisible(True)
         self.hold_label.setVisible(False)
 
     def get_value(self):
-        if self.spinbox.isVisible():
-            return FloatConstant(self.spinbox.value())
-        else:
+        if self.hold_label.isVisible():
             return FloatHold()
+        else:
+            return FloatConstant(self.spinbox.value())
 
     def set_value(self, value):
         if isinstance(value, FloatConstant):
@@ -215,6 +262,22 @@ class FloatWidget(QWidget):
 
     def changed_signal(self):
         return self.spinbox.valueChanged
+    
+    def to_fits(self):
+        value = self.get_value()
+        output = np.zeros(2, dtype=np.float64)
+        if isinstance(value, FloatConstant):
+            output[0] = 1.0
+            output[1] = value.value
+        return output
+    
+    def from_fits(self, fits_data):
+        if fits_data[0] == 1.0:
+            self.set_value(FloatConstant(fits_data[1]))
+        elif fits_data[0] == 0.0:
+            self.set_value(FloatHold())
+        else:
+            raise ValueError("Invalid FITS data for FloatWidget")
 
 '''
 value types for the GUI

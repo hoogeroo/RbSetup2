@@ -20,3 +20,6 @@
 - 22/07/25
   - Make gui run without device so I can work on gui outside of lab
   - Add hold value to gui
+- 23/07/25
+  - Save and load hold and constant state
+  - Save and load settings to a fits file

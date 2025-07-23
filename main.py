@@ -13,11 +13,11 @@ class Device(EnvExperiment):
         self.setattr_device('urukul0_ch0')
 
         self.variables = [
-            VariableTypeFloat("Time (ms)", "time", 0.0, 10000.0, 100.0),
+            VariableTypeFloat("Time (ms)", "time", 0.0, 10000.0, 100.0, 'ms'),
             VariableTypeBool("Digital", "digital"),
             VariableTypeFloat("Analog", "analog"),
             VariableTypeFloat("Rf Magnitude", "rf_magnitude"),
-            VariableTypeFloat("Rf Freq (MHz)", "rf_freq", 1.0, 100.0, 1.0)
+            VariableTypeFloat("Rf Freq (MHz)", "rf_freq", 1.0, 100.0, 1.0, 'MHz')
         ]
 
     @host_only
