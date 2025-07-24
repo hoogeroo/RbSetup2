@@ -44,18 +44,18 @@ class Device(EnvExperiment):
         self.core.break_realtime()
 
         # update digital output
-        if dc.digital:
+        if dc.digital.constant_value():
             self.ttl5.on()
         else:
             self.ttl5.off()
 
         # update analog output
-        self.fastino0.set_dac(0, dc.analog)
+        self.fastino0.set_dac(0, dc.analog.constant_value())
 
         # update rf output
         self.urukul0_ch0.set(
-            dc.rf_freq * MHz,
-            amplitude=dc.rf_magnitude
+            dc.rf_freq.constant_value() * MHz,
+            amplitude=dc.rf_magnitude.constant_value()
         )
 
     @kernel
@@ -68,16 +68,19 @@ class Device(EnvExperiment):
                 continue
 
             # update digital output
-            if stage.digital:
-                self.ttl5.on()
-            else:
-                self.ttl5.off()
+            if stage.digital.is_constant():
+                if stage.digital.constant_value():
+                    self.ttl5.on()
+                else:
+                    self.ttl5.off()
 
             # update analog output
-            self.fastino0.set_dac(0, stage.analog)
+            if stage.analog.is_constant():
+                self.fastino0.set_dac(0, stage.analog.constant_value())
 
             # update rf output
-            self.urukul0_ch0.set(stage.rf_freq * MHz, amplitude=stage.rf_magnitude)
+            if stage.rf_freq.is_constant() and stage.rf_magnitude.is_constant():
+                self.urukul0_ch0.set(stage.rf_freq.constant_value() * MHz, amplitude=stage.rf_magnitude.constant_value())
 
             # wait for a short time to simulate the experiment duration
-            delay(stage.time * ms)
+            delay(stage.time.constant_value() * ms)

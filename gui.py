@@ -271,9 +271,9 @@ class Gui(QMainWindow):
 
             # gather the column of data
             data = []
-            data.append(self.dc_widgets[i].to_value().array)
+            data.append(self.dc_widgets[i].get_value().array)
             for stage in self.stages:
-                value = stage.widgets[i].to_value().array
+                value = stage.widgets[i].get_value().array
                 data.append(value)
 
             col.array = np.stack(data)
