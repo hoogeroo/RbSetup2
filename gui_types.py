@@ -16,6 +16,7 @@ class VariableTypeBool:
     def __init__(self, label, id):
         self.label = label
         self.id = id
+        self.value_type = BoolValue
 
     def widget(self) -> QCheckBox:
         return BoolWidget(self)
@@ -31,6 +32,7 @@ class VariableTypeInt:
         self.maximum = maximum
         self.step = step
         self.unit = unit
+        self.value_type = IntValue
 
     def widget(self):
         return IntWidget(self)
@@ -46,6 +48,7 @@ class VariableTypeFloat:
         self.maximum = maximum
         self.step = step
         self.unit = unit
+        self.value_type = FloatValue
 
     def widget(self):
         return FloatWidget(self)
@@ -95,39 +98,21 @@ class BoolWidget(QWidget):
 
     def get_value(self):
         if self.hold_label.isVisible():
-            return BoolHold()
+            return BoolValue.hold()
         else:
-            return BoolConstant(self.checkbox.isChecked())
-    
+            return BoolValue.constant(self.checkbox.isChecked())
+
     def set_value(self, value):
-        if isinstance(value, BoolConstant):
-            self.checkbox.setChecked(value.value)
+        if value.is_constant():
+            self.checkbox.setChecked(value.constant_value())
             self.checkbox.setVisible(True)
             self.hold_label.setVisible(False)
-        elif isinstance(value, BoolHold):
+        elif value.is_hold():
             self.checkbox.setVisible(False)
             self.hold_label.setVisible(True)
-        else:
-            raise ValueError("Invalid value type for BoolWidget")
 
     def changed_signal(self):
         return self.checkbox.stateChanged
-
-    def to_fits(self):
-        value = self.get_value()
-        output = np.zeros(2, dtype=np.bool_)
-        if isinstance(value, BoolConstant):
-            output[0] = True
-            output[1] = value.value
-        return output
-    
-    def from_fits(self, fits_data):
-        if fits_data[0]:
-            self.set_value(BoolConstant(fits_data[1]))
-        elif not fits_data[0]:
-            self.set_value(BoolHold())
-        else:
-            raise ValueError("Invalid FITS data for BoolWidget")
 
 class IntWidget(QWidget):
     def __init__(self, variable, *args, **kwargs):
@@ -170,39 +155,21 @@ class IntWidget(QWidget):
 
     def get_value(self):
         if self.hold_label.isVisible():
-            return IntHold()
+            return IntValue.hold()
         else:
-            return IntConstant(self.spinbox.value())
+            return IntValue.constant(self.spinbox.value())
 
     def set_value(self, value):
-        if isinstance(value, IntConstant):
-            self.spinbox.setValue(value.value)
+        if value.is_constant():
+            self.spinbox.setValue(value.constant_value())
             self.spinbox.setVisible(True)
             self.hold_label.setVisible(False)
-        elif isinstance(value, IntHold):
+        elif value.is_hold():
             self.spinbox.setVisible(False)
             self.hold_label.setVisible(True)
-        else:
-            raise ValueError("Invalid value type for IntWidget")
 
     def changed_signal(self):
         return self.spinbox.valueChanged
-
-    def to_fits(self):
-        value = self.get_value()
-        output = np.zeros(2, dtype=np.int32)
-        if isinstance(value, IntConstant):
-            output[0] = 1
-            output[1] = value.value
-        return output
-
-    def from_fits(self, fits_data):
-        if fits_data[0] == 1:
-            self.set_value(IntConstant(fits_data[1]))
-        elif fits_data[0] == 0:
-            self.set_value(IntHold())
-        else:
-            raise ValueError("Invalid FITS data for IntWidget")
 
 class FloatWidget(QWidget):
     def __init__(self, variable, *args, **kwargs):
@@ -245,61 +212,163 @@ class FloatWidget(QWidget):
 
     def get_value(self):
         if self.hold_label.isVisible():
-            return FloatHold()
+            return FloatValue.hold()
         else:
-            return FloatConstant(self.spinbox.value())
+            return FloatValue.constant(self.spinbox.value())
 
     def set_value(self, value):
-        if isinstance(value, FloatConstant):
-            self.spinbox.setValue(value.value)
+        if value.is_constant():
+            self.spinbox.setValue(value.constant_value())
             self.spinbox.setVisible(True)
             self.hold_label.setVisible(False)
-        elif isinstance(value, FloatHold):
+        elif value.is_hold():
             self.spinbox.setVisible(False)
             self.hold_label.setVisible(True)
-        else:
-            raise ValueError("Invalid value type for FloatWidget")
 
     def changed_signal(self):
         return self.spinbox.valueChanged
-    
-    def to_fits(self):
-        value = self.get_value()
-        output = np.zeros(2, dtype=np.float64)
-        if isinstance(value, FloatConstant):
-            output[0] = 1.0
-            output[1] = value.value
-        return output
-    
-    def from_fits(self, fits_data):
-        if fits_data[0] == 1.0:
-            self.set_value(FloatConstant(fits_data[1]))
-        elif fits_data[0] == 0.0:
-            self.set_value(FloatHold())
-        else:
-            raise ValueError("Invalid FITS data for FloatWidget")
 
 '''
 value types for the GUI
 '''
 
-class BoolHold:
-    pass
+class BoolValue:
+    def __init__(self):
+        self.array = np.zeros(2, dtype=np.bool_)
 
-class BoolConstant:
-    def __init__(self, value):
-        self.value = value
+    def to_array(self):
+        return self.array
+        
+    def from_array(array):
+        if array.shape != (2,):
+            raise ValueError("Array must have shape (2,)")
+        if not np.issubdtype(array.dtype, np.bool_):
+            raise ValueError("Array must be of boolean type")
+        if array[0] not in (False, True):
+            raise ValueError("First element of array must be False (hold) or True (constant)")
+        value = BoolValue()
+        value.array = array
+        return value
 
-class IntHold:
-    pass
+    def set_hold(self):
+        self.array[0] = False
+        self.array[1] = False
+    
+    def set_constant(self, value):
+        self.array[0] = True
+        self.array[1] = value
+    
+    def hold():
+        value = BoolValue()
+        value.set_hold()
+        return value
+    
+    def constant(value):
+        bool_value = BoolValue()
+        bool_value.set_constant(value)
+        return bool_value
 
-class IntConstant:
-    def __init__(self, value):
-        self.value = value
+    def is_hold(self):
+        return self.array[0] == False
 
-class FloatHold:
-    pass
+    def is_constant(self):
+        return self.array[0] == True
 
-class FloatConstant:
-    def __init__(self, value):
-        self.value = value
+    def constant_value(self):
+        if not self.is_constant():
+            raise ValueError("Value is not constant")
+        return self.array[1]
+
+class IntValue:
+    def __init__(self):
+        self.array = np.zeros(2, dtype=np.int64)
+
+    def to_array(self):
+        return self.array
+
+    def from_array(array):
+        if array.shape != (2,):
+            raise ValueError("Array must have shape (2,)")
+        if not np.issubdtype(array.dtype, np.integer):
+            raise ValueError("Array must be of integer type")
+        if array[0] not in (0, 1):
+            raise ValueError("First element of array must be 0 (hold) or 1 (constant)")
+        value = IntValue()
+        value.array = array
+        return value
+
+    def set_hold(self):
+        self.array[0] = 0
+        self.array[1] = 0
+
+    def set_constant(self, value):
+        self.array[0] = 1
+        self.array[1] = value
+    
+    def hold():
+        value = IntValue()
+        value.set_hold()
+        return value
+
+    def constant(value):
+        int_value = IntValue()
+        int_value.set_constant(value)
+        return int_value
+
+    def is_hold(self):
+        return self.array[0] == 0
+    
+    def is_constant(self):
+        return self.array[0] == 1
+    
+    def constant_value(self):
+        if not self.is_constant():
+            raise ValueError("Value is not constant")
+        return self.array[1]
+
+class FloatValue:
+    def __init__(self):
+        self.array = np.zeros(2, dtype=np.float64)
+
+    def to_array(self):
+        return self.array
+    
+    def from_array(array):
+        if array.shape != (2,):
+            raise ValueError("Array must have shape (2,)")
+        if not np.issubdtype(array.dtype, np.floating):
+            raise ValueError("Array must be of floating point type")
+        if array[0] not in (0.0, 1.0):
+            raise ValueError("First element of array must be 0.0 (hold) or 1.0 (constant)")
+        value = FloatValue()
+        value.array = array
+        return value
+
+    def set_hold(self):
+        self.array[0] = 0.0
+        self.array[1] = 0.0
+
+    def set_constant(self, value):
+        self.array[0] = 1.0
+        self.array[1] = value
+    
+    def hold():
+        value = FloatValue()
+        value.set_hold()
+        return value
+
+    def constant(value):
+        float_value = FloatValue()
+        float_value.set_constant(value)
+        return float_value
+
+    def is_hold(self):
+        return self.array[0] == 0.0
+
+    def is_constant(self):
+        return self.array[0] == 1.0
+
+    def constant_value(self):
+        if not self.is_constant():
+            raise ValueError("Value is not constant")
+        return self.array[1]

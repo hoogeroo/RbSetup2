@@ -271,9 +271,9 @@ class Gui(QMainWindow):
 
             # gather the column of data
             data = []
-            data.append(self.dc_widgets[i].to_fits())
+            data.append(self.dc_widgets[i].to_value().array)
             for stage in self.stages:
-                value = stage.widgets[i].to_fits()
+                value = stage.widgets[i].to_value().array
                 data.append(value)
 
             col.array = np.stack(data)
@@ -291,7 +291,9 @@ class Gui(QMainWindow):
         # update the dc widgets with the values from the file
         for dc_widget in self.dc_widgets:
             if dc_widget.variable.id in data.names:
-                dc_widget.from_fits(data[0][dc_widget.variable.id])
+                array = data[0][dc_widget.variable.id]
+                value = dc_widget.variable.value_type.from_array(array)
+                dc_widget.set_value(value)
             else:
                 print(f"Warning: '{dc_widget.variable.id}' not in dc data")
         data = data[1:]  # skip the first row which is the dc
@@ -311,36 +313,11 @@ class Gui(QMainWindow):
             # fill the stage widgets with the values from the file
             for widget in self.stages[i].widgets:
                 if widget.variable.id in data.names:
-                    widget.from_fits(stage_row[widget.variable.id])
+                    array = stage_row[widget.variable.id]
+                    value = widget.variable.value_type.from_array(array)
+                    widget.set_value(value)
                 else:
                     print(f"Warning: Unknown variable '{widget.variable.id}' in stage {i} data")
-
-        # with open(path, 'r') as f:
-        #     data = json.load(f)
-
-        # # update the dc widgets with the values from the file
-        # for i, variable in enumerate(self.device.variables):
-        #     if variable.id in data['dc']:
-        #         variable.set_value(self.dc_widgets[i], data['dc'][variable.id])
-        #     else:
-        #         print(f"Warning: '{variable.id}' not in in dc data")
-
-        # # clear the current stage widgets
-        # for i in reversed(range(len(self.stages))):
-        #     self.delete_stage(i)
-
-        # # create new stage widgets based on the loaded data
-        # for i, stage in enumerate(data['stages']):
-        #     # create new column of widgets for the stage
-        #     self.insert_stage(i, name=stage['name'], enabled=stage.get('enabled', True))
-
-        #     # fill the stage widgets with the values from the file
-        #     for j, variable in enumerate(self.device.variables):
-        #         if variable.id in stage:
-        #             variable.set_value(self.stages[i].widgets[j], stage[variable.id])
-        #         else:
-        #             print(f"Warning: Unknown variable '{variable.id}' in stage {i} data")
-
 
 '''
 abstractions over the different variable types and corresponding

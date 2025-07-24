@@ -23,3 +23,5 @@
 - 23/07/25
   - Save and load hold and constant state
   - Save and load settings to a fits file
+- 24/07/25
+  - Refactor to remove multiple class value types
