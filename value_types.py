@@ -1,3 +1,7 @@
+'''
+value_types.py: contains abstractions over the different variable types used by the device with interpolation settings built in
+'''
+
 import numpy as np
 
 # optionally import portable decorator for so this works without artiq

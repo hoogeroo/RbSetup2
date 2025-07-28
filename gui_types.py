@@ -1,3 +1,7 @@
+'''
+gui_types.py: abstraction boilerplate for the various variable types used in gui and custom gui widgets for each variable type
+'''
+
 import numpy as np
 
 from PyQt6.QtWidgets import *

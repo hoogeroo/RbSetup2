@@ -1,9 +1,14 @@
+'''
+main.py: connects to the artiq device and starts the gui
+'''
+
 from artiq.experiment import *
 
 import numpy as np
 import scipy as sp
 
 from gui import *
+from value_types import *
 
 class Device(EnvExperiment):
     def build(self):

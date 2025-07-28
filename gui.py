@@ -1,3 +1,7 @@
+'''
+gui.py: creates the main gui and sends commands to main.py to interface with the device
+'''
+
 import numpy as np
 import json
 
