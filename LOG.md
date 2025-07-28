@@ -25,3 +25,5 @@
   - Save and load settings to a fits file
 - 24/07/25
   - Refactor to remove multiple class value types
+- 25/07/25
+  - Work on setting up picam sdk on linux to simplify connecting to the camera
