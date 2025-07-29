@@ -27,3 +27,5 @@
   - Refactor to remove multiple class value types
 - 25/07/25
   - Work on setting up picam sdk on linux to simplify connecting to the camera
+- 25/07/25
+  - Connect to existing camera server and get images back from it
