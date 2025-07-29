@@ -12,6 +12,7 @@ from PyQt6.uic import loadUi
 from astropy.io import fits
 
 from gui_types import *
+from camera import CameraConnection
 
 # dummy class used to represent the device's digital and analog outputs
 # this class will be fill with ids set in the variables array then 
@@ -133,7 +134,20 @@ class Gui(QMainWindow):
 
     # runs the experiment and using the data from the widgets
     def submit_experiment(self):
+        # tell the camera server to acquire a frame
+        camera = CameraConnection()
+        camera.shoot(1)
+
+        # run the actual experiment
         self.device.run_experiment(self.extract_stages())
+
+        # read the image from the camera server
+        picture = camera.read(timeout=1)
+
+        import matplotlib.pyplot as plt
+
+        plt.imshow(picture[0, :, :], aspect='auto')
+        plt.show()
 
     '''
     methods for renaming, copying, creating and deleting stages

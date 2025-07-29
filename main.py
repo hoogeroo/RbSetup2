@@ -65,6 +65,7 @@ class Device(EnvExperiment):
 
     @kernel
     def run_experiment(self, stages):
+        # reset the cores timer for the new experiment
         self.core.break_realtime()
 
         # iterate through the stages and get their values
