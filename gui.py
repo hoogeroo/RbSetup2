@@ -5,6 +5,9 @@ gui.py: creates the main gui and sends commands to main.py to interface with the
 import numpy as np
 import json
 
+from matplotlib.backends.backend_qtagg import FigureCanvas
+from matplotlib.figure import Figure
+
 from PyQt6.QtWidgets import *
 from PyQt6.QtCore import QSize, Qt
 from PyQt6.uic import loadUi
@@ -49,6 +52,13 @@ class Gui(QMainWindow):
 
         # to see what this does you can run `pyuic6 gui.ui | code -`
         loadUi('gui.ui', self)
+
+        # plot
+        static_canvas = FigureCanvas(Figure(figsize=(5, 3)))
+        ax = static_canvas.figure.subplots()
+        t = np.linspace(0, 10, 501)
+        ax.plot(t, np.sin(t), ".")
+        self.grid_layout.addWidget(static_canvas, 1, 4, 1, 1)
 
         # store reference to all the widgets to get their values later
         self.dc_widgets = []
