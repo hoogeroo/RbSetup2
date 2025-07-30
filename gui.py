@@ -53,12 +53,13 @@ class Gui(QMainWindow):
         # to see what this does you can run `pyuic6 gui.ui | code -`
         loadUi('gui.ui', self)
 
+        # remove central widget since we are using docks
+        self.setCentralWidget(None)
+
         # plot
-        static_canvas = FigureCanvas(Figure(figsize=(5, 3)))
-        ax = static_canvas.figure.subplots()
-        t = np.linspace(0, 10, 501)
-        ax.plot(t, np.sin(t), ".")
-        self.grid_layout.addWidget(static_canvas, 1, 4, 1, 1)
+        self.camera_canvas = FigureCanvas(Figure(figsize=(5, 3)))
+        self.camera_ax = self.camera_canvas.figure.subplots()
+        self.camera_grid.addWidget(self.camera_canvas, 1, 4, 1, 1)
 
         # store reference to all the widgets to get their values later
         self.dc_widgets = []
@@ -154,10 +155,11 @@ class Gui(QMainWindow):
         # read the image from the camera server
         picture = camera.read(timeout=1)
 
-        import matplotlib.pyplot as plt
-
-        plt.imshow(picture[0, :, :], aspect='auto')
-        plt.show()
+        # plot the image
+        self.camera_ax.clear()
+        self.camera_ax.imshow(picture[0, :, :], aspect='equal')
+        self.camera_canvas.figure.colorbar(self.camera_ax.images[0], ax=self.camera_ax)
+        self.camera_canvas.draw()
 
     '''
     methods for renaming, copying, creating and deleting stages
