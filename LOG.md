@@ -29,3 +29,5 @@
   - Work on setting up picam sdk on linux to simplify connecting to the camera
 - 25/07/25
   - Connect to existing camera server and get images back from it
+- 25/07/25
+  - Look into threading to stop the gui freezing and to load the MOT
