@@ -25,9 +25,13 @@
   - Save and load settings to a fits file
 - 24/07/25
   - Refactor to remove multiple class value types
-- 25/07/25
+- 28/07/25
   - Work on setting up picam sdk on linux to simplify connecting to the camera
-- 25/07/25
+- 29/07/25
   - Connect to existing camera server and get images back from it
-- 25/07/25
+- 30/07/25
+  - Add matplotlib window to the gui
+- 31/07/25
   - Look into threading to stop the gui freezing and to load the MOT
+- 1/08/25
+  - Split gui into seperate python process to let device run independently

@@ -4,6 +4,8 @@ main.py: connects to the artiq device and starts the gui
 
 from artiq.experiment import *
 
+from multiprocessing import Process, Pipe
+
 import numpy as np
 import scipy as sp
 
@@ -29,10 +31,33 @@ class Device(EnvExperiment):
     def run(self):
         self.init_device()
 
-        app = QApplication([])
-        gui = Gui(self)
-        gui.show()
-        app.exec()
+        # create a pipe for communication between the gui and the device
+        receiver, sender = Pipe()
+
+        # start the gui in a separate process
+        self.gui_process = Process(target=run_gui, args=(self.variables, sender,))
+        self.gui_process.daemon = True # so gui exits when main process exits
+        self.gui_process.start()
+
+        # wait for the gui to send a message
+        while True:
+            msg = receiver.recv()
+            
+            if type(msg) is Dc:
+                # update the device with the new values
+                self.update_dc(msg)
+            elif type(msg) is list:
+                # run the experiment with the provided stages
+                self.run_experiment(msg)
+            else:
+                print(f"Received unknown message type: {type(msg)}")
+                break
+        
+        print("Exiting...")
+
+        # stop the gui process
+        self.gui_process.terminate()
+        self.gui_process.join()
 
     @kernel
     def init_device(self):

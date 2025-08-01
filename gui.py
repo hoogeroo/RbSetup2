@@ -17,6 +17,12 @@ from astropy.io import fits
 from gui_types import *
 from camera import CameraConnection
 
+def run_gui(variables, sender):
+    app = QApplication([])
+    gui = Gui(variables, sender)
+    gui.show()
+    app.exec()
+
 # dummy class used to represent the device's digital and analog outputs
 # this class will be fill with ids set in the variables array then 
 # sent to the device
@@ -30,8 +36,9 @@ class Stage:
         self.name = name
         self.enabled = enabled
 
+# class to represent a stage in the gui. differs from Stage in that it can't be sent to the device
 class GuiStage:
-    def __init__(self, button, container, widgets, values, enabled=True):
+    def __init__(self, button, container, widgets, enabled=True):
         self.button = button
         self.container = container
         self.widgets = widgets
@@ -46,9 +53,10 @@ class Gui(QMainWindow):
     It creates the layout, widgets, and connects signals to the device methods.
     The gui is built using PyQt6 and the layout is defined in `gui.ui`.
     '''
-    def __init__(self, device):
+    def __init__(self, variables, sender):
         super(Gui, self).__init__()
-        self.device = device
+        self.variables = variables
+        self.sender = sender
 
         # to see what this does you can run `pyuic6 gui.ui | code -`
         loadUi('gui.ui', self)
@@ -78,7 +86,7 @@ class Gui(QMainWindow):
         self.copied_container.addWidget(spacers[2])
 
         # fill dc, label, and copied containers with widgets
-        for i, variable in enumerate(self.device.variables):
+        for i, variable in enumerate(self.variables):
             # add the widget to the dc container
             dc_widget = variable.widget()
             if i == 0:
@@ -123,7 +131,7 @@ class Gui(QMainWindow):
     def extract_dc(self) -> Dc:
         # uses setattr to dynamically create a Dc object with the values from the widgets
         dc = Dc()
-        for i, variable in enumerate(self.device.variables):
+        for i, variable in enumerate(self.variables):
             setattr(dc, variable.id, self.dc_widgets[i].get_value())
         return dc
 
@@ -133,7 +141,7 @@ class Gui(QMainWindow):
         stages = []
         for i in range(len(self.stages)):
             stage = Stage(self.stages[i].button.text(), self.stages[i].enabled)
-            for j, variable in enumerate(self.device.variables):
+            for j, variable in enumerate(self.variables):
                 value = self.stages[i].widgets[j].get_value()
                 setattr(stage, variable.id, value)
             stages.append(stage)
@@ -141,25 +149,30 @@ class Gui(QMainWindow):
 
     # updates the device with the values from the widgets
     def update_dc(self):
-        self.device.update_dc(self.extract_dc())
+        self.sender.send(self.extract_dc())
 
     # runs the experiment and using the data from the widgets
     def submit_experiment(self):
         # tell the camera server to acquire a frame
-        camera = CameraConnection()
-        camera.shoot(1)
+        try:
+            camera = CameraConnection()
+            camera.shoot(1)
+        except Exception as e:
+            camera = None
+            print("Error occurred while shooting:", e)
 
         # run the actual experiment
-        self.device.run_experiment(self.extract_stages())
+        self.sender.send(self.extract_stages())
 
-        # read the image from the camera server
-        picture = camera.read(timeout=1)
+        if camera:
+            # read the image from the camera server
+            picture = camera.read(timeout=1)
 
-        # plot the image
-        self.camera_ax.clear()
-        self.camera_ax.imshow(picture[0, :, :], aspect='equal')
-        self.camera_canvas.figure.colorbar(self.camera_ax.images[0], ax=self.camera_ax)
-        self.camera_canvas.draw()
+            # plot the image
+            self.camera_ax.clear()
+            self.camera_ax.imshow(picture[0, :, :], aspect='equal')
+            self.camera_canvas.figure.colorbar(self.camera_ax.images[0], ax=self.camera_ax)
+            self.camera_canvas.draw()
 
     '''
     methods for renaming, copying, creating and deleting stages
@@ -194,7 +207,7 @@ class Gui(QMainWindow):
 
         # create widgets for each variable and add them to the layout
         widgets = []
-        for variable in self.device.variables:
+        for variable in self.variables:
             widget = variable.widget()
             stage_container.addWidget(widget)
             widgets.append(widget)
@@ -232,13 +245,13 @@ class Gui(QMainWindow):
 
     # copies the right clicked stage's values to the copied widgets
     def copy_stage(self, idx: int):
-        for i, variable in enumerate(self.device.variables):
+        for i, variable in enumerate(self.variables):
             value = self.stages[idx].widgets[i].get_value()
             self.copy_widgets[i].set_value(value)
 
     # pastes the copied values to the right clicked stage
     def paste_stage(self, idx: int):
-        for i, variable in enumerate(self.device.variables):
+        for i, variable in enumerate(self.variables):
             value = self.copy_widgets[i].get_value()
             self.stages[idx].widgets[i].set_value(value)
 
@@ -296,7 +309,7 @@ class Gui(QMainWindow):
         columns.append(fits.Column(name='enabled', format='L', array=enabled))
 
         # add columns for each variable in the gui
-        for i, variable in enumerate(self.device.variables):
+        for i, variable in enumerate(self.variables):
             col = variable.fits_column()
 
             # gather the column of data
