@@ -49,6 +49,9 @@ class Device(EnvExperiment):
             elif type(msg) is list:
                 # run the experiment with the provided stages
                 self.run_experiment(msg)
+            elif msg == "exit":
+                # exit the loop and stop the gui process
+                break
             else:
                 print(f"Received unknown message type: {type(msg)}")
                 break

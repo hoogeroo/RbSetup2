@@ -123,6 +123,9 @@ class Gui(QMainWindow):
         # load the default values (creates the needed stage widgets)
         self.load_settings('default.fits')
 
+    def closeEvent(self, event):
+        self.sender.send("exit")
+
     '''
     methods to get the values from the widgets and update the device.
     '''
