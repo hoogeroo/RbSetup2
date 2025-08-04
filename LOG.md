@@ -35,3 +35,5 @@
   - Look into threading to stop the gui freezing and to load the MOT
 - 1/08/25
   - Split gui into seperate python process to let device run independently
+- 4/08/25
+  - Figuring out how to break a loop from a pipe message cleanly

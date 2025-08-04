@@ -32,7 +32,7 @@ class Device(EnvExperiment):
         self.init_device()
 
         # create a pipe for communication between the gui and the device
-        receiver, sender = Pipe()
+        receiver, sender = Pipe(False)
 
         # start the gui in a separate process
         self.gui_process = Process(target=run_gui, args=(self.variables, sender,))
@@ -42,7 +42,7 @@ class Device(EnvExperiment):
         # wait for the gui to send a message
         while True:
             msg = receiver.recv()
-            
+
             if type(msg) is Dc:
                 # update the device with the new values
                 self.update_dc(msg)
