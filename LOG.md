@@ -37,3 +37,5 @@
   - Split gui into seperate python process to let device run independently
 - 4/08/25
   - Figuring out how to break a loop from a pipe message cleanly
+- 5/08/25
+  - Add load mot button

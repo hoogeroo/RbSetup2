@@ -18,6 +18,7 @@ class Device(AbstractDevice, EnvExperiment):
 
         self.setattr_device("core")
         self.setattr_device("ttl5")
+        self.setattr_device("ttl6")
         self.setattr_device('fastino0')
         self.setattr_device('urukul0_ch0')
 
@@ -84,3 +85,11 @@ class Device(AbstractDevice, EnvExperiment):
 
             # wait for a short time to simulate the experiment duration
             delay(stage.time.constant_value() * ms)
+
+    @kernel
+    def pulse_push_laser(self):
+        # push the laser for a short time
+        self.core.break_realtime()
+        self.ttl6.on()
+        delay(10 * ms)
+        self.ttl6.off()
