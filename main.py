@@ -2,65 +2,31 @@
 main.py: connects to the artiq device and starts the gui
 '''
 
-from artiq.experiment import *
-
-from multiprocessing import Process, Pipe
-
 import numpy as np
 import scipy as sp
 
+from device import AbstractDevice
 from gui import *
 from value_types import *
 
-class Device(EnvExperiment):
+from artiq.experiment import *
+
+class Device(AbstractDevice, EnvExperiment):
     def build(self):
+        # initializes the variables for the device and gui
+        AbstractDevice.build(self)
+
         self.setattr_device("core")
         self.setattr_device("ttl5")
         self.setattr_device('fastino0')
         self.setattr_device('urukul0_ch0')
 
-        self.variables = [
-            VariableTypeFloat("Time (ms)", "time", 0.0, 10000.0, 100.0, 'ms'),
-            VariableTypeBool("Digital", "digital"),
-            VariableTypeFloat("Analog", "analog"),
-            VariableTypeFloat("Rf Magnitude", "rf_magnitude"),
-            VariableTypeFloat("Rf Freq (MHz)", "rf_freq", 1.0, 100.0, 1.0, 'MHz')
-        ]
-
     @host_only
     def run(self):
         self.init_device()
 
-        # create a pipe for communication between the gui and the device
-        receiver, sender = Pipe(False)
-
-        # start the gui in a separate process
-        self.gui_process = Process(target=run_gui, args=(self.variables, sender,))
-        self.gui_process.daemon = True # so gui exits when main process exits
-        self.gui_process.start()
-
-        # wait for the gui to send a message
-        while True:
-            msg = receiver.recv()
-
-            if type(msg) is Dc:
-                # update the device with the new values
-                self.update_dc(msg)
-            elif type(msg) is list:
-                # run the experiment with the provided stages
-                self.run_experiment(msg)
-            elif msg == "exit":
-                # exit the loop and stop the gui process
-                break
-            else:
-                print(f"Received unknown message type: {type(msg)}")
-                break
-        
-        print("Exiting...")
-
-        # stop the gui process
-        self.gui_process.terminate()
-        self.gui_process.join()
+        # runs the gui in a separate process
+        AbstractDevice.run(self)
 
     @kernel
     def init_device(self):

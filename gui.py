@@ -14,8 +14,8 @@ from PyQt6.uic import loadUi
 
 from astropy.io import fits
 
-from gui_types import *
 from camera import CameraConnection
+from gui_types import *
 
 def run_gui(variables, sender):
     app = QApplication([])
@@ -364,32 +364,3 @@ class Gui(QMainWindow):
                     widget.set_value(value)
                 else:
                     print(f"Warning: Unknown variable '{widget.variable.id}' in stage {i} data")
-
-'''
-abstractions over the different variable types and corresponding
-widget types used in the gui
-'''
-
-# for running the gui without the device
-if __name__ == '__main__':
-    class MockDevice:
-        def __init__(self):
-            self.variables = [
-                VariableTypeFloat("Time (ms)", "time", 0.0, 10000.0, 100.0, 'ms'),
-                VariableTypeBool("Digital", "digital"),
-                VariableTypeFloat("Analog", "analog"),
-                VariableTypeFloat("Rf Magnitude", "rf_magnitude"),
-                VariableTypeFloat("Rf Freq (MHz)", "rf_freq", 1.0, 100.0, 1.0, 'MHz')
-            ]
-
-        def update_dc(self, dc):
-            print("DC updated:", dc)
-
-        def run_experiment(self, stages):
-            print("Experiment run with stages:", stages)
-
-    app = QApplication([])
-    device = MockDevice()
-    gui = Gui(device)
-    gui.show()
-    app.exec()

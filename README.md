@@ -13,6 +13,7 @@ If pinging the core device works but communication with the core device doesn't 
 * To edit the gui open [`gui.ui`](gui.ui) in [qt creator](https://snapcraft.io/qtcreator-ros) or qt designer
 * It seems you can't hop between host and device more than once, i.e device -> host -> device won't work. However some functions like `print` seem to be handled specially and do work
 * 32 bit floats dont work
+* To run the gui without artiq you can run the `device.py` file: `python3 device.py`
 
 ## Resources
 
