@@ -1,6 +1,6 @@
 from multiprocessing import Process, Pipe
 
-from gui import Dc, Stage, run_gui
+from gui import Dc, DeviceSettings, run_gui
 from gui_types import *
 
 '''
@@ -26,23 +26,35 @@ class AbstractDevice:
         self.gui_process.daemon = True # so gui exits when main process exits
         self.gui_process.start()
 
+        # initialize the device settings
+        self.device_settings = DeviceSettings()
+
         # wait for the gui to send a message
         while True:
-            msg = receiver.recv()
+            # check for messages from the gui
+            if receiver.poll(0.1):
+                msg = receiver.recv()
 
-            if type(msg) is Dc:
-                # update the device with the new values
-                self.update_dc(msg)
-            elif type(msg) is list:
-                # run the experiment with the provided stages
-                self.run_experiment(msg)
-            elif msg == "exit":
-                # exit the loop and stop the gui process
-                break
-            else:
-                print(f"Received unknown message type: {type(msg)}")
-                break
-        
+                if type(msg) is Dc:
+                    # update the device with the new values
+                    self.update_dc(msg)
+                elif type(msg) is list:
+                    # run the experiment with the provided stages
+                    self.run_experiment(msg)
+                elif type(msg) is DeviceSettings:
+                    # update the device settings
+                    self.device_settings = msg
+                elif not self.gui_process.is_alive():
+                    print("GUI process has exited")
+                    break
+                else:
+                    print(f"Received unknown message type: {type(msg)}")
+                    break
+
+            # pulse the push laser if requested
+            if self.device_settings.load_mot:
+                self.pulse_push_laser()
+
         print("Exiting...")
 
         # stop the gui process
@@ -56,6 +68,10 @@ class AbstractDevice:
     # dummy method to be overridden by the device
     def run_experiment(self, stages):
         print("Experiment run with stages:", stages)
+    
+    # pulse push laser
+    def pulse_push_laser(self):
+        print("Pulsing push laser")
 
 if __name__ == '__main__':
     device = AbstractDevice()

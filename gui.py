@@ -3,16 +3,14 @@ gui.py: creates the main gui and sends commands to main.py to interface with the
 '''
 
 import numpy as np
-import json
-
-from matplotlib.backends.backend_qtagg import FigureCanvas
-from matplotlib.figure import Figure
+from astropy.io import fits
 
 from PyQt6.QtWidgets import *
 from PyQt6.QtCore import QSize, Qt
 from PyQt6.uic import loadUi
 
-from astropy.io import fits
+from matplotlib.backends.backend_qtagg import FigureCanvas
+from matplotlib.figure import Figure
 
 from camera import CameraConnection
 from gui_types import *
@@ -46,6 +44,11 @@ class GuiStage:
 
     def update_widgets(self):
         pass
+
+# device settings that aren't directly related to the experiment stages or dc values
+class DeviceSettings:
+    def __init__(self, load_mot=False):
+        self.load_mot = load_mot
 
 class Gui(QMainWindow):
     '''
@@ -116,15 +119,15 @@ class Gui(QMainWindow):
         # connect the run button to the submit_experiment method
         self.run_experiment.clicked.connect(self.submit_experiment)
 
+        # connect the load mot checkbox to the update_device_settings method
+        self.load_mot.stateChanged.connect(self.update_device_settings)
+
         # connect the actions
         self.action_save.triggered.connect(self.save_settings_dialog)
         self.action_load.triggered.connect(self.load_settings_dialog)
 
         # load the default values (creates the needed stage widgets)
         self.load_settings('default.fits')
-
-    def closeEvent(self, event):
-        self.sender.send("exit")
 
     '''
     methods to get the values from the widgets and update the device.
@@ -176,6 +179,14 @@ class Gui(QMainWindow):
             self.camera_ax.imshow(picture[0, :, :], aspect='equal')
             self.camera_canvas.figure.colorbar(self.camera_ax.images[0], ax=self.camera_ax)
             self.camera_canvas.draw()
+
+    def update_device_settings(self):
+        # create a DeviceSettings object with the current values
+        load_mot = self.load_mot.isChecked()
+        device_settings = DeviceSettings(load_mot=load_mot)
+
+        # send the device settings to the device
+        self.sender.send(device_settings)
 
     '''
     methods for renaming, copying, creating and deleting stages
