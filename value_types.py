@@ -128,7 +128,7 @@ class IntValue:
 class FloatValue:
     @portable
     def __init__(self):
-        self.array = np.zeros(2, dtype=np.float64)
+        self.array = np.zeros(3, dtype=np.float64)
 
     @portable
     def to_array(self):
@@ -136,12 +136,12 @@ class FloatValue:
 
     @portable
     def from_array(array):
-        if array.shape != (2,):
-            raise ValueError("Array must have shape (2,)")
+        if array.shape != (3,):
+            raise ValueError("Array must have shape (3,)")
         if not np.issubdtype(array.dtype, np.floating):
             raise ValueError("Array must be of floating point type")
-        if array[0] not in (0.0, 1.0):
-            raise ValueError("First element of array must be 0.0 (hold) or 1.0 (constant)")
+        if array[0] not in (0.0, 1.0, 2.0):
+            raise ValueError("First element of array must be 0.0 (hold), 1.0 (constant) or 2.0 (ramp)")
         value = FloatValue()
         value.array = array
         return value
@@ -157,6 +157,12 @@ class FloatValue:
         self.array[1] = value
 
     @portable
+    def set_ramp(self, start, end):
+        self.array[0] = 2.0
+        self.array[1] = start
+        self.array[2] = end
+
+    @portable
     def hold():
         value = FloatValue()
         value.set_hold()
@@ -169,6 +175,12 @@ class FloatValue:
         return float_value
 
     @portable
+    def ramp(start, end):
+        float_value = FloatValue()
+        float_value.set_ramp(start, end)
+        return float_value
+
+    @portable
     def is_hold(self):
         return self.array[0] == 0.0
 
@@ -177,7 +189,17 @@ class FloatValue:
         return self.array[0] == 1.0
 
     @portable
+    def is_ramp(self):
+        return self.array[0] == 2.0
+
+    @portable
     def constant_value(self):
         if not self.is_constant():
             raise ValueError("Value is not constant")
         return self.array[1]
+
+    @portable
+    def ramp_values(self):
+        if not self.is_ramp():
+            raise ValueError("Value is not a ramp")
+        return self.array[1], self.array[2]

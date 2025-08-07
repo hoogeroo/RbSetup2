@@ -60,7 +60,7 @@ class VariableTypeFloat:
         return FloatWidget(self)
     
     def fits_column(self):
-        return fits.Column(name=self.id, format='2D', dim='(2)', unit=self.unit)
+        return fits.Column(name=self.id, format='3D', dim='(3)', unit=self.unit)
 
 '''
 custom widgets for the GUI
@@ -76,7 +76,7 @@ class BoolWidget(QWidget):
         self.addAction("Hold", self.mode_hold)
         self.addAction("Constant", self.mode_constant)
 
-        layout = QVBoxLayout()
+        layout = QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
 
         self.hold_label = QLabel("Hold")
@@ -97,7 +97,7 @@ class BoolWidget(QWidget):
     def mode_hold(self):
         self.checkbox.setVisible(False)
         self.hold_label.setVisible(True)
-    
+
     def mode_constant(self):
         self.checkbox.setVisible(True)
         self.hold_label.setVisible(False)
@@ -109,13 +109,11 @@ class BoolWidget(QWidget):
             return BoolValue.constant(self.checkbox.isChecked())
 
     def set_value(self, value):
+        if value.is_hold():
+            self.mode_hold()
         if value.is_constant():
+            self.mode_constant()
             self.checkbox.setChecked(value.constant_value())
-            self.checkbox.setVisible(True)
-            self.hold_label.setVisible(False)
-        elif value.is_hold():
-            self.checkbox.setVisible(False)
-            self.hold_label.setVisible(True)
 
     def changed_signal(self):
         return self.checkbox.stateChanged
@@ -130,7 +128,7 @@ class IntWidget(QWidget):
         self.addAction("Hold", self.mode_hold)
         self.addAction("Constant", self.mode_constant)
 
-        layout = QVBoxLayout()
+        layout = QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
 
         self.hold_label = QLabel("Hold")
@@ -154,7 +152,7 @@ class IntWidget(QWidget):
     def mode_hold(self):
         self.spinbox.setVisible(False)
         self.hold_label.setVisible(True)
-    
+
     def mode_constant(self):
         self.spinbox.setVisible(True)
         self.hold_label.setVisible(False)
@@ -166,13 +164,11 @@ class IntWidget(QWidget):
             return IntValue.constant(self.spinbox.value())
 
     def set_value(self, value):
+        if value.is_hold():
+            self.mode_hold()
         if value.is_constant():
+            self.mode_constant()
             self.spinbox.setValue(value.constant_value())
-            self.spinbox.setVisible(True)
-            self.hold_label.setVisible(False)
-        elif value.is_hold():
-            self.spinbox.setVisible(False)
-            self.hold_label.setVisible(True)
 
     def changed_signal(self):
         return self.spinbox.valueChanged
@@ -186,8 +182,9 @@ class FloatWidget(QWidget):
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
         self.addAction("Hold", self.mode_hold)
         self.addAction("Constant", self.mode_constant)
+        self.addAction("Ramp", self.mode_ramp)
 
-        layout = QVBoxLayout()
+        layout = QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
 
         self.hold_label = QLabel("Hold")
@@ -206,30 +203,66 @@ class FloatWidget(QWidget):
         self.spinbox.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         layout.addWidget(self.spinbox)
 
+        self.ramp_spinbox1 = QDoubleSpinBox()
+        self.ramp_spinbox1.setMinimumSize(QSize(0, 24))
+        self.ramp_spinbox1.setMaximumSize(QSize(big, 24))
+        self.ramp_spinbox1.setMinimum(self.variable.minimum)
+        self.ramp_spinbox1.setMaximum(self.variable.maximum)
+        self.ramp_spinbox1.setSingleStep(self.variable.step)
+        self.ramp_spinbox1.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
+        self.ramp_spinbox1.setVisible(False)
+        layout.addWidget(self.ramp_spinbox1)
+        self.ramp_spinbox2 = QDoubleSpinBox()
+        self.ramp_spinbox2.setMinimumSize(QSize(0, 24))
+        self.ramp_spinbox2.setMaximumSize(QSize(big, 24))
+        self.ramp_spinbox2.setMinimum(self.variable.minimum)
+        self.ramp_spinbox2.setMaximum(self.variable.maximum)
+        self.ramp_spinbox2.setSingleStep(self.variable.step)
+        self.ramp_spinbox2.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
+        self.ramp_spinbox2.setVisible(False)
+        layout.addWidget(self.ramp_spinbox2)
+
         self.setLayout(layout)
 
     def mode_hold(self):
         self.spinbox.setVisible(False)
         self.hold_label.setVisible(True)
-    
+        self.ramp_spinbox1.setVisible(False)
+        self.ramp_spinbox2.setVisible(False)
+
     def mode_constant(self):
         self.spinbox.setVisible(True)
         self.hold_label.setVisible(False)
+        self.ramp_spinbox1.setVisible(False)
+        self.ramp_spinbox2.setVisible(False)
+
+    def mode_ramp(self):
+        self.spinbox.setVisible(False)
+        self.hold_label.setVisible(False)
+        self.ramp_spinbox1.setVisible(True)
+        self.ramp_spinbox2.setVisible(True)
 
     def get_value(self):
         if self.hold_label.isVisible():
             return FloatValue.hold()
-        else:
+        elif self.spinbox.isVisible():
             return FloatValue.constant(self.spinbox.value())
+        elif self.ramp_spinbox1.isVisible() and self.ramp_spinbox2.isVisible():
+            return FloatValue.ramp(self.ramp_spinbox1.value(), self.ramp_spinbox2.value())
+        else:
+            raise ValueError("FloatWidget in invalid state")
 
     def set_value(self, value):
+        if value.is_hold():
+            self.mode_hold()
         if value.is_constant():
+            self.mode_constant()
             self.spinbox.setValue(value.constant_value())
-            self.spinbox.setVisible(True)
-            self.hold_label.setVisible(False)
-        elif value.is_hold():
-            self.spinbox.setVisible(False)
-            self.hold_label.setVisible(True)
+        if value.is_ramp():
+            self.mode_ramp()
+            start, end = value.ramp_values()
+            self.ramp_spinbox1.setValue(start)
+            self.ramp_spinbox2.setValue(end)
 
     def changed_signal(self):
         return self.spinbox.valueChanged

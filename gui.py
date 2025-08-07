@@ -60,6 +60,7 @@ class Gui(QMainWindow):
         super(Gui, self).__init__()
         self.variables = variables
         self.sender = sender
+        self.ui_loaded = False
 
         # to see what this does you can run `pyuic6 gui.ui | code -`
         loadUi('gui.ui', self)
@@ -129,6 +130,9 @@ class Gui(QMainWindow):
         # load the default values (creates the needed stage widgets)
         self.load_settings('default.fits')
 
+        # mark the UI as loaded
+        self.ui_loaded = True
+
     '''
     methods to get the values from the widgets and update the device.
     '''
@@ -155,6 +159,11 @@ class Gui(QMainWindow):
 
     # updates the device with the values from the widgets
     def update_dc(self):
+        # ignore widget updates if the UI is not loaded yet
+        if not self.ui_loaded:
+            return
+
+        # send the extracted dc values to the device
         self.sender.send(self.extract_dc())
 
     # runs the experiment and using the data from the widgets

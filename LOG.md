@@ -39,3 +39,5 @@
   - Figuring out how to break a loop from a pipe message cleanly
 - 5/08/25
   - Add load mot button
+- 8/08/25
+  - Add linear ramp to gui and make it work with file saving and loading
