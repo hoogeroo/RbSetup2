@@ -30,9 +30,8 @@ class Dc:
 
 # same as above but for an experiment stage
 class Stage:
-    def __init__(self, name, enabled):
+    def __init__(self, name):
         self.name = name
-        self.enabled = enabled
 
 # class to represent a stage in the gui. differs from Stage in that it can't be sent to the device
 class GuiStage:
@@ -93,8 +92,8 @@ class Gui(QMainWindow):
         for i, variable in enumerate(self.variables):
             # add the widget to the dc container
             dc_widget = variable.widget()
-            if i == 0:
-                dc_widget.setEnabled(False)  # time doesn't make sense for dc
+            if variable.id == "time" or variable.id == "samples":
+                dc_widget.setEnabled(False)  # time and samples don't make sense for dc
             dc_widget.changed_signal().connect(self.update_dc)
             self.dc_container.addWidget(dc_widget)
             self.dc_widgets.append(dc_widget)
@@ -150,7 +149,12 @@ class Gui(QMainWindow):
         # creates a list of Stage objects with the values from the widgets
         stages = []
         for i in range(len(self.stages)):
-            stage = Stage(self.stages[i].button.text(), self.stages[i].enabled)
+            # skip the stage if it is not enabled
+            if not self.stages[i].enabled:
+                continue
+
+            # create a Stage object and fill it with the values from the widgets
+            stage = Stage(self.stages[i].button.text())
             for j, variable in enumerate(self.variables):
                 value = self.stages[i].widgets[j].get_value()
                 setattr(stage, variable.id, value)

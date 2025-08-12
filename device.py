@@ -10,6 +10,7 @@ class AbstractDevice:
     def build(self):
         self.variables = [
             VariableTypeFloat("Time (ms)", "time", 0.0, 10000.0, 100.0, 'ms'),
+            VariableTypeInt("Samples", "samples", 1, 10000, 100),
             VariableTypeBool("Digital", "digital"),
             VariableTypeFloat("Analog", "analog"),
             VariableTypeFloat("Rf Magnitude", "rf_magnitude"),

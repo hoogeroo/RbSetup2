@@ -37,7 +37,6 @@ class VariableTypeInt:
         self.minimum = minimum
         self.maximum = maximum
         self.step = step
-        self.unit = unit
         self.value_type = IntValue
 
     def widget(self):

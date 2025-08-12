@@ -4,7 +4,7 @@ value_types.py: contains abstractions over the different variable types used by 
 
 import numpy as np
 
-# optionally import portable decorator for so this works without artiq
+# optionally import portable decorator so this module can be used without artiq
 try:
     from artiq.experiment import portable
 except ImportError:
@@ -203,3 +203,17 @@ class FloatValue:
         if not self.is_ramp():
             raise ValueError("Value is not a ramp")
         return self.array[1], self.array[2]
+
+    @portable
+    def sample(self, step, samples):
+        if self.is_hold():
+            raise ValueError("Cannot sample a hold value")
+        if self.is_constant():
+            return self.constant_value()
+        if self.is_ramp():
+            start, end = self.array[1], self.array[2]
+            if samples <= 1:
+                return start
+            return start + (end - start) * step / (samples - 1)
+        else:
+            raise ValueError("unreachable")

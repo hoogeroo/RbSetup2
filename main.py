@@ -65,26 +65,25 @@ class Device(AbstractDevice, EnvExperiment):
 
         # iterate through the stages and get their values
         for stage in stages:
-            if not stage.enabled:
-                continue
+            samples = max(stage.samples.constant_value(), 1)
+            for step in range(samples):
+                # update digital output
+                if stage.digital.is_constant():
+                    if stage.digital.constant_value():
+                        self.ttl5.on()
+                    else:
+                        self.ttl5.off()
 
-            # update digital output
-            if stage.digital.is_constant():
-                if stage.digital.constant_value():
-                    self.ttl5.on()
-                else:
-                    self.ttl5.off()
+                # update analog output
+                if not stage.analog.is_hold():
+                    self.fastino0.set_dac(0, stage.analog.sample(step, samples))
 
-            # update analog output
-            if stage.analog.is_constant():
-                self.fastino0.set_dac(0, stage.analog.constant_value())
+                # update rf output
+                if not stage.rf_freq.is_hold() and not stage.rf_magnitude.is_hold():
+                    self.urukul0_ch0.set(stage.rf_freq.sample(step, samples) * MHz, amplitude=stage.rf_magnitude.sample(step, samples))
 
-            # update rf output
-            if stage.rf_freq.is_constant() and stage.rf_magnitude.is_constant():
-                self.urukul0_ch0.set(stage.rf_freq.constant_value() * MHz, amplitude=stage.rf_magnitude.constant_value())
-
-            # wait for a short time to simulate the experiment duration
-            delay(stage.time.constant_value() * ms)
+                # wait for a short time to simulate the experiment duration
+                delay(stage.time.constant_value() * ms / samples)
 
     @kernel
     def pulse_push_laser(self):

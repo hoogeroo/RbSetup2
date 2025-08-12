@@ -41,3 +41,5 @@
   - Add load mot button
 - 8/08/25
   - Add linear ramp to gui and make it work with file saving and loading
+- 12/08/25
+  - Make linear ramp work on the device
