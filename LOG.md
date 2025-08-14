@@ -43,3 +43,6 @@
   - Add linear ramp to gui and make it work with file saving and loading
 - 12/08/25
   - Make linear ramp work on the device
+- 14/08/52
+  - Refactor to precompute all values before sending to device
+  - Add variable calibration (remaps variable outputs before sending to artiq device)
