@@ -29,9 +29,9 @@ class Dc:
         pass
 
 # same as above but for an experiment stage
-class Stage:
-    def __init__(self, name):
-        self.name = name
+class DeviceStages:
+    def __init__(self):
+        pass
 
 # class to represent a stage in the gui. differs from Stage in that it can't be sent to the device
 class GuiStage:
@@ -141,25 +141,61 @@ class Gui(QMainWindow):
         # uses setattr to dynamically create a Dc object with the values from the widgets
         dc = Dc()
         for i, variable in enumerate(self.variables):
-            setattr(dc, variable.id, self.dc_widgets[i].get_value())
+            setattr(dc, variable.id, self.dc_widgets[i].get_value().constant_value())
         return dc
 
-    # extracts the values from the stage widgets and creates a list of Stage objects
-    def extract_stages(self) -> list[Stage]:
-        # creates a list of Stage objects with the values from the widgets
-        stages = []
+    # extracts the values from the stage widgets and creates a DeviceStages object to send to the device
+    def extract_stages(self) -> DeviceStages:
+        # initialise the variable lists with the dc value for each variable
+        device_stages = DeviceStages()
+        for i, variable in enumerate(self.variables):
+            setattr(device_stages, variable.id, [self.dc_widgets[i].get_value().constant_value()])
+
+        # extend the lists with the stage values
         for i in range(len(self.stages)):
             # skip the stage if it is not enabled
             if not self.stages[i].enabled:
                 continue
 
-            # create a Stage object and fill it with the values from the widgets
-            stage = Stage(self.stages[i].button.text())
+            # extract the stage into a temporary object to make it easier to work with
+            tmp = Dc()
             for j, variable in enumerate(self.variables):
                 value = self.stages[i].widgets[j].get_value()
-                setattr(stage, variable.id, value)
-            stages.append(stage)
-        return stages
+                setattr(tmp, variable.id, value)
+
+            # get the number of samples
+            samples = max(tmp.samples.constant_value(), 1)
+
+            # add values to the lists for each sample
+            for sample in range(samples):
+                for variable in self.variables:
+                    # get the value and list for the variable
+                    value = getattr(tmp, variable.id)
+                    device_variable_list = getattr(device_stages, variable.id)
+
+                    # special case for time variable
+                    if variable.id == "time":
+                        device_variable_list.append(tmp.time.constant_value() / samples)
+
+                    # if hold repeat the last value
+                    if value.is_hold():
+                        device_variable_list.append(device_variable_list[-1])
+                    # if constant use the constant value
+                    elif value.is_constant():
+                        device_variable_list.append(value.constant_value())
+                    # for float ramps sample the ramp for each value
+                    elif isinstance(value, FloatValue):
+                        if value.is_ramp():
+                            device_variable_list.append(value.sample(sample, samples))
+
+        # turn the lists into numpy arrays
+        for variable in self.variables:
+            device_variable_list = getattr(device_stages, variable.id)
+            device_variable_array = np.array(device_variable_list)
+            setattr(device_stages, variable.id, device_variable_array)
+            print(variable.id, device_variable_array)
+
+        return device_stages
 
     # updates the device with the values from the widgets
     def update_dc(self):

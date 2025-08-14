@@ -1,6 +1,6 @@
 from multiprocessing import Process, Pipe
 
-from gui import Dc, DeviceSettings, run_gui
+from gui import Dc, DeviceStages, DeviceSettings, run_gui
 from gui_types import *
 
 '''
@@ -39,7 +39,7 @@ class AbstractDevice:
                 if type(msg) is Dc:
                     # update the device with the new values
                     self.update_dc(msg)
-                elif type(msg) is list:
+                elif type(msg) is DeviceStages:
                     # run the experiment with the provided stages
                     self.run_experiment(msg)
                 elif type(msg) is DeviceSettings:
