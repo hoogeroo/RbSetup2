@@ -1,3 +1,6 @@
+import numpy as np
+from scipy.interpolate import CubicSpline
+
 from multiprocessing import Process, Pipe
 
 from gui import Dc, DeviceStages, DeviceSettings, run_gui
@@ -8,13 +11,17 @@ Abstraction over the device to run the gui without artiq
 '''
 class AbstractDevice:
     def build(self):
+        x = np.linspace(0.0, 1.0, 10)
+        y = x**3
+        laser_calibration = CubicSpline(x, y)
+
         self.variables = [
             VariableTypeFloat("Time (ms)", "time", 0.0, 10000.0, 100.0, 'ms'),
             VariableTypeInt("Samples", "samples", 1, 10000, 100),
             VariableTypeBool("Digital", "digital"),
-            VariableTypeFloat("Analog", "analog"),
+            VariableTypeFloat("Analog", "analog", calibration=laser_calibration),
             VariableTypeFloat("Rf Magnitude", "rf_magnitude"),
-            VariableTypeFloat("Rf Freq (MHz)", "rf_freq", 1.0, 100.0, 1.0, 'MHz')
+            VariableTypeFloat("Rf Freq (MHz)", "rf_freq", 1.0, 100.0, 1.0, 'MHz'),
         ]
 
     # spawns the gui in a separate process

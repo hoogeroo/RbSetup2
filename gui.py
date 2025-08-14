@@ -22,7 +22,7 @@ def run_gui(variables, sender):
     app.exec()
 
 # dummy class used to represent the device's digital and analog outputs
-# this class will be fill with ids set in the variables array then 
+# this class will be filled with ids set in the variables array then 
 # sent to the device
 class Dc:
     def __init__(self):
@@ -192,7 +192,14 @@ class Gui(QMainWindow):
         # turn the lists into numpy arrays
         for variable in self.variables:
             device_variable_list = getattr(device_stages, variable.id)
-            setattr(device_stages, variable.id, np.array(device_variable_list))
+            device_variable_array = np.array(device_variable_list)
+
+            # apply calibration if needed
+            if isinstance(variable, VariableTypeFloat):
+                if variable.calibration is not None:
+                    device_variable_array = variable.calibration(device_variable_array)
+
+            setattr(device_stages, variable.id, device_variable_array)
 
         return device_stages
 

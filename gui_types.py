@@ -3,6 +3,7 @@ gui_types.py: abstraction boilerplate for the various variable types used in gui
 '''
 
 import numpy as np
+from scipy.interpolate import PPoly
 
 from PyQt6.QtWidgets import *
 from PyQt6.QtCore import QSize, Qt
@@ -46,13 +47,14 @@ class VariableTypeInt:
         return fits.Column(name=self.id, format='2K', dim='(2)')
 
 class VariableTypeFloat:
-    def __init__(self, label, id, minimum=0.0, maximum=1.0, step=0.1, unit=''):
+    def __init__(self, label, id, minimum=0.0, maximum=1.0, step=0.1, unit='', calibration: None|PPoly=None):
         self.label = label
         self.id = id
         self.minimum = minimum
         self.maximum = maximum
         self.step = step
         self.unit = unit
+        self.calibration = calibration
         self.value_type = FloatValue
 
     def widget(self):
