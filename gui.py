@@ -176,6 +176,7 @@ class Gui(QMainWindow):
                     # special case for time variable
                     if variable.id == "time":
                         device_variable_list.append(tmp.time.constant_value() / samples)
+                        continue
 
                     # if hold repeat the last value
                     if value.is_hold():
@@ -191,9 +192,7 @@ class Gui(QMainWindow):
         # turn the lists into numpy arrays
         for variable in self.variables:
             device_variable_list = getattr(device_stages, variable.id)
-            device_variable_array = np.array(device_variable_list)
-            setattr(device_stages, variable.id, device_variable_array)
-            print(variable.id, device_variable_array)
+            setattr(device_stages, variable.id, np.array(device_variable_list))
 
         return device_stages
 

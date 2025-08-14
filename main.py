@@ -64,26 +64,21 @@ class Device(AbstractDevice, EnvExperiment):
         self.core.break_realtime()
 
         # iterate through the stages and get their values
-        for stage in stages:
-            samples = max(stage.samples.constant_value(), 1)
-            for step in range(samples):
-                # update digital output
-                if stage.digital.is_constant():
-                    if stage.digital.constant_value():
-                        self.ttl5.on()
-                    else:
-                        self.ttl5.off()
+        for i in range(len(stages.time)):
+            # update digital output
+            if stages.digital[i]:
+                self.ttl5.on()
+            else:
+                self.ttl5.off()
 
-                # update analog output
-                if not stage.analog.is_hold():
-                    self.fastino0.set_dac(0, stage.analog.sample(step, samples))
+            # update analog output
+            self.fastino0.set_dac(0, stages.analog[i])
 
-                # update rf output
-                if not stage.rf_freq.is_hold() and not stage.rf_magnitude.is_hold():
-                    self.urukul0_ch0.set(stage.rf_freq.sample(step, samples) * MHz, amplitude=stage.rf_magnitude.sample(step, samples))
+            # update rf output
+            self.urukul0_ch0.set(stages.rf_freq[i] * MHz, amplitude=stages.rf_magnitude[i])
 
-                # wait for a short time to simulate the experiment duration
-                delay(stage.time.constant_value() * ms / samples)
+            # wait for a short time to simulate the experiment duration
+            delay(stages.time[i] * ms)
 
     @kernel
     def pulse_push_laser(self):
