@@ -67,10 +67,17 @@ class Gui(QMainWindow):
         # remove central widget since we are using docks
         self.setCentralWidget(None)
 
-        # plot
+        # camera plot
         self.camera_canvas = FigureCanvas(Figure(figsize=(5, 3)))
         self.camera_ax = self.camera_canvas.figure.subplots()
         self.camera_grid.addWidget(self.camera_canvas, 1, 4, 1, 1)
+
+        # fluorescence plot
+        self.fluorescence_canvas = FigureCanvas(Figure(figsize=(5, 3)))
+        self.fluorescence_ax = self.fluorescence_canvas.figure.subplots()
+        self.fluorescence_ax.set_xlabel('Time (s)')
+        self.fluorescence_ax.set_ylabel('Fluorescence (a.u.)')
+        self.fluorescence_grid.addWidget(self.fluorescence_canvas, 1, 4, 1, 1)
 
         # store reference to all the widgets to get their values later
         self.dc_widgets = []
@@ -391,7 +398,14 @@ class Gui(QMainWindow):
             col.array = np.stack(data)
             columns.append(col)
 
+        # create a fits table hdu for the settings
         hdu = fits.BinTableHDU.from_columns(columns)
+
+        # get the window layout
+        layout = self.saveState()
+        hdu.header['layout'] = str(layout)
+
+        # write the HDU to fits file
         hdu.writeto(path, overwrite=True)
 
     # load the settings from the file
@@ -430,3 +444,7 @@ class Gui(QMainWindow):
                     widget.set_value(value)
                 else:
                     print(f"Warning: Unknown variable '{widget.variable.id}' in stage {i} data")
+
+        # load the window layout
+        layout = hdu.header['layout']
+        self.restoreState(eval(layout))
