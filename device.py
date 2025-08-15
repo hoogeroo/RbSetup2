@@ -53,12 +53,13 @@ class AbstractDevice:
                 elif type(msg) is DeviceSettings:
                     # update the device settings
                     self.device_settings = msg
-                elif not self.gui_process.is_alive():
-                    print("GUI process has exited")
-                    break
                 else:
                     print(f"Received unknown message type: {type(msg)}")
                     break
+
+            # check if the GUI process is still alive
+            if not self.gui_process.is_alive():
+                break
 
             # read the fluorescence signal
             fluorescence = self.read_fluorescence()
