@@ -20,6 +20,7 @@ class Device(AbstractDevice, EnvExperiment):
         self.setattr_device("ttl5")
         self.setattr_device("ttl6")
         self.setattr_device('fastino0')
+        self.setattr_device("sampler0")
         self.setattr_device('urukul0_ch0')
 
     @host_only
@@ -33,6 +34,7 @@ class Device(AbstractDevice, EnvExperiment):
     def init_device(self):
         self.core.reset()
         self.fastino0.init()
+        self.sampler0.init()
         self.urukul0_ch0.cpld.init()
         self.urukul0_ch0.init()
         self.urukul0_ch0.cfg_sw(True)
@@ -87,3 +89,11 @@ class Device(AbstractDevice, EnvExperiment):
         self.ttl6.on()
         delay(10 * ms)
         self.ttl6.off()
+    
+    @kernel
+    def read_fluorescence(self) -> float:
+        # read the fluorescence signal
+        self.core.break_realtime()
+        sample = [0.0]
+        self.sampler0.read(sample)
+        return sample[0]

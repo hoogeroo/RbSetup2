@@ -6,7 +6,7 @@ import numpy as np
 from astropy.io import fits
 
 from PyQt6.QtWidgets import *
-from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtCore import QSize, Qt, QTimer
 from PyQt6.uic import loadUi
 
 from matplotlib.backends.backend_qtagg import FigureCanvas
@@ -15,9 +15,9 @@ from matplotlib.figure import Figure
 from camera import CameraConnection
 from gui_types import *
 
-def run_gui(variables, sender):
+def run_gui(variables, gui_pipe):
     app = QApplication([])
-    gui = Gui(variables, sender)
+    gui = Gui(variables, gui_pipe)
     gui.show()
     app.exec()
 
@@ -55,10 +55,10 @@ class Gui(QMainWindow):
     It creates the layout, widgets, and connects signals to the device methods.
     The gui is built using PyQt6 and the layout is defined in `gui.ui`.
     '''
-    def __init__(self, variables, sender):
+    def __init__(self, variables, gui_pipe):
         super(Gui, self).__init__()
         self.variables = variables
-        self.sender = sender
+        self.gui_pipe = gui_pipe
         self.ui_loaded = False
 
         # to see what this does you can run `pyuic6 gui.ui | code -`
@@ -78,6 +78,11 @@ class Gui(QMainWindow):
         self.fluorescence_ax.set_xlabel('Time (s)')
         self.fluorescence_ax.set_ylabel('Fluorescence (a.u.)')
         self.fluorescence_grid.addWidget(self.fluorescence_canvas, 1, 4, 1, 1)
+
+        # fluorescence timer
+        self.fluorescence_timer = QTimer()
+        self.fluorescence_timer.timeout.connect(self.update_fluorescence_plot)
+        self.fluorescence_timer.start(100)
 
         # store reference to all the widgets to get their values later
         self.dc_widgets = []
@@ -217,7 +222,7 @@ class Gui(QMainWindow):
             return
 
         # send the extracted dc values to the device
-        self.sender.send(self.extract_dc())
+        self.gui_pipe.send(self.extract_dc())
 
     # runs the experiment and using the data from the widgets
     def submit_experiment(self):
@@ -230,7 +235,7 @@ class Gui(QMainWindow):
             print("Error occurred while shooting:", e)
 
         # run the actual experiment
-        self.sender.send(self.extract_stages())
+        self.gui_pipe.send(self.extract_stages())
 
         if camera:
             # read the image from the camera server
@@ -248,7 +253,7 @@ class Gui(QMainWindow):
         device_settings = DeviceSettings(load_mot=load_mot)
 
         # send the device settings to the device
-        self.sender.send(device_settings)
+        self.gui_pipe.send(device_settings)
 
     '''
     methods for renaming, copying, creating and deleting stages
@@ -448,3 +453,13 @@ class Gui(QMainWindow):
         # load the window layout
         layout = hdu.header['layout']
         self.restoreState(eval(layout))
+
+    '''
+    methods that should really be in a different file
+    '''
+
+    def update_fluorescence_plot(self):
+        # poll the pipe with no timeout (only read already queued values)
+        if self.gui_pipe.poll():
+            fluorescence = self.gui_pipe.recv()
+            print("Received fluorescence:", fluorescence)

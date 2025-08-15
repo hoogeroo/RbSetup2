@@ -27,10 +27,10 @@ class AbstractDevice:
     # spawns the gui in a separate process
     def run(self):
         # create a pipe for communication between the gui and the device
-        receiver, sender = Pipe(False)
+        device_pipe, gui_pipe = Pipe()
 
         # start the gui in a separate process
-        self.gui_process = Process(target=run_gui, args=(self.variables, sender,))
+        self.gui_process = Process(target=run_gui, args=(self.variables, gui_pipe,))
         self.gui_process.daemon = True # so gui exits when main process exits
         self.gui_process.start()
 
@@ -40,8 +40,8 @@ class AbstractDevice:
         # wait for the gui to send a message
         while True:
             # check for messages from the gui
-            if receiver.poll(0.1):
-                msg = receiver.recv()
+            if device_pipe.poll(0.1):
+                msg = device_pipe.recv()
 
                 if type(msg) is Dc:
                     # update the device with the new values
@@ -58,6 +58,10 @@ class AbstractDevice:
                 else:
                     print(f"Received unknown message type: {type(msg)}")
                     break
+
+            # read the fluorescence signal
+            fluorescence = self.read_fluorescence()
+            device_pipe.send(fluorescence)
 
             # pulse the push laser if requested
             if self.device_settings.load_mot:
@@ -80,6 +84,10 @@ class AbstractDevice:
     # pulse push laser
     def pulse_push_laser(self):
         print("Pulsing push laser")
+
+    # read fluorescence signal
+    def read_fluorescence(self) -> float:
+        return 100.0
 
 if __name__ == '__main__':
     device = AbstractDevice()
