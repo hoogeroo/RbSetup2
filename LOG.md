@@ -43,6 +43,9 @@
   - Add linear ramp to gui and make it work with file saving and loading
 - 12/08/25
   - Make linear ramp work on the device
-- 14/08/52
+- 14/08/25
   - Refactor to precompute all values before sending to device
   - Add variable calibration (remaps variable outputs before sending to artiq device)
+- 15/08/25
+  - Read flourence from the device and send it to the gui
+  - Refactor to split up gui file (got too big)
