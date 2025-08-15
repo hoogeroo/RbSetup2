@@ -3,8 +3,9 @@ from scipy.interpolate import CubicSpline
 
 from multiprocessing import Process, Pipe
 
-from gui import Dc, DeviceStages, DeviceSettings, run_gui
-from gui_types import *
+from device_types import Dc, DeviceStages, DeviceSettings
+from gui import run_gui
+from variable_types import *
 
 '''
 Abstraction over the device to run the gui without artiq

@@ -3,69 +3,14 @@ gui_types.py: abstraction boilerplate for the various variable types used in gui
 '''
 
 import numpy as np
-from scipy.interpolate import PPoly
 
 from PyQt6.QtWidgets import *
 from PyQt6.QtCore import QSize, Qt
-
-from astropy.io import fits
 
 from value_types import *
 
 # Used to set the maximum size of the widgets
 big = 16777215
-
-'''
-variable types for the GUI
-'''
-
-class VariableTypeBool:
-    def __init__(self, label, id):
-        self.label = label
-        self.id = id
-        self.value_type = BoolValue
-
-    def widget(self) -> QCheckBox:
-        return BoolWidget(self)
-
-    def fits_column(self):
-        return fits.Column(name=self.id, format='2L', dim='(2)')
-
-class VariableTypeInt:
-    def __init__(self, label, id, minimum=0, maximum=100, step=1):
-        self.label = label
-        self.id = id
-        self.minimum = minimum
-        self.maximum = maximum
-        self.step = step
-        self.value_type = IntValue
-
-    def widget(self):
-        return IntWidget(self)
-    
-    def fits_column(self):
-        return fits.Column(name=self.id, format='2K', dim='(2)')
-
-class VariableTypeFloat:
-    def __init__(self, label, id, minimum=0.0, maximum=1.0, step=0.1, unit='', calibration: None|PPoly=None):
-        self.label = label
-        self.id = id
-        self.minimum = minimum
-        self.maximum = maximum
-        self.step = step
-        self.unit = unit
-        self.calibration = calibration
-        self.value_type = FloatValue
-
-    def widget(self):
-        return FloatWidget(self)
-    
-    def fits_column(self):
-        return fits.Column(name=self.id, format='3D', dim='(3)', unit=self.unit)
-
-'''
-custom widgets for the GUI
-'''
 
 class BoolWidget(QWidget):
     def __init__(self, variable, *args, **kwargs):
