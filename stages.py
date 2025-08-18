@@ -6,6 +6,7 @@ from PyQt6.QtCore import Qt, QSize
 from camera import CameraConnection
 from device_types import Dc, DeviceStages, DeviceSettings
 from gui_types import big
+from multigo import MultiGo
 from variable_types import *
 
 # class to represent a stage in the gui. differs from Stage in that it can't be sent to the device
@@ -64,6 +65,9 @@ class StagesGui:
         self.window.dc_container.addStretch()
         self.window.label_container.addStretch()
         self.window.copied_container.addStretch()
+
+        # connect the multigo options button
+        self.window.options.clicked.connect(self.multigo_options)
 
         # connect the run button to the submit_experiment method
         self.window.run_experiment.clicked.connect(self.submit_experiment)
@@ -174,6 +178,12 @@ class StagesGui:
             self.camera_canvas.figure.colorbar(self.camera_ax.images[0], ax=self.camera_ax)
             self.camera_canvas.draw()
 
+    # open the multigo options popup
+    def multigo_options(self):
+        multi_go = MultiGo()
+        multi_go.exec()
+
+    # send the current device settings to the device
     def update_device_settings(self):
         # create a DeviceSettings object with the current values
         load_mot = self.window.load_mot.isChecked()

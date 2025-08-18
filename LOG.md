@@ -49,3 +49,6 @@
 - 15/08/25
   - Read flourence from the device and send it to the gui
   - Refactor to split up gui file (got too big)
+- 18/08/25
+  - Add widget selection for multigo
+  - Add multigo dialog

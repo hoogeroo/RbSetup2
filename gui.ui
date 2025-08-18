@@ -117,7 +117,7 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>219</width>
+          <width>156</width>
           <height>68</height>
          </rect>
         </property>
@@ -222,7 +222,7 @@
         <enum>QFrame::Raised</enum>
        </property>
        <layout class="QGridLayout" name="gridLayout_2">
-        <item row="0" column="3">
+        <item row="0" column="5">
          <widget class="QPushButton" name="run_experiment">
           <property name="maximumSize">
            <size>
@@ -232,6 +232,20 @@
           </property>
           <property name="text">
            <string>Run Experiment</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0">
+         <widget class="QCheckBox" name="load_mot">
+          <property name="text">
+           <string>Load MOT</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="4">
+         <widget class="QPushButton" name="multi_go">
+          <property name="text">
+           <string>Multi Go</string>
           </property>
          </widget>
         </item>
@@ -258,10 +272,10 @@
           </property>
          </widget>
         </item>
-        <item row="0" column="0">
-         <widget class="QCheckBox" name="load_mot">
+        <item row="0" column="3">
+         <widget class="QPushButton" name="options">
           <property name="text">
-           <string>Load MOT</string>
+           <string>Options</string>
           </property>
          </widget>
         </item>
