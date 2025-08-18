@@ -249,7 +249,7 @@
          </spacer>
         </item>
         <item row="0" column="2">
-         <widget class="QLCDNumber" name="number">
+         <widget class="QLCDNumber" name="fluorescence">
           <property name="maximumSize">
            <size>
             <width>128</width>

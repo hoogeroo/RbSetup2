@@ -26,14 +26,17 @@ class PlotsGui:
 
         # fluorescence timer
         self.fluorescence_timer = QTimer()
-        self.fluorescence_timer.timeout.connect(self.update_fluorescence_plot)
+        self.fluorescence_timer.timeout.connect(self.update_fluorescence)
         self.fluorescence_timer.start(100)
 
-    def update_fluorescence_plot(self):
+    def update_fluorescence(self):
         # poll the pipe with no timeout (only read already queued values)
         if self.window.gui_pipe.poll():
             # get the fluorescence value
             fluorescence = self.window.gui_pipe.recv()
+
+            # put the fluorescence value in the readout
+            self.window.fluorescence.display(fluorescence)
 
             # put the new value at the end of the buffer
             self.fluorescence_data = np.roll(self.fluorescence_data, -1)
