@@ -17,6 +17,9 @@ class GuiStage:
         self.widgets = widgets
         self.enabled = enabled
 
+    def label(self):
+        return self.button.text()
+
 class StagesGui:
     def __init__(self, window, variables):
         self.window = window
@@ -180,7 +183,7 @@ class StagesGui:
 
     # open the multigo options popup
     def multigo_options(self):
-        multi_go = MultiGo()
+        multi_go = MultiGo(self)
         multi_go.exec()
 
     # send the current device settings to the device
