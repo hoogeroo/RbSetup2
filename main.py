@@ -35,6 +35,7 @@ class Device(AbstractDevice, EnvExperiment):
         self.core.reset()
         self.fastino0.init()
         self.sampler0.init()
+        self.sampler0.set_gain_mu(0, 0)
         self.urukul0_ch0.cpld.init()
         self.urukul0_ch0.init()
         self.urukul0_ch0.cfg_sw(True)
@@ -46,18 +47,18 @@ class Device(AbstractDevice, EnvExperiment):
         self.core.break_realtime()
 
         # update digital output
-        if dc.digital.constant_value():
+        if dc.digital:
             self.ttl5.on()
         else:
             self.ttl5.off()
 
         # update analog output
-        self.fastino0.set_dac(0, dc.analog.constant_value())
+        self.fastino0.set_dac(0, dc.analog)
 
         # update rf output
         self.urukul0_ch0.set(
-            dc.rf_freq.constant_value() * MHz,
-            amplitude=dc.rf_magnitude.constant_value()
+            dc.rf_freq * MHz,
+            amplitude=dc.rf_magnitude
         )
 
     @kernel
@@ -94,6 +95,6 @@ class Device(AbstractDevice, EnvExperiment):
     def read_fluorescence(self) -> float:
         # read the fluorescence signal
         self.core.break_realtime()
-        sample = [0.0]
-        self.sampler0.read(sample)
+        sample = [0.0]*8
+        self.sampler0.sample(sample)
         return sample[0]
