@@ -2,16 +2,25 @@ from PyQt6.QtWidgets import *
 
 BUTTON_COLUMN = 5
 
-class MultiGo(QDialog):
+class MultiGoRunVariable:
+    def __init__(self, stage_id, variable_id, start, end, steps):
+        self.stage_id = stage_id
+        self.variable_id = variable_id
+        self.start = start
+        self.end = end
+        self.steps = steps
+
+class MultiGoDialog(QDialog):
     def __init__(self, stages):
         super().__init__()
 
         self.stages = stages
+        self.run_variables = []
 
         self.setWindowTitle("MultiGo")
 
         self.buttonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
-        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.accepted.connect(self.save_run_variables)
 
         layout = QVBoxLayout()
         self.grid = QGridLayout()
@@ -35,7 +44,7 @@ class MultiGo(QDialog):
 
         # add button
         add_button = QPushButton("Add")
-        add_button.clicked.connect(lambda: self.add_run_variable(stage_dropdown.currentIndex(), variable_dropdown.currentIndex()))
+        add_button.clicked.connect(lambda: self.new_run_variable(stage_dropdown.currentIndex(), variable_dropdown.currentIndex()))
         self.grid.addWidget(add_button, 0, BUTTON_COLUMN)
 
         layout.addLayout(self.grid)
@@ -43,28 +52,64 @@ class MultiGo(QDialog):
         layout.addWidget(self.buttonBox)        
         self.setLayout(layout)
 
-    def add_run_variable(self, idx, variable):
-        stage_name = self.stages.stages[idx].label()
-        variable_name = self.stages.variables[variable].label
+        # add all existing run variables
+        for run_variable in self.stages.run_variables:
+            print("adding_run_variable", run_variable)
+            self.add_run_variable(run_variable)
+    
+    def save_run_variables(self):
+        self.stages.run_variables = []
+
+        # add all the run variables that havent been deleted
+        for i, run_variable in enumerate(self.run_variables):
+            item = self.grid.itemAtPosition(i + 1, BUTTON_COLUMN)
+            if item:
+                # update run_variable to the current values in the widgets
+                start = self.grid.itemAtPosition(i + 1, 2).widget().get_value()
+                end = self.grid.itemAtPosition(i + 1, 3).widget().get_value()
+                steps = self.grid.itemAtPosition(i + 1, 4).widget().value()
+                run_variable.start = start
+                run_variable.end = end
+                run_variable.steps = steps
+
+                # add the run_variable to the global list
+                self.stages.run_variables.append(run_variable)
+
+        # accept the dialog
+        self.accept()
+
+    def new_run_variable(self, idx, variable):
+        current_value = self.stages.stages[idx].widgets[variable].get_value()
+        run_variable = MultiGoRunVariable(
+            self.stages.stages[idx].id,
+            self.stages.variables[variable].id,
+            current_value,
+            current_value,
+            1
+        )
+        self.add_run_variable(run_variable)
+
+    def add_run_variable(self, run_variable):
+        stage = self.stages.get_stage(run_variable.stage_id)
+        variable_idx, variable = self.stages.get_variable(run_variable.variable_id)
 
         # add labels
         row = self.grid.rowCount()
-        self.grid.addWidget(QLabel(stage_name), row, 0)
-        self.grid.addWidget(QLabel(variable_name), row, 1)
+        self.grid.addWidget(QLabel(stage.label()), row, 0)
+        self.grid.addWidget(QLabel(variable.label), row, 1)
 
         # add start and end
-        current_value = self.stages.stages[idx].widgets[variable]
-        start = current_value.variable.widget()
-        start.set_value(current_value.get_value())
-        end = current_value.variable.widget()
-        end.set_value(current_value.get_value())
-        self.grid.addWidget(start, row, 2)
-        self.grid.addWidget(end, row, 3)
+        start_widget = variable.widget()
+        start_widget.set_value(run_variable.start)
+        end_widget = variable.widget()
+        end_widget.set_value(run_variable.end)
+        self.grid.addWidget(start_widget, row, 2)
+        self.grid.addWidget(end_widget, row, 3)
 
         # add steps
         steps = QSpinBox()
         steps.setMinimum(1)
-        steps.setValue(1)
+        steps.setValue(run_variable.steps)
         self.grid.addWidget(steps, row, 4)
 
         # add remove button
@@ -72,13 +117,17 @@ class MultiGo(QDialog):
         remove_button.clicked.connect(self.remove_run_variable)
         self.grid.addWidget(remove_button, row, BUTTON_COLUMN)
 
+        # add to run variables
+        self.run_variables.append(run_variable)
+
     def remove_run_variable(self):
         button = self.sender()
         rows = self.grid.rowCount()
         for i in range(rows):
-            widget = self.grid.itemAtPosition(i, BUTTON_COLUMN)
-            if widget and widget.widget() == button:
-                print(f"Removing row {i}")
+            # find row that contains the button
+            item = self.grid.itemAtPosition(i, BUTTON_COLUMN)
+            if item and item.widget() == button:
+                # delete all the widgets in that row
                 columns = self.grid.columnCount()
                 for j in range(columns):
                     widget = self.grid.itemAtPosition(i, j)

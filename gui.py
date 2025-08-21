@@ -83,6 +83,11 @@ class Gui(QMainWindow):
         enabled.insert(0, True)  # dc is always enabled
         columns.append(fits.Column(name='enabled', format='L', array=enabled))
 
+        # add the id column
+        ids = [stage.id for stage in self.stages_gui.stages]
+        ids.insert(0, 'dc')
+        columns.append(fits.Column(name='id', format='A36', array=ids))
+
         # add columns for each variable in the gui
         for i, variable in enumerate(self.stages_gui.variables):
             col = variable.fits_column()
@@ -133,7 +138,8 @@ class Gui(QMainWindow):
             # create new column of widgets for the stage
             stage_name = stage_row['stage_name'].strip()
             enabled = stage_row['enabled']
-            self.stages_gui.insert_stage(len(self.stages_gui.stages), name=stage_name, enabled=enabled)
+            id = stage_row['id'].strip()
+            self.stages_gui.insert_stage(len(self.stages_gui.stages), name=stage_name, enabled=enabled, id=id)
 
             # fill the stage widgets with the values from the file
             for widget in self.stages_gui.stages[i].widgets:

@@ -1,4 +1,5 @@
 import numpy as np
+from uuid import uuid4
 
 from PyQt6.QtWidgets import *
 from PyQt6.QtCore import Qt, QSize
@@ -6,12 +7,13 @@ from PyQt6.QtCore import Qt, QSize
 from camera import CameraConnection
 from device_types import Dc, DeviceStages, DeviceSettings
 from gui_types import big
-from multigo import MultiGo
+from multigo import MultiGoDialog
 from variable_types import *
 
 # class to represent a stage in the gui. differs from Stage in that it can't be sent to the device
 class GuiStage:
-    def __init__(self, button, container, widgets, enabled=True):
+    def __init__(self, button, container, widgets, enabled=True, id=None):
+        self.id = id if id is not None else uuid4()
         self.button = button
         self.container = container
         self.widgets = widgets
@@ -24,6 +26,7 @@ class StagesGui:
     def __init__(self, window, variables):
         self.window = window
         self.variables = variables
+        self.run_variables = []
 
         # store reference to all the widgets to get their values later
         self.dc_widgets = []
@@ -77,6 +80,20 @@ class StagesGui:
 
         # connect the load mot checkbox to the update_device_settings method
         self.window.load_mot.stateChanged.connect(self.update_device_settings)
+
+    # gets a stage using the stage id
+    def get_stage(self, stage_id):
+        for stage in self.stages:
+            if stage.id == stage_id:
+                return stage
+        raise ValueError(f"Stage with id {stage_id} not found")
+
+    # gets a variable using the variable id
+    def get_variable(self, variable_id):
+        for i, variable in enumerate(self.variables):
+            if variable.id == variable_id:
+                return i, variable
+        raise ValueError(f"Variable with id {variable_id} not found")
 
     '''
     methods to get the values from the widgets and update the device.
@@ -183,7 +200,7 @@ class StagesGui:
 
     # open the multigo options popup
     def multigo_options(self):
-        multi_go = MultiGo(self)
+        multi_go = MultiGoDialog(self)
         multi_go.exec()
 
     # send the current device settings to the device
@@ -200,14 +217,14 @@ class StagesGui:
     '''
 
     # we need to use the object reference since the index changes when we insert or delete stages
-    def get_stage_index(self, stage_container) -> int:
+    def get_stage_index(self, button) -> int:
         for i, stage in enumerate(self.stages):
-            if stage.container is stage_container:
+            if stage.button is button:
                 return i
-        raise ValueError("Stage container not found") 
+        raise ValueError("Stage button not found")
 
     # adds a new stage to the gui
-    def insert_stage(self, idx: int, name=None, enabled=True):
+    def insert_stage(self, idx: int, name=None, enabled=True, id=None):
         stage_container = QVBoxLayout()
         self.window.stages_container.insertLayout(idx, stage_container)
 
@@ -217,13 +234,13 @@ class StagesGui:
         button.setMinimumSize(QSize(0, 24))
         button.setMaximumSize(QSize(big, 24))
         button.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
-        button.clicked.connect(lambda: self.disable_stage(self.get_stage_index(stage_container)))
-        button.addAction("Rename", lambda: self.rename_stage(self.get_stage_index(stage_container)))
-        button.addAction("Copy", lambda: self.copy_stage(self.get_stage_index(stage_container)))
-        button.addAction("Paste", lambda: self.paste_stage(self.get_stage_index(stage_container)))
-        button.addAction("Insert Stage Left", lambda: self.insert_stage_left(self.get_stage_index(stage_container)))
-        button.addAction("Insert Stage Right", lambda: self.insert_stage_right(self.get_stage_index(stage_container)))
-        button.addAction("Delete", lambda: self.delete_stage(self.get_stage_index(stage_container)))
+        button.clicked.connect(lambda: self.disable_stage(self.get_stage_index(button)))
+        button.addAction("Rename", lambda: self.rename_stage(self.get_stage_index(button)))
+        button.addAction("Copy", lambda: self.copy_stage(self.get_stage_index(button)))
+        button.addAction("Paste", lambda: self.paste_stage(self.get_stage_index(button)))
+        button.addAction("Insert Stage Left", lambda: self.insert_stage_left(self.get_stage_index(button)))
+        button.addAction("Insert Stage Right", lambda: self.insert_stage_right(self.get_stage_index(button)))
+        button.addAction("Delete", lambda: self.delete_stage(self.get_stage_index(button)))
         stage_container.addWidget(button)
 
         # create widgets for each variable and add them to the layout
@@ -236,7 +253,7 @@ class StagesGui:
         # add a spacer to the stage container
         stage_container.addStretch()
 
-        self.stages.insert(idx, GuiStage(button, stage_container, widgets, enabled))
+        self.stages.insert(idx, GuiStage(button, stage_container, widgets, enabled, id))
         if not enabled:
             for widget in widgets:
                 widget.setEnabled(False)
