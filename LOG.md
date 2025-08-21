@@ -52,3 +52,6 @@
 - 18/08/25
   - Add widget selection for multigo
   - Add multigo dialog
+- 21/08/25
+  - Finish multigo gui
+  - Store and load multigo state at runtime

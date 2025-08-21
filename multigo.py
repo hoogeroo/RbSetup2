@@ -54,7 +54,6 @@ class MultiGoDialog(QDialog):
 
         # add all existing run variables
         for run_variable in self.stages.run_variables:
-            print("adding_run_variable", run_variable)
             self.add_run_variable(run_variable)
     
     def save_run_variables(self):
