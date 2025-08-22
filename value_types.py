@@ -3,24 +3,15 @@ value_types.py: contains abstractions over the different variable types used by 
 '''
 
 import numpy as np
-
-# optionally import portable decorator so this module can be used without artiq
-try:
-    from artiq.experiment import portable
-except ImportError:
-    def portable(func):
-        return func
+import astropy.io.fits as fits
 
 class BoolValue:
-    @portable
     def __init__(self):
         self.array = np.zeros(2, dtype=np.bool_)
 
-    @portable
     def to_array(self):
         return self.array
 
-    @portable
     def from_array(array):
         if array.shape != (2,):
             raise ValueError("Array must have shape (2,)")
@@ -32,52 +23,42 @@ class BoolValue:
         value.array = array
         return value
 
-    @portable
     def set_hold(self):
         self.array[0] = False
         self.array[1] = False
 
-    @portable
     def set_constant(self, value):
         self.array[0] = True
         self.array[1] = value
 
-    @portable
     def hold():
         value = BoolValue()
         value.set_hold()
         return value
 
-    @portable
     def constant(value):
         bool_value = BoolValue()
         bool_value.set_constant(value)
         return bool_value
 
-    @portable
     def is_hold(self):
         return self.array[0] == False
 
-    @portable
     def is_constant(self):
         return self.array[0] == True
 
-    @portable
     def constant_value(self):
         if not self.is_constant():
             raise ValueError("Value is not constant")
         return self.array[1]
 
 class IntValue:
-    @portable
     def __init__(self):
         self.array = np.zeros(2, dtype=np.int64)
 
-    @portable
     def to_array(self):
         return self.array
 
-    @portable
     def from_array(array):
         if array.shape != (2,):
             raise ValueError("Array must have shape (2,)")
@@ -89,52 +70,42 @@ class IntValue:
         value.array = array
         return value
 
-    @portable
     def set_hold(self):
         self.array[0] = 0
         self.array[1] = 0
 
-    @portable
     def set_constant(self, value):
         self.array[0] = 1
         self.array[1] = value
 
-    @portable
     def hold():
         value = IntValue()
         value.set_hold()
         return value
 
-    @portable
     def constant(value):
         int_value = IntValue()
         int_value.set_constant(value)
         return int_value
 
-    @portable
     def is_hold(self):
         return self.array[0] == 0
 
-    @portable
     def is_constant(self):
         return self.array[0] == 1
 
-    @portable
     def constant_value(self):
         if not self.is_constant():
             raise ValueError("Value is not constant")
         return self.array[1]
 
 class FloatValue:
-    @portable
     def __init__(self):
         self.array = np.zeros(3, dtype=np.float64)
 
-    @portable
     def to_array(self):
         return self.array
 
-    @portable
     def from_array(array):
         if array.shape != (3,):
             raise ValueError("Array must have shape (3,)")
@@ -146,65 +117,53 @@ class FloatValue:
         value.array = array
         return value
 
-    @portable
     def set_hold(self):
         self.array[0] = 0.0
         self.array[1] = 0.0
 
-    @portable
     def set_constant(self, value):
         self.array[0] = 1.0
         self.array[1] = value
 
-    @portable
     def set_ramp(self, start, end):
         self.array[0] = 2.0
         self.array[1] = start
         self.array[2] = end
 
-    @portable
     def hold():
         value = FloatValue()
         value.set_hold()
         return value
 
-    @portable
     def constant(value):
         float_value = FloatValue()
         float_value.set_constant(value)
         return float_value
 
-    @portable
     def ramp(start, end):
         float_value = FloatValue()
         float_value.set_ramp(start, end)
         return float_value
 
-    @portable
     def is_hold(self):
         return self.array[0] == 0.0
 
-    @portable
     def is_constant(self):
         return self.array[0] == 1.0
 
-    @portable
     def is_ramp(self):
         return self.array[0] == 2.0
 
-    @portable
     def constant_value(self):
         if not self.is_constant():
             raise ValueError("Value is not constant")
         return self.array[1]
 
-    @portable
     def ramp_values(self):
         if not self.is_ramp():
             raise ValueError("Value is not a ramp")
         return self.array[1], self.array[2]
 
-    @portable
     def sample(self, step, samples):
         if self.is_hold():
             raise ValueError("Cannot sample a hold value")
@@ -217,3 +176,56 @@ class FloatValue:
             return start + (end - start) * step / (samples - 1)
         else:
             raise ValueError("unreachable")
+
+# used for storing any type of value
+class AnyValue:
+    def __init__(self, value=None):
+        self.array = np.zeros(4)
+        if value:
+            if isinstance(value, BoolValue):
+                self.array[0] = 0.0
+                self.array[1:] = value.to_array()
+            elif isinstance(value, IntValue):
+                self.array[0] = 1.0
+                self.array[1:] = value.to_array()
+            elif isinstance(value, FloatValue):
+                self.array[0] = 2.0
+                self.array[1:] = value.to_array()
+            else:
+                raise ValueError("Unsupported value type")
+
+    def to_array(self):
+        return self.array
+
+    def from_array(array):
+        if array.shape != (4,):
+            raise ValueError("Array must have shape (4,)")
+        if not np.issubdtype(array.dtype, np.floating):
+            raise ValueError("Array must be of floating point type")
+        if array[0] not in (0.0, 1.0, 2.0):
+            raise ValueError("First element of array must be 0.0 (hold), 1.0 (constant) or 2.0 (ramp)")
+        value = AnyValue()
+        value.array = array
+        return value
+
+    def to_value(self):
+        if self.is_bool():
+            return BoolValue.from_array(self.array[1:])
+        elif self.is_int():
+            return IntValue.from_array(self.array[1:])
+        elif self.is_float():
+            return FloatValue.from_array(self.array[1:])
+        else:
+            raise ValueError("Unknown value type")
+
+    def is_bool(self):
+        return self.array[0] == 0.0
+
+    def is_int(self):
+        return self.array[0] == 1.0
+
+    def is_float(self):
+        return self.array[0] == 2.0
+
+    def fits_column(self, name):
+        return fits.Column(name=name, format='E', array=self.array[1:])

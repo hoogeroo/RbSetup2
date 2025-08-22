@@ -8,8 +8,10 @@ from astropy.io import fits
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog
 from PyQt6.uic import loadUi
 
+from multigo import MultiGoRunVariable
 from plots import PlotsGui
 from stages import StagesGui
+from value_types import AnyValue
 
 def run_gui(variables, gui_pipe):
     app = QApplication([])
@@ -71,22 +73,30 @@ class Gui(QMainWindow):
 
     # save the settings to the file
     def save_settings(self, path):
-        columns = []
+        # create the primary HDU
+        primary_hdu = fits.PrimaryHDU()
+
+        # save the window layout
+        layout = self.saveState()
+        primary_hdu.header['layout'] = str(layout)
+
+        # add the stages
+        stage_columns = []
 
         # add the stage name column
         stage_names = [stage.button.text() for stage in self.stages_gui.stages]
         stage_names.insert(0, 'dc')
-        columns.append(fits.Column(name='stage_name', format='A20', array=stage_names))
+        stage_columns.append(fits.Column(name='stage_name', format='A20', array=stage_names))
         
         # add the enabled column
         enabled = [stage.enabled for stage in self.stages_gui.stages]
         enabled.insert(0, True)  # dc is always enabled
-        columns.append(fits.Column(name='enabled', format='L', array=enabled))
+        stage_columns.append(fits.Column(name='enabled', format='L', array=enabled))
 
         # add the id column
         ids = [stage.id for stage in self.stages_gui.stages]
         ids.insert(0, 'dc')
-        columns.append(fits.Column(name='id', format='A36', array=ids))
+        stage_columns.append(fits.Column(name='id', format='A36', array=ids))
 
         # add columns for each variable in the gui
         for i, variable in enumerate(self.stages_gui.variables):
@@ -100,33 +110,61 @@ class Gui(QMainWindow):
                 data.append(value)
 
             col.array = np.stack(data)
-            columns.append(col)
+            stage_columns.append(col)
 
-        # create a fits table hdu for the settings
-        hdu = fits.BinTableHDU.from_columns(columns)
+        # create a fits table hdu for the stages
+        stages_hdu = fits.BinTableHDU.from_columns(stage_columns)
 
-        # get the window layout
-        layout = self.saveState()
-        hdu.header['layout'] = str(layout)
+        # add the multigo settings
+        multigo_columns = []
+        run_variables = self.stages_gui.run_variables
 
-        # write the HDU to fits file
-        hdu.writeto(path, overwrite=True)
+        # add the stage ids
+        stage_ids = [var.stage_id for var in run_variables]
+        multigo_columns.append(fits.Column(name='stage_id', format='A36', array=stage_ids))
+
+        # add the variable ids
+        variable_ids = [var.variable_id for var in run_variables]
+        multigo_columns.append(fits.Column(name='variable_id', format='A36', array=variable_ids))
+
+        # add the start and end values
+        start_values = [AnyValue(var.start).to_array() for var in run_variables]
+        multigo_columns.append(fits.Column(name='start_value', format='4D', dim='(4)', array=start_values))
+        end_values = [AnyValue(var.end).to_array() for var in run_variables]
+        multigo_columns.append(fits.Column(name='end_value', format='4D', dim='(4)', array=end_values))
+
+        # add the steps
+        step_values = [var.steps for var in run_variables]
+        multigo_columns.append(fits.Column(name='steps', format='K', array=step_values))
+
+        # create a fits table hdu for the multigo settings
+        multigo_hdu = fits.BinTableHDU.from_columns(multigo_columns)
+
+        # write the HDU array
+        hdul = fits.HDUList([primary_hdu, stages_hdu, multigo_hdu])
+        hdul.writeto(path, overwrite=True)
 
     # load the settings from the file
     def load_settings(self, path):
         # read the fits file
-        hdu = fits.open(path)[1]
-        data = hdu.data
+        primary_hdu, stages_hdu, multigo_hdu = fits.open(path)
+
+        # load the window layout
+        layout = primary_hdu.header['layout']
+        self.restoreState(eval(layout))
+
+        # load the stages data
+        stages_data = stages_hdu.data
 
         # update the dc widgets with the values from the file
         for dc_widget in self.stages_gui.dc_widgets:
-            if dc_widget.variable.id in data.names:
-                array = data[0][dc_widget.variable.id]
+            if dc_widget.variable.id in stages_data.names:
+                array = stages_data[0][dc_widget.variable.id]
                 value = dc_widget.variable.value_type.from_array(array)
                 dc_widget.set_value(value)
             else:
                 print(f"Warning: '{dc_widget.variable.id}' not in dc data")
-        data = data[1:]  # skip the first row which is the dc
+        stages_data = stages_data[1:]  # skip the first row which is the dc
 
         # clear the current stage widgets
         for i in reversed(range(len(self.stages_gui.stages))):
@@ -134,7 +172,7 @@ class Gui(QMainWindow):
         self.stages_gui.stages.clear()
 
         # create new stage widgets based on the loaded data
-        for i, stage_row in enumerate(data):
+        for i, stage_row in enumerate(stages_data):
             # create new column of widgets for the stage
             stage_name = stage_row['stage_name'].strip()
             enabled = stage_row['enabled']
@@ -143,13 +181,23 @@ class Gui(QMainWindow):
 
             # fill the stage widgets with the values from the file
             for widget in self.stages_gui.stages[i].widgets:
-                if widget.variable.id in data.names:
+                if widget.variable.id in stages_data.names:
                     array = stage_row[widget.variable.id]
                     value = widget.variable.value_type.from_array(array)
                     widget.set_value(value)
                 else:
                     print(f"Warning: Unknown variable '{widget.variable.id}' in stage {i} data")
 
-        # load the window layout
-        layout = hdu.header['layout']
-        self.restoreState(eval(layout))
+        # load the multigo settings
+        multigo_data = multigo_hdu.data
+
+        run_variables = []
+        for row in multigo_data:
+            run_variables.append(MultiGoRunVariable(
+                row['stage_id'],
+                row['variable_id'],
+                AnyValue.from_array(row['start_value']).to_value(),
+                AnyValue.from_array(row['start_value']).to_value(),
+                row['steps']
+            ))
+        self.stages_gui.run_variables = run_variables
