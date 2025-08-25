@@ -4,9 +4,9 @@ from scipy.interpolate import CubicSpline
 from multiprocessing import Process, Pipe
 
 from camera import CameraConnection
-from device_types import Dc, Stages, FlattenedStages, DeviceSettings
+from device_types import Dc, Stages, FlattenedStages, MultiGoSubmission, DeviceSettings
 from gui import run_gui
-from multigo import run_multi_go_experiment, MultiGoStages
+from multigo import run_multi_go_experiment
 from plots import CameraImages, FluorescenceSample
 from variable_types import *
 
@@ -54,7 +54,7 @@ class AbstractDevice:
                 elif isinstance(msg, Stages):
                     # run the experiment with the provided stages
                     self.run_experiment(msg)
-                elif isinstance(msg, MultiGoStages):
+                elif isinstance(msg, MultiGoSubmission):
                     # run the multi-go routine
                     run_multi_go_experiment(self, msg.run_variables, msg.stages)
                 elif isinstance(msg, DeviceSettings):

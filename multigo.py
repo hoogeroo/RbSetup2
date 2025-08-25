@@ -1,5 +1,7 @@
 from PyQt6.QtWidgets import *
 
+from device_types import Stages
+
 BUTTON_COLUMN = 5
 
 class MultiGoRunVariable:
@@ -9,12 +11,6 @@ class MultiGoRunVariable:
         self.start = start
         self.end = end
         self.steps = steps
-
-# for running multi-go experiments
-class MultiGoStages:
-    def __init__(self, run_variables, stages):
-        self.run_variables = run_variables
-        self.stages = stages
 
 def run_multi_go_experiment(device, run_variables, stages):
     values = []
@@ -27,11 +23,40 @@ def run_multi_go_experiment(device, run_variables, stages):
     # loop over all combinations
     indices = [0] * len(values)
     while True:
-        current_stages = stages.copy()
+        # get what step of multigo we are at
+        current = 0
+        place = 1
+        for i, index in enumerate(indices):
+            current += index * place
+            place *= len(values[i])
+        print(f"MultiGo at {current} of {place} steps")
+
+        # update stages to the current state
         for i, index in enumerate(indices):
             stage_id = run_variables[i].stage_id
             variable_id = run_variables[i].variable_id
-            current_stages[i].set_value(values[i][index])
+            stage = stages.get_stage(stage_id)
+            setattr(stage, variable_id, values[i][index])
+
+        # wait for fluorescence (todo)
+
+        # run the experiment
+        device.run_experiment(stages)
+
+        # update the indices
+        done = False
+        for i, index in enumerate(indices):
+            if index < len(values[i]) - 1:
+                indices[i] += 1
+                break
+            if i == len(indices) - 1:
+                done = True
+                break
+            indices[i] = 0
+
+        # exit if done
+        if done:
+            break
 
 class MultiGoDialog(QDialog):
     def __init__(self, stages):
