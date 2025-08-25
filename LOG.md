@@ -55,3 +55,7 @@
 - 21/08/25
   - Finish multigo gui
   - Store and load multigo state at runtime
+- 25/08/25
+  - Refactor to move imaging to appropriate file
+  - Refactor to move flattening from the gui to the device
+  - Implement working multigo
