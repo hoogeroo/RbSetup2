@@ -177,26 +177,8 @@ class StagesGui:
 
     # runs the experiment and using the data from the widgets
     def submit_experiment(self):
-        # tell the camera server to acquire a frame
-        try:
-            camera = CameraConnection()
-            camera.shoot(1)
-        except Exception as e:
-            camera = None
-            print("Error occurred while shooting:", e)
-
         # run the actual experiment
         self.window.gui_pipe.send(self.extract_stages())
-
-        if camera:
-            # read the image from the camera server
-            picture = camera.read(timeout=1)
-
-            # plot the image
-            self.camera_ax.clear()
-            self.camera_ax.imshow(picture[0, :, :], aspect='equal')
-            self.camera_canvas.figure.colorbar(self.camera_ax.images[0], ax=self.camera_ax)
-            self.camera_canvas.draw()
 
     # open the multigo options popup
     def multigo_options(self):

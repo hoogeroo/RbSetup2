@@ -3,8 +3,10 @@ from scipy.interpolate import CubicSpline
 
 from multiprocessing import Process, Pipe
 
+from camera import CameraConnection
 from device_types import Dc, DeviceStages, DeviceSettings
 from gui import run_gui
+from plots import CameraImages, FluorescenceSample
 from variable_types import *
 
 '''
@@ -29,6 +31,7 @@ class AbstractDevice:
     def run(self):
         # create a pipe for communication between the gui and the device
         device_pipe, gui_pipe = Pipe()
+        self.device_pipe = device_pipe
 
         # start the gui in a separate process
         self.gui_process = Process(target=run_gui, args=(self.variables, gui_pipe,))
@@ -63,7 +66,7 @@ class AbstractDevice:
 
             # read the fluorescence signal
             fluorescence = self.read_fluorescence()
-            device_pipe.send(fluorescence)
+            device_pipe.send(FluorescenceSample(fluorescence))
 
             # pulse the push laser if requested
             if self.device_settings.load_mot:
@@ -79,8 +82,28 @@ class AbstractDevice:
     def update_dc(self, dc):
         print("DC updated:", dc)
 
-    # dummy method to be overridden by the device
     def run_experiment(self, stages):
+        # tell the camera server to acquire a frame
+        try:
+            camera = CameraConnection()
+            camera.shoot(1)
+        except Exception as e:
+            camera = None
+            print("Error occurred while shooting:", e)
+        
+        # run the experiment on the artiq device
+        self.run_experiment_device(stages)
+
+        # read back the camera
+        if camera:
+            # read the image from the camera server
+            picture = camera.read(timeout=1)
+
+            # send the picture to the gui
+            self.device_pipe.send(CameraImages(picture))
+
+    # dummy method to be overridden by the device
+    def run_experiment_device(self, stages):
         print("Experiment run with stages:", stages)
     
     # pulse push laser

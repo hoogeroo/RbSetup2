@@ -11,7 +11,7 @@ from astropy.io import fits
 
 TCPIP = '10.103.154.4'
 PORT = 54321
-TMPFITS = 'zdrive/kuroTemp/temp.fit'
+TMPFITS = '/home/lab/Documents/zdrive/kuroTemp/temp.fit'
 
 '''
 when this class is instantiated it tries to connect to the camera server
@@ -30,8 +30,6 @@ class CameraConnection:
         # print(conn.recv(5))
 
         conn.close()
-
-        print("camera connected")
 
     # send a command to the camera server to acquire nframes. doesn't actually trigger the camera, just sends a command to the server. camera needs to be triggered separately
     def shoot(self, nframes):

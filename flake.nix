@@ -57,9 +57,9 @@
           #pkgs.libaiousb
           #pkgs.R
           #pkgs.json
-          pkgs.glibc
-          pkgs.busybox-sandbox-shell
-          pkgs.fxload
+          # pkgs.glibc
+          # pkgs.busybox-sandbox-shell
+          # pkgs.fxload
           #pkgs.sklearn
           #pkgs.julia
           pkgs.qt6.qtwayland

@@ -189,15 +189,12 @@ class Gui(QMainWindow):
                     print(f"Warning: Unknown variable '{widget.variable.id}' in stage {i} data")
 
         # load the multigo settings
-        multigo_data = multigo_hdu.data
-
-        run_variables = []
-        for row in multigo_data:
-            run_variables.append(MultiGoRunVariable(
+        self.stages_gui.run_variables = []
+        for row in multigo_hdu.data:
+            self.stages_gui.run_variables.append(MultiGoRunVariable(
                 row['stage_id'],
                 row['variable_id'],
                 AnyValue.from_array(row['start_value']).to_value(),
-                AnyValue.from_array(row['start_value']).to_value(),
+                AnyValue.from_array(row['end_value']).to_value(),
                 row['steps']
             ))
-        self.stages_gui.run_variables = run_variables
