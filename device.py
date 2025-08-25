@@ -4,8 +4,9 @@ from scipy.interpolate import CubicSpline
 from multiprocessing import Process, Pipe
 
 from camera import CameraConnection
-from device_types import Dc, DeviceStages, DeviceSettings
+from device_types import Dc, Stages, FlattenedStages, DeviceSettings
 from gui import run_gui
+from multigo import run_multi_go_experiment, MultiGoStages
 from plots import CameraImages, FluorescenceSample
 from variable_types import *
 
@@ -47,13 +48,16 @@ class AbstractDevice:
             if device_pipe.poll(0.1):
                 msg = device_pipe.recv()
 
-                if type(msg) is Dc:
+                if isinstance(msg, Dc):
                     # update the device with the new values
                     self.update_dc(msg)
-                elif type(msg) is DeviceStages:
+                elif isinstance(msg, Stages):
                     # run the experiment with the provided stages
                     self.run_experiment(msg)
-                elif type(msg) is DeviceSettings:
+                elif isinstance(msg, MultiGoStages):
+                    # run the multi-go routine
+                    run_multi_go_experiment(self, msg.run_variables, msg.stages)
+                elif isinstance(msg, DeviceSettings):
                     # update the device settings
                     self.device_settings = msg
                 else:
@@ -82,6 +86,7 @@ class AbstractDevice:
     def update_dc(self, dc):
         print("DC updated:", dc)
 
+    # handles the host side functions of running an experiment
     def run_experiment(self, stages):
         # tell the camera server to acquire a frame
         try:
@@ -92,7 +97,8 @@ class AbstractDevice:
             print("Error occurred while shooting:", e)
         
         # run the experiment on the artiq device
-        self.run_experiment_device(stages)
+        flattened_stages = FlattenedStages(stages, self.variables)
+        self.run_experiment_device(flattened_stages)
 
         # read back the camera
         if camera:
@@ -103,9 +109,9 @@ class AbstractDevice:
             self.device_pipe.send(CameraImages(picture))
 
     # dummy method to be overridden by the device
-    def run_experiment_device(self, stages):
-        print("Experiment run with stages:", stages)
-    
+    def run_experiment_device(self, flattened_stages):
+        print("Experiment run with stages:", flattened_stages)
+
     # pulse push laser
     def pulse_push_laser(self):
         print("Pulsing push laser")

@@ -8,6 +8,14 @@ import astropy.io.fits as fits
 class BoolValue:
     def __init__(self):
         self.array = np.zeros(2, dtype=np.bool_)
+    
+    def __repr__(self):
+        if self.is_hold():
+            return "Hold"
+        elif self.is_constant():
+            return f"{self.constant_value()}"
+        else:
+            raise ValueError("unreachable")
 
     def to_array(self):
         return self.array
@@ -52,9 +60,20 @@ class BoolValue:
             raise ValueError("Value is not constant")
         return self.array[1]
 
+    def interpolate(self, end, steps):
+        raise ValueError("Cannot interpolate boolean values")
+
 class IntValue:
     def __init__(self):
         self.array = np.zeros(2, dtype=np.int64)
+
+    def __repr__(self):
+        if self.is_hold():
+            return "Hold"
+        elif self.is_constant():
+            return f"{self.constant_value()}"
+        else:
+            raise ValueError("unreachable")
 
     def to_array(self):
         return self.array
@@ -99,9 +118,33 @@ class IntValue:
             raise ValueError("Value is not constant")
         return self.array[1]
 
+    def interpolate(self, end, steps):
+        if not self.is_constant():
+            raise ValueError("Can't interpolate non-constant values")
+        if not end.is_constant():
+            raise ValueError("Can't interpolate to a non-constant value")
+        start = self.constant_value()
+        end = end.constant_value()
+        values = np.linspace(start, end, steps, dtype=np.int64)
+        output = []
+        for value in values:
+            output.append(IntValue.constant(value))
+        return output
+
 class FloatValue:
     def __init__(self):
         self.array = np.zeros(3, dtype=np.float64)
+
+    def __repr__(self):
+        if self.is_hold():
+            return "Hold"
+        elif self.is_constant():
+            return f"{self.constant_value()}"
+        elif self.is_ramp():
+            start, end = self.ramp_values()
+            return f"({start} -> {end})"
+        else:
+            raise ValueError("unreachable")
 
     def to_array(self):
         return self.array
@@ -164,6 +207,7 @@ class FloatValue:
             raise ValueError("Value is not a ramp")
         return self.array[1], self.array[2]
 
+    # samples values in a float ramp
     def sample(self, step, samples):
         if self.is_hold():
             raise ValueError("Cannot sample a hold value")
@@ -176,6 +220,29 @@ class FloatValue:
             return start + (end - start) * step / (samples - 1)
         else:
             raise ValueError("unreachable")
+
+    def interpolate(self, end, steps):
+        if self.is_hold():
+            raise ValueError("Can't interpolate from a hold value")
+        if end.is_hold():
+            raise ValueError("Can't interpolate to a hold value")
+        if self.is_constant() and end.is_constant():
+            start = self.constant_value()
+            end = end.constant_value()
+            values = np.linspace(start, end, steps)
+            output = []
+            for value in values:
+                output.append(FloatValue.constant(value))
+            return output
+        if self.is_ramp() and end.is_ramp():
+            start1, end1 = self.ramp_values()
+            start2, end2 = end.ramp_values()
+            values1 = np.linspace(start1, end1, steps)
+            values2 = np.linspace(start2, end2, steps)
+            output = []
+            for i in range(steps):
+                output.append(FloatValue.ramp(values1[i], values2[i]))
+            return output
 
 # used for storing any type of value
 class AnyValue:

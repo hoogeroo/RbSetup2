@@ -5,11 +5,12 @@ gui.py: creates the main gui and sends commands to main.py to interface with the
 import numpy as np
 from astropy.io import fits
 
+from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog
 from PyQt6.uic import loadUi
 
 from multigo import MultiGoRunVariable
-from plots import PlotsGui
+from plots import PlotsGui, CameraImages, FluorescenceSample
 from stages import StagesGui
 from value_types import AnyValue
 
@@ -51,6 +52,22 @@ class Gui(QMainWindow):
 
         # mark the UI as loaded
         self.ui_loaded = True
+
+        # fluorescence timer
+        self.fluorescence_timer = QTimer()
+        self.fluorescence_timer.timeout.connect(self.handle_device_events)
+        self.fluorescence_timer.start(100)
+
+    def handle_device_events(self):
+        # poll the pipe with no timeout (only read already queued values)
+        if self.gui_pipe.poll():
+            # get the recieved value
+            recieved = self.gui_pipe.recv()
+
+            if isinstance(recieved, FluorescenceSample):
+                self.plots_gui.update_fluorescence(recieved)
+            elif isinstance(recieved, CameraImages):
+                self.plots_gui.update_images(recieved)
 
     '''
     methods to save and load settings from a file

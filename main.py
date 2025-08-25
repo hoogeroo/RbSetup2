@@ -62,26 +62,27 @@ class Device(AbstractDevice, EnvExperiment):
         )
 
     @kernel
-    def run_experiment_device(self, stages):
+    def run_experiment_device(self, flattened_stages):
         # reset the cores timer for the new experiment
         self.core.break_realtime()
 
         # iterate through the stages and get their values
-        for i in range(len(stages.time)):
+        s = flattened_stages
+        for i in range(len(s.time)):
             # update digital output
-            if stages.digital[i]:
+            if s.digital[i]:
                 self.ttl5.on()
             else:
                 self.ttl5.off()
 
             # update analog output
-            self.fastino0.set_dac(0, stages.analog[i])
+            self.fastino0.set_dac(0, s.analog[i])
 
             # update rf output
-            self.urukul0_ch0.set(stages.rf_freq[i] * MHz, amplitude=stages.rf_magnitude[i])
+            self.urukul0_ch0.set(s.rf_freq[i] * MHz, amplitude=s.rf_magnitude[i])
 
             # wait for a short time to simulate the experiment duration
-            delay(stages.time[i] * ms)
+            delay(s.time[i] * ms)
 
     @kernel
     def pulse_push_laser(self):

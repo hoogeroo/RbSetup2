@@ -1,8 +1,10 @@
+'''
+plots.py: handles the plotting part of the gui and related events
+'''
+
 import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvas
 from matplotlib.figure import Figure
-
-from PyQt6.QtCore import QTimer
 
 FLUORESCENCE_SAMPLES = 100
 
@@ -31,40 +33,32 @@ class PlotsGui:
         self.fluorescence_points, = self.fluorescence_ax.plot(self.fluorescence_data)
         self.window.fluorescence_grid.addWidget(self.fluorescence_canvas, 1, 4, 1, 1)
 
-        # fluorescence timer
-        self.fluorescence_timer = QTimer()
-        self.fluorescence_timer.timeout.connect(self.update_plots)
-        self.fluorescence_timer.start(100)
+    # update the fluorescence plot with a new sample
+    def update_fluorescence(self, recieved: FluorescenceSample):
+        # put the fluorescence value in the readout
+        self.window.fluorescence.display(recieved.sample)
 
-    def update_plots(self):
-        # poll the pipe with no timeout (only read already queued values)
-        if self.window.gui_pipe.poll():
-            # get the recieved value
-            recieved = self.window.gui_pipe.recv()
+        # put the new value at the end of the buffer
+        self.fluorescence_data = np.roll(self.fluorescence_data, -1)
+        self.fluorescence_data[-1] = recieved.sample
 
-            if isinstance(recieved, FluorescenceSample):
-                # put the fluorescence value in the readout
-                self.window.fluorescence.display(recieved.sample)
+        # refresh the plot
+        self.fluorescence_points.set_ydata(self.fluorescence_data)
+        self.fluorescence_ax.relim()
+        self.fluorescence_ax.autoscale_view()
+        self.fluorescence_canvas.draw()
 
-                # put the new value at the end of the buffer
-                self.fluorescence_data = np.roll(self.fluorescence_data, -1)
-                self.fluorescence_data[-1] = recieved.sample
+    # update the camera images
+    def update_images(self, recieved: CameraImages):
+        fig = self.camera_canvas.figure
 
-                # refresh the plot
-                self.fluorescence_points.set_ydata(self.fluorescence_data)
-                self.fluorescence_ax.relim()
-                self.fluorescence_ax.autoscale_view()
-                self.fluorescence_canvas.draw()
-            elif isinstance(recieved, CameraImages):
-                fig = self.camera_canvas.figure
-                
-                # clear the old image
-                fig.clear()
+        # clear the old image
+        fig.clear()
 
-                # plot the new image
-                ax = fig.subplots()
-                ax.imshow(recieved.images[0, :, :], aspect='equal')
-                fig.colorbar(ax.images[0], ax=ax)
+        # plot the new image
+        ax = fig.subplots()
+        ax.imshow(recieved.images[0, :, :], aspect='equal')
+        fig.colorbar(ax.images[0], ax=ax)
 
-                # refresh the canvas
-                self.camera_canvas.draw()
+        # refresh the canvas
+        self.camera_canvas.draw()

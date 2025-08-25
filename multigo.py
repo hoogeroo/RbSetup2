@@ -10,6 +10,29 @@ class MultiGoRunVariable:
         self.end = end
         self.steps = steps
 
+# for running multi-go experiments
+class MultiGoStages:
+    def __init__(self, run_variables, stages):
+        self.run_variables = run_variables
+        self.stages = stages
+
+def run_multi_go_experiment(device, run_variables, stages):
+    values = []
+
+    # create array of all the values that need to be interpolated
+    for var in run_variables:
+        array = var.start.interpolate(var.end, var.steps)
+        values.append(array)
+
+    # loop over all combinations
+    indices = [0] * len(values)
+    while True:
+        current_stages = stages.copy()
+        for i, index in enumerate(indices):
+            stage_id = run_variables[i].stage_id
+            variable_id = run_variables[i].variable_id
+            current_stages[i].set_value(values[i][index])
+
 class MultiGoDialog(QDialog):
     def __init__(self, stages):
         super().__init__()

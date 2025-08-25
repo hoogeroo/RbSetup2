@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import *
 from PyQt6.QtCore import Qt, QSize
 
 from camera import CameraConnection
-from device_types import Dc, DeviceStages, DeviceSettings
+from device_types import Dc, Stage, Stages, MultiGoSubmission, DeviceSettings
 from gui_types import big
 from multigo import MultiGoDialog
 from variable_types import *
@@ -75,6 +75,9 @@ class StagesGui:
         # connect the multigo options button
         self.window.options.clicked.connect(self.multigo_options)
 
+        # connect the multigo button
+        self.window.multi_go.clicked.connect(self.submit_multigo)
+
         # connect the run button to the submit_experiment method
         self.window.run_experiment.clicked.connect(self.submit_experiment)
 
@@ -107,64 +110,16 @@ class StagesGui:
             setattr(dc, variable.id, self.dc_widgets[i].get_value().constant_value())
         return dc
 
-    # extracts the values from the stage widgets and creates a DeviceStages object to send to the device
-    def extract_stages(self) -> DeviceStages:
-        # initialise the variable lists with the dc value for each variable
-        device_stages = DeviceStages()
-        for i, variable in enumerate(self.variables):
-            setattr(device_stages, variable.id, [self.dc_widgets[i].get_value().constant_value()])
-
-        # extend the lists with the stage values
-        for i in range(len(self.stages)):
-            # skip the stage if it is not enabled
-            if not self.stages[i].enabled:
-                continue
-
-            # extract the stage into a temporary object to make it easier to work with
-            tmp = Dc()
-            for j, variable in enumerate(self.variables):
-                value = self.stages[i].widgets[j].get_value()
-                setattr(tmp, variable.id, value)
-
-            # get the number of samples
-            samples = max(tmp.samples.constant_value(), 1)
-
-            # add values to the lists for each sample
-            for sample in range(samples):
-                for variable in self.variables:
-                    # get the value and list for the variable
-                    value = getattr(tmp, variable.id)
-                    device_variable_list = getattr(device_stages, variable.id)
-
-                    # special case for time variable
-                    if variable.id == "time":
-                        device_variable_list.append(tmp.time.constant_value() / samples)
-                        continue
-
-                    # if hold repeat the last value
-                    if value.is_hold():
-                        device_variable_list.append(device_variable_list[-1])
-                    # if constant use the constant value
-                    elif value.is_constant():
-                        device_variable_list.append(value.constant_value())
-                    # for float ramps sample the ramp for each value
-                    elif isinstance(value, FloatValue):
-                        if value.is_ramp():
-                            device_variable_list.append(value.sample(sample, samples))
-
-        # turn the lists into numpy arrays
-        for variable in self.variables:
-            device_variable_list = getattr(device_stages, variable.id)
-            device_variable_array = np.array(device_variable_list)
-
-            # apply calibration if needed
-            if isinstance(variable, VariableTypeFloat):
-                if variable.calibration is not None:
-                    device_variable_array = variable.calibration(device_variable_array)
-
-            setattr(device_stages, variable.id, device_variable_array)
-
-        return device_stages
+    # extracts the values from the stage widgets and creates a Stages object to send to the device
+    def extract_stages(self) -> Stages:
+        stages = []
+        for gui_stage in self.stages:
+            stage = Stage(gui_stage.id, gui_stage.enabled)
+            for i, variable in enumerate(self.variables):
+                setattr(stage, variable.id, gui_stage.widgets[i].get_value())
+            stages.append(stage)
+        dc = self.extract_dc()
+        return Stages(dc, stages)
 
     # updates the device with the values from the widgets
     def update_dc(self):
@@ -179,6 +134,10 @@ class StagesGui:
     def submit_experiment(self):
         # run the actual experiment
         self.window.gui_pipe.send(self.extract_stages())
+    
+    # sends the multigo event down the pipe with the gui state
+    def submit_multigo(self):
+        self.window.gui_pipe.send(MultiGoSubmission(self.run_variables, self.extract_stages()))
 
     # open the multigo options popup
     def multigo_options(self):
