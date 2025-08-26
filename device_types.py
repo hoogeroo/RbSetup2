@@ -33,8 +33,8 @@ class Stages:
 
 # represents a multigo submission
 class MultiGoSubmission:
-    def __init__(self, run_variables, stages: Stages):
-        self.run_variables = run_variables
+    def __init__(self, multigo_settings, stages: Stages):
+        self.multigo_settings = multigo_settings
         self.stages = stages
 
 # device settings that aren't directly related to the experiment stages or dc values

@@ -7,7 +7,7 @@ from PyQt6.QtCore import Qt, QSize
 from camera import CameraConnection
 from device_types import Dc, Stage, Stages, MultiGoSubmission, DeviceSettings
 from gui_types import big
-from multigo import MultiGoDialog, MultiGoProgressDialog
+from multigo import MultiGoDialog, MultiGoProgressDialog, MultiGoSettings
 from variable_types import *
 
 # class to represent a stage in the gui. differs from Stage in that it can't be sent to the device
@@ -26,7 +26,7 @@ class StagesGui:
     def __init__(self, window, variables):
         self.window = window
         self.variables = variables
-        self.run_variables = []
+        self.multigo_settings = MultiGoSettings([], 0.0)
 
         # store reference to all the widgets to get their values later
         self.dc_widgets = []
@@ -73,10 +73,10 @@ class StagesGui:
         self.window.copied_container.addStretch()
 
         # connect the multigo options button
-        self.window.options.clicked.connect(self.multigo_options)
+        self.window.options.clicked.connect(self.multigo_dialog)
 
         # connect the multigo button
-        self.window.multi_go.clicked.connect(self.submit_multigo)
+        self.window.multigo.clicked.connect(self.submit_multigo)
 
         # connect the run button to the submit_experiment method
         self.window.run_experiment.clicked.connect(self.submit_experiment)
@@ -137,15 +137,15 @@ class StagesGui:
     
     # sends the multigo event down the pipe with the gui state
     def submit_multigo(self):
-        self.window.gui_pipe.send(MultiGoSubmission(self.run_variables, self.extract_stages()))
+        self.window.gui_pipe.send(MultiGoSubmission(self.multigo_settings, self.extract_stages()))
 
         self.window.multigo_progress = MultiGoProgressDialog(self.window)
         self.window.multigo_progress.exec()
 
     # open the multigo options popup
-    def multigo_options(self):
-        multi_go = MultiGoDialog(self)
-        multi_go.exec()
+    def multigo_dialog(self):
+        multigo = MultiGoDialog(self)
+        multigo.exec()
 
     # send the current device settings to the device
     def update_device_settings(self):

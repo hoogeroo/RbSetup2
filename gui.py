@@ -9,7 +9,7 @@ from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog
 from PyQt6.uic import loadUi
 
-from multigo import MultiGoProgress, MultiGoRunVariable
+from multigo import MultiGoProgress, MultiGoRunVariable, MultiGoSettings
 from plots import PlotsGui, CameraImages, FluorescenceSample
 from stages import StagesGui
 from value_types import AnyValue
@@ -138,7 +138,8 @@ class Gui(QMainWindow):
 
         # add the multigo settings
         multigo_columns = []
-        run_variables = self.stages_gui.run_variables
+        run_variables = self.stages_gui.multigo_settings.run_variables
+        fluorescence_threshold = self.stages_gui.multigo_settings.fluorescence_threshold
 
         # add the stage ids
         stage_ids = [var.stage_id for var in run_variables]
@@ -160,6 +161,7 @@ class Gui(QMainWindow):
 
         # create a fits table hdu for the multigo settings
         multigo_hdu = fits.BinTableHDU.from_columns(multigo_columns)
+        multigo_hdu.header['fluorthr'] = fluorescence_threshold
 
         # write the HDU array
         hdul = fits.HDUList([primary_hdu, stages_hdu, multigo_hdu])
@@ -210,12 +212,14 @@ class Gui(QMainWindow):
                     print(f"Warning: Unknown variable '{widget.variable.id}' in stage {i} data")
 
         # load the multigo settings
-        self.stages_gui.run_variables = []
+        multigo_settings = MultiGoSettings([], 0.0)
         for row in multigo_hdu.data:
-            self.stages_gui.run_variables.append(MultiGoRunVariable(
+            multigo_settings.run_variables.append(MultiGoRunVariable(
                 row['stage_id'],
                 row['variable_id'],
                 AnyValue.from_array(row['start_value']).to_value(),
                 AnyValue.from_array(row['end_value']).to_value(),
                 row['steps']
             ))
+        multigo_settings.fluorescence_threshold = multigo_hdu.header['fluorthr']
+        self.stages_gui.multigo_settings = multigo_settings

@@ -98,4 +98,4 @@ class Device(AbstractDevice, EnvExperiment):
         self.core.break_realtime()
         sample = [0.0]*8
         self.sampler0.sample(sample)
-        return sample[0]
+        return -100.0 * sample[0]

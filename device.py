@@ -6,7 +6,7 @@ from multiprocessing import Process, Pipe
 from camera import CameraConnection
 from device_types import Dc, Stages, FlattenedStages, MultiGoSubmission, DeviceSettings
 from gui import run_gui
-from multigo import MultiGoCancel, run_multi_go_experiment
+from multigo import MultiGoCancel, run_multigo_experiment
 from plots import CameraImages, FluorescenceSample
 from variable_types import *
 
@@ -56,7 +56,7 @@ class AbstractDevice:
                     self.run_experiment(msg)
                 elif isinstance(msg, MultiGoSubmission):
                     # run the multi-go routine
-                    run_multi_go_experiment(self, msg.run_variables, msg.stages)
+                    run_multigo_experiment(self, msg.multigo_settings, msg.stages)
                 elif isinstance(msg, DeviceSettings):
                     # update the device settings
                     self.device_settings = msg

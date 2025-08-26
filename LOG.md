@@ -61,3 +61,4 @@
   - Implement working multigo
 - 26/08/25
   - Multigo progress bar and cancellation
+  - Add a Multigo fluorescence threshold

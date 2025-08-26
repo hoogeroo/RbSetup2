@@ -1,8 +1,14 @@
 from PyQt6.QtWidgets import *
 
 from device_types import Stages
+from plots import FluorescenceSample
 
 BUTTON_COLUMN = 5
+
+class MultiGoSettings:
+    def __init__(self, run_variables, fluorescence_threshold):
+        self.run_variables = run_variables
+        self.fluorescence_threshold = fluorescence_threshold
 
 class MultiGoRunVariable:
     def __init__(self, stage_id, variable_id, start, end, steps):
@@ -22,7 +28,11 @@ class MultiGoProgress:
 class MultiGoCancel:
     pass
 
-def run_multi_go_experiment(device, run_variables, stages):
+# runs a multigo experiment 
+def run_multigo_experiment(device, multigo_settings: MultiGoSettings, stages: Stages):
+    run_variables = multigo_settings.run_variables
+    fluorescence_threshold = multigo_settings.fluorescence_threshold
+
     values = []
 
     # create array of all the values that need to be interpolated
@@ -52,19 +62,27 @@ def run_multi_go_experiment(device, run_variables, stages):
             stage = stages.get_stage(stage_id)
             setattr(stage, variable_id, values[i][index])
 
-        # wait for fluorescence (todo)
+        # wait for fluorescence
+        canceled = False
+        while True:
+            # wait for cancellation for 100ms
+            if device.device_pipe.poll(0.1):
+                msg = device.device_pipe.recv()
+                if not isinstance(msg, MultiGoCancel):
+                    print(f"Received weird message during multigo: {type(msg)}")
+                canceled = True
+                break
+
+            # check fluorescence
+            fluorescence = device.read_fluorescence()
+            device.device_pipe.send(FluorescenceSample(fluorescence))
+            if fluorescence >= fluorescence_threshold:
+                break
+        if canceled:
+            break
 
         # run the experiment
         device.run_experiment(stages)
-
-        # check for cancellation
-        if device.device_pipe.poll(0):
-            msg = device.device_pipe.recv()
-            if isinstance(msg, MultiGoCancel):
-                break
-            else:
-                print(f"Received weird message during multigo: {type(msg)}")
-                break
 
         # update the indices
         done = False
@@ -85,6 +103,7 @@ def run_multi_go_experiment(device, run_variables, stages):
     progress = MultiGoProgress(total_runs, total_runs)
     device.device_pipe.send(progress)
 
+# dialog for chaning multigo settings
 class MultiGoDialog(QDialog):
     def __init__(self, stages):
         super().__init__()
@@ -93,9 +112,6 @@ class MultiGoDialog(QDialog):
         self.run_variables = []
 
         self.setWindowTitle("MultiGo")
-
-        self.button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
-        self.button_box.accepted.connect(self.save_run_variables)
 
         layout = QVBoxLayout()
         self.grid = QGridLayout()
@@ -117,22 +133,36 @@ class MultiGoDialog(QDialog):
         self.grid.addWidget(QLabel("End"), 0, 3)
         self.grid.addWidget(QLabel("Steps"), 0, 4)
 
-        # add button
+        # add add button
         add_button = QPushButton("Add")
         add_button.clicked.connect(lambda: self.new_run_variable(stage_dropdown.currentIndex(), variable_dropdown.currentIndex()))
         self.grid.addWidget(add_button, 0, BUTTON_COLUMN)
 
+        # add all existing run variables
+        multigo_settings = self.stages.multigo_settings
+        for run_variable in multigo_settings.run_variables:
+            self.add_run_variable(run_variable)
+
+        # add fluorescence threshold
+        form_layout = QFormLayout()
+        self.fluorescence_threshold = QDoubleSpinBox()
+        self.fluorescence_threshold.setValue(multigo_settings.fluorescence_threshold)
+        form_layout.addRow(QLabel("Fluorescence Threshold"), self.fluorescence_threshold)
+
+        # add buttons
+        self.button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
+        self.button_box.accepted.connect(self.save_run_variables)
+
+        # finalise layout
         layout.addLayout(self.grid)
         layout.addStretch()
+        layout.addLayout(form_layout)
         layout.addWidget(self.button_box)        
         self.setLayout(layout)
 
-        # add all existing run variables
-        for run_variable in self.stages.run_variables:
-            self.add_run_variable(run_variable)
-    
+    # saves the settings currently in the gui into the `StagesGui`'s multigo_settings
     def save_run_variables(self):
-        self.stages.run_variables = []
+        multigo_settings = MultiGoSettings([], 0.0)
 
         # add all the run variables that havent been deleted
         for i, run_variable in enumerate(self.run_variables):
@@ -147,11 +177,18 @@ class MultiGoDialog(QDialog):
                 run_variable.steps = steps
 
                 # add the run_variable to the global list
-                self.stages.run_variables.append(run_variable)
+                multigo_settings.run_variables.append(run_variable)
 
-        # accept the dialog
+        # set the fluorescence threshold
+        multigo_settings.fluorescence_threshold = self.fluorescence_threshold.value()
+
+        # store the new settings
+        self.stages.multigo_settings = multigo_settings
+
+        # closes the dialog
         self.accept()
 
+    # create a new run variable
     def new_run_variable(self, idx, variable):
         current_value = self.stages.stages[idx].widgets[variable].get_value()
         run_variable = MultiGoRunVariable(
@@ -163,6 +200,7 @@ class MultiGoDialog(QDialog):
         )
         self.add_run_variable(run_variable)
 
+    # add a run variable to the dialog
     def add_run_variable(self, run_variable):
         stage = self.stages.get_stage(run_variable.stage_id)
         variable_idx, variable = self.stages.get_variable(run_variable.variable_id)
@@ -194,6 +232,7 @@ class MultiGoDialog(QDialog):
         # add to run variables
         self.run_variables.append(run_variable)
 
+    # remove a run variable from the dialog
     def remove_run_variable(self):
         button = self.sender()
         rows = self.grid.rowCount()
@@ -209,6 +248,7 @@ class MultiGoDialog(QDialog):
                         widget.widget().deleteLater()
                 break
 
+# for showing progress of a multigo submission
 class MultiGoProgressDialog(QDialog):
     def __init__(self, window):
         super().__init__()
