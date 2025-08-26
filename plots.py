@@ -6,6 +6,8 @@ import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvas
 from matplotlib.figure import Figure
 
+from PyQt6.QtWidgets import QTabWidget
+
 FLUORESCENCE_SAMPLES = 100
 
 class CameraImages:
@@ -21,9 +23,9 @@ class PlotsGui:
         self.window = window
         self.fluorescence_data = np.zeros(FLUORESCENCE_SAMPLES)
 
-        # camera plot
-        self.camera_canvas = FigureCanvas(Figure(figsize=(5, 3)))
-        self.window.camera_grid.addWidget(self.camera_canvas, 1, 4, 1, 1)
+        # camera plots
+        self.camera_tabs = QTabWidget()
+        self.window.camera_grid.addWidget(self.camera_tabs)
 
         # fluorescence plot
         self.fluorescence_canvas = FigureCanvas(Figure(figsize=(5, 3)))
@@ -31,7 +33,7 @@ class PlotsGui:
         self.fluorescence_ax.set_xlabel('Time (s)')
         self.fluorescence_ax.set_ylabel('Fluorescence (a.u.)')
         self.fluorescence_points, = self.fluorescence_ax.plot(self.fluorescence_data)
-        self.window.fluorescence_grid.addWidget(self.fluorescence_canvas, 1, 4, 1, 1)
+        self.window.fluorescence_grid.addWidget(self.fluorescence_canvas)
 
     # update the fluorescence plot with a new sample
     def update_fluorescence(self, recieved: FluorescenceSample):
@@ -50,15 +52,15 @@ class PlotsGui:
 
     # update the camera images
     def update_images(self, recieved: CameraImages):
-        fig = self.camera_canvas.figure
+        self.camera_tabs.clear()
+        for i in range(recieved.images.shape[0]):
+            canvas = FigureCanvas(Figure(figsize=(5, 3)))
+            fig = canvas.figure
 
-        # clear the old image
-        fig.clear()
+            # plot the new image
+            ax = fig.subplots()
+            ax.imshow(recieved.images[0, :, :], aspect='equal')
+            fig.colorbar(ax.images[0], ax=ax)
 
-        # plot the new image
-        ax = fig.subplots()
-        ax.imshow(recieved.images[0, :, :], aspect='equal')
-        fig.colorbar(ax.images[0], ax=ax)
-
-        # refresh the canvas
-        self.camera_canvas.draw()
+            # add a tab
+            self.camera_tabs.addTab(canvas, f"Picture {i}")

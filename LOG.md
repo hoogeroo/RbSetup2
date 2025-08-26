@@ -62,3 +62,4 @@
 - 26/08/25
   - Multigo progress bar and cancellation
   - Add a Multigo fluorescence threshold
+  - Show multiple pictures in camera plot
