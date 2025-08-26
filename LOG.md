@@ -59,3 +59,5 @@
   - Refactor to move imaging to appropriate file
   - Refactor to move flattening from the gui to the device
   - Implement working multigo
+- 26/08/25
+  - Multigo progress bar and cancellation

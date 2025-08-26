@@ -9,7 +9,7 @@ from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog
 from PyQt6.uic import loadUi
 
-from multigo import MultiGoRunVariable
+from multigo import MultiGoProgress, MultiGoRunVariable
 from plots import PlotsGui, CameraImages, FluorescenceSample
 from stages import StagesGui
 from value_types import AnyValue
@@ -68,6 +68,10 @@ class Gui(QMainWindow):
                 self.plots_gui.update_fluorescence(recieved)
             elif isinstance(recieved, CameraImages):
                 self.plots_gui.update_images(recieved)
+            elif isinstance(recieved, MultiGoProgress):
+                self.multigo_progress.update_progress(recieved)
+            else:
+                print("Received unknown message type from device:", type(recieved))
 
     '''
     methods to save and load settings from a file

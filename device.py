@@ -6,7 +6,7 @@ from multiprocessing import Process, Pipe
 from camera import CameraConnection
 from device_types import Dc, Stages, FlattenedStages, MultiGoSubmission, DeviceSettings
 from gui import run_gui
-from multigo import run_multi_go_experiment
+from multigo import MultiGoCancel, run_multi_go_experiment
 from plots import CameraImages, FluorescenceSample
 from variable_types import *
 
@@ -60,6 +60,8 @@ class AbstractDevice:
                 elif isinstance(msg, DeviceSettings):
                     # update the device settings
                     self.device_settings = msg
+                elif isinstance(msg, MultiGoCancel):
+                    print("Can't cancel multigo - not running")
                 else:
                     print(f"Received unknown message type: {type(msg)}")
                     break

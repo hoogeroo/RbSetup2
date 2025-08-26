@@ -91,7 +91,7 @@ class Device(AbstractDevice, EnvExperiment):
         self.ttl6.on()
         delay(10 * ms)
         self.ttl6.off()
-    
+
     @kernel
     def read_fluorescence(self) -> float:
         # read the fluorescence signal

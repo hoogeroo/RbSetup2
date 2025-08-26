@@ -12,13 +12,25 @@ class MultiGoRunVariable:
         self.end = end
         self.steps = steps
 
+# class for sending multigo progress updates from device to gui
+class MultiGoProgress:
+    def __init__(self, current_step, total_steps):
+        self.current_step = current_step
+        self.total_steps = total_steps
+
+# class for cancelling multigo, sent from gui to device
+class MultiGoCancel:
+    pass
+
 def run_multi_go_experiment(device, run_variables, stages):
     values = []
 
     # create array of all the values that need to be interpolated
+    total_runs = 1
     for var in run_variables:
         array = var.start.interpolate(var.end, var.steps)
         values.append(array)
+        total_runs *= len(array)
 
     # loop over all combinations
     indices = [0] * len(values)
@@ -29,7 +41,9 @@ def run_multi_go_experiment(device, run_variables, stages):
         for i, index in enumerate(indices):
             current += index * place
             place *= len(values[i])
-        print(f"MultiGo at {current} of {place} steps")
+        assert(total_runs == place)
+        progress = MultiGoProgress(current, total_runs)
+        device.device_pipe.send(progress)
 
         # update stages to the current state
         for i, index in enumerate(indices):
@@ -42,6 +56,15 @@ def run_multi_go_experiment(device, run_variables, stages):
 
         # run the experiment
         device.run_experiment(stages)
+
+        # check for cancellation
+        if device.device_pipe.poll(0):
+            msg = device.device_pipe.recv()
+            if isinstance(msg, MultiGoCancel):
+                break
+            else:
+                print(f"Received weird message during multigo: {type(msg)}")
+                break
 
         # update the indices
         done = False
@@ -58,6 +81,10 @@ def run_multi_go_experiment(device, run_variables, stages):
         if done:
             break
 
+    # send final progress update
+    progress = MultiGoProgress(total_runs, total_runs)
+    device.device_pipe.send(progress)
+
 class MultiGoDialog(QDialog):
     def __init__(self, stages):
         super().__init__()
@@ -67,8 +94,8 @@ class MultiGoDialog(QDialog):
 
         self.setWindowTitle("MultiGo")
 
-        self.buttonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
-        self.buttonBox.accepted.connect(self.save_run_variables)
+        self.button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
+        self.button_box.accepted.connect(self.save_run_variables)
 
         layout = QVBoxLayout()
         self.grid = QGridLayout()
@@ -97,7 +124,7 @@ class MultiGoDialog(QDialog):
 
         layout.addLayout(self.grid)
         layout.addStretch()
-        layout.addWidget(self.buttonBox)        
+        layout.addWidget(self.button_box)        
         self.setLayout(layout)
 
         # add all existing run variables
@@ -181,3 +208,39 @@ class MultiGoDialog(QDialog):
                     if widget:
                         widget.widget().deleteLater()
                 break
+
+class MultiGoProgressDialog(QDialog):
+    def __init__(self, window):
+        super().__init__()
+
+        self.window = window
+
+        self.setWindowTitle("MultiGo Progress")
+        self.setModal(True)
+
+        layout = QVBoxLayout(self)
+
+        # add the progress label
+        self.progress_label = QLabel("Submitting to device...", self)
+        layout.addWidget(self.progress_label)
+
+        # add the progress bar
+        self.progress_bar = QProgressBar(self)
+        layout.addWidget(self.progress_bar)
+
+        # add the cancel button
+        self.button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel)
+        self.button_box.rejected.connect(self.cancel_multigo)
+        layout.addWidget(self.button_box)
+
+        self.setLayout(layout)
+
+    def cancel_multigo(self):
+        self.window.gui_pipe.send(MultiGoCancel())
+
+    def update_progress(self, received: MultiGoProgress):
+        self.progress_label.setText(f"Running step {received.current_step} of {received.total_steps}")
+        self.progress_bar.setValue(int(received.current_step / received.total_steps * 100))
+
+        if received.current_step == received.total_steps:
+            self.accept()

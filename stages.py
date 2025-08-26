@@ -7,7 +7,7 @@ from PyQt6.QtCore import Qt, QSize
 from camera import CameraConnection
 from device_types import Dc, Stage, Stages, MultiGoSubmission, DeviceSettings
 from gui_types import big
-from multigo import MultiGoDialog
+from multigo import MultiGoDialog, MultiGoProgressDialog
 from variable_types import *
 
 # class to represent a stage in the gui. differs from Stage in that it can't be sent to the device
@@ -138,6 +138,9 @@ class StagesGui:
     # sends the multigo event down the pipe with the gui state
     def submit_multigo(self):
         self.window.gui_pipe.send(MultiGoSubmission(self.run_variables, self.extract_stages()))
+
+        self.window.multigo_progress = MultiGoProgressDialog(self.window)
+        self.window.multigo_progress.exec()
 
     # open the multigo options popup
     def multigo_options(self):
