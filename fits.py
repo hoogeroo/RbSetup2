@@ -6,27 +6,26 @@ from multigo import MultiGoSettings, MultiGoRunVariable
 from value_types import AnyValue
 
 # save the settings to the file
-def save_settings(path, window):
-    variables = window.stages_gui.variables
-    stages = window.stages_gui.stages
+def save_settings(path, variables, stages, images, multigo_settings, window_layout=None):
+    dc = stages.dc
+    stages = stages.stages
 
     # create the primary HDU
     primary_hdu = fits.PrimaryHDU()
 
     # save the window layout
-    window_layout = window.saveState()
     primary_hdu.header['layout'] = str(window_layout)
 
     # save the camera images
     image_hdu = fits.ImageHDU()
-    if window.plots_gui.images is not None:
-        image_hdu.data = window.plots_gui.images.astype(np.uint16)
+    if images is not None:
+        image_hdu.data = images.astype(np.uint16)
 
     # add the stages
     stage_columns = []
 
     # add the stage name column
-    stage_names = [stage.button.text() for stage in stages]
+    stage_names = [stage.name for stage in stages]
     stage_names.insert(0, 'dc')
     stage_columns.append(fits.Column(name='stage_name', format='A20', array=stage_names))
     
@@ -46,10 +45,15 @@ def save_settings(path, window):
 
         # gather the column of data
         data = []
-        data.append(window.stages_gui.dc_widgets[i].get_value().array)
+
+        # add the dc value
+        dc_value = getattr(dc, variable.id)
+        data.append(variable.value_type.constant(dc_value).to_array())
+
+        # add the stage values
         for stage in stages:
-            value = stage.widgets[i].get_value().array
-            data.append(value)
+            value = getattr(stage, variable.id)
+            data.append(value.to_array())
 
         col.array = np.stack(data)
         stage_columns.append(col)
@@ -59,8 +63,8 @@ def save_settings(path, window):
 
     # add the multigo settings
     multigo_columns = []
-    run_variables = window.stages_gui.multigo_settings.run_variables
-    fluorescence_threshold = window.stages_gui.multigo_settings.fluorescence_threshold
+    run_variables = multigo_settings.run_variables
+    fluorescence_threshold = multigo_settings.fluorescence_threshold
 
     # add the stage ids
     stage_ids = [var.stage_id for var in run_variables]
@@ -94,8 +98,9 @@ def load_settings(path, window):
     primary_hdu, images_hdu, stages_hdu, multigo_hdu = fits.open(path)
 
     # load the window layout
-    layout = primary_hdu.header['layout']
-    window.restoreState(eval(layout))
+    layout = eval(primary_hdu.header['layout'])
+    if layout is not None:
+        window.restoreState(layout)
 
     # load the camera images
     images = images_hdu.data

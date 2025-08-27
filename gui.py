@@ -83,7 +83,14 @@ class Gui(QMainWindow):
         file_name, _ = QFileDialog.getSaveFileName(self, "Save Settings", "", "FITS File (*.fits)")
 
         if file_name:
-            save_settings(file_name, self)
+            save_settings(
+                file_name,
+                self.stages_gui.variables,
+                self.stages_gui.extract_stages(),
+                self.plots_gui.images,
+                self.stages_gui.multigo_settings,
+                self.saveState(),
+            )
 
     # open a file dialog for the user to choose a file
     def load_settings_dialog(self):
