@@ -97,4 +97,4 @@ class Gui(QMainWindow):
         file_name, _ = QFileDialog.getOpenFileName(self, "Load Settings", "", "FITS File (*.fits)")
 
         if file_name:
-            self.load_settings(file_name)
+            load_settings(file_name, self)

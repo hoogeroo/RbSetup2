@@ -67,3 +67,4 @@
   - Move fits save/load to seperate file
   - Save and load images from fits file
   - Refactor fits saving to not need gui
+  - Add button to automatically save runs

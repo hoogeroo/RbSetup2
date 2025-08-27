@@ -81,8 +81,9 @@ class StagesGui:
         # connect the run button to the submit_experiment method
         self.window.run_experiment.clicked.connect(self.submit_experiment)
 
-        # connect the load mot checkbox to the update_device_settings method
+        # connect the load mot and save runs checkbox to the update_device_settings method
         self.window.load_mot.stateChanged.connect(self.update_device_settings)
+        self.window.save_runs.stateChanged.connect(self.update_device_settings)
 
     # gets a stage using the stage id
     def get_stage(self, stage_id):
@@ -152,7 +153,8 @@ class StagesGui:
     def update_device_settings(self):
         # create a DeviceSettings object with the current values
         load_mot = self.window.load_mot.isChecked()
-        device_settings = DeviceSettings(load_mot=load_mot)
+        save_runs = self.window.save_runs.isChecked()
+        device_settings = DeviceSettings(load_mot, save_runs)
 
         # send the device settings to the device
         self.window.gui_pipe.send(device_settings)

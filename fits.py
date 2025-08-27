@@ -1,3 +1,4 @@
+import os
 from astropy.io import fits
 import numpy as np
 
@@ -6,7 +7,7 @@ from multigo import MultiGoSettings, MultiGoRunVariable
 from value_types import AnyValue
 
 # save the settings to the file
-def save_settings(path, variables, stages, images, multigo_settings, window_layout=None):
+def save_settings(path, variables, stages, images, multigo_settings=None, window_layout=None, overwrite=True):
     dc = stages.dc
     stages = stages.stages
 
@@ -63,30 +64,37 @@ def save_settings(path, variables, stages, images, multigo_settings, window_layo
 
     # add the multigo settings
     multigo_columns = []
-    run_variables = multigo_settings.run_variables
-    fluorescence_threshold = multigo_settings.fluorescence_threshold
+    if multigo_settings is not None:
+        run_variables = multigo_settings.run_variables
+        fluorescence_threshold = multigo_settings.fluorescence_threshold
 
-    # add the stage ids
-    stage_ids = [var.stage_id for var in run_variables]
-    multigo_columns.append(fits.Column(name='stage_id', format='A36', array=stage_ids))
+        # add the stage ids
+        stage_ids = [var.stage_id for var in run_variables]
+        multigo_columns.append(fits.Column(name='stage_id', format='A36', array=stage_ids))
 
-    # add the variable ids
-    variable_ids = [var.variable_id for var in run_variables]
-    multigo_columns.append(fits.Column(name='variable_id', format='A36', array=variable_ids))
+        # add the variable ids
+        variable_ids = [var.variable_id for var in run_variables]
+        multigo_columns.append(fits.Column(name='variable_id', format='A36', array=variable_ids))
 
-    # add the start and end values
-    start_values = [AnyValue(var.start).to_array() for var in run_variables]
-    multigo_columns.append(fits.Column(name='start_value', format='4D', dim='(4)', array=start_values))
-    end_values = [AnyValue(var.end).to_array() for var in run_variables]
-    multigo_columns.append(fits.Column(name='end_value', format='4D', dim='(4)', array=end_values))
+        # add the start and end values
+        start_values = [AnyValue(var.start).to_array() for var in run_variables]
+        multigo_columns.append(fits.Column(name='start_value', format='4D', dim='(4)', array=start_values))
+        end_values = [AnyValue(var.end).to_array() for var in run_variables]
+        multigo_columns.append(fits.Column(name='end_value', format='4D', dim='(4)', array=end_values))
 
-    # add the steps
-    step_values = [var.steps for var in run_variables]
-    multigo_columns.append(fits.Column(name='steps', format='K', array=step_values))
+        # add the steps
+        step_values = [var.steps for var in run_variables]
+        multigo_columns.append(fits.Column(name='steps', format='K', array=step_values))
 
-    # create a fits table hdu for the multigo settings
-    multigo_hdu = fits.BinTableHDU.from_columns(multigo_columns)
-    multigo_hdu.header['fluorthr'] = fluorescence_threshold
+        # create a fits table hdu for the multigo settings
+        multigo_hdu = fits.BinTableHDU.from_columns(multigo_columns)
+        multigo_hdu.header['fluorthr'] = fluorescence_threshold
+    else:
+        multigo_hdu = fits.BinTableHDU.from_columns([])
+
+    # make sure path is unique if not overwriting
+    if not overwrite:
+        path = uniquify(path)
 
     # write the HDU array
     hdul = fits.HDUList([primary_hdu, image_hdu, stages_hdu, multigo_hdu])
@@ -122,7 +130,7 @@ def load_settings(path, window):
 
     # clear the current stage widgets
     for i in reversed(range(len(window.stages_gui.stages))):
-        window.delete_stage(i)
+        window.stages_gui.delete_stage(i)
     window.stages_gui.stages.clear()
 
     # create new stage widgets based on the loaded data
@@ -143,14 +151,26 @@ def load_settings(path, window):
                 print(f"Warning: Unknown variable '{widget.variable.id}' in stage {i} data")
 
     # load the multigo settings
-    multigo_settings = MultiGoSettings([], 0.0)
-    for row in multigo_hdu.data:
-        multigo_settings.run_variables.append(MultiGoRunVariable(
-            row['stage_id'],
-            row['variable_id'],
-            AnyValue.from_array(row['start_value']).to_value(),
-            AnyValue.from_array(row['end_value']).to_value(),
-            row['steps']
-        ))
-    multigo_settings.fluorescence_threshold = multigo_hdu.header['fluorthr']
-    window.stages_gui.multigo_settings = multigo_settings
+    if len(multigo_hdu.data) > 0:
+        multigo_settings = MultiGoSettings([], 0.0)
+        for row in multigo_hdu.data:
+            multigo_settings.run_variables.append(MultiGoRunVariable(
+                row['stage_id'],
+                row['variable_id'],
+                AnyValue.from_array(row['start_value']).to_value(),
+                AnyValue.from_array(row['end_value']).to_value(),
+                row['steps']
+            ))
+        multigo_settings.fluorescence_threshold = multigo_hdu.header['fluorthr']
+        window.stages_gui.multigo_settings = multigo_settings
+
+# turns a file path into a unique one by adding a number to the end
+def uniquify(path):
+    filename, extension = os.path.splitext(path)
+    counter = 1
+
+    while os.path.exists(path):
+        path = filename + " (" + str(counter) + ")" + extension
+        counter += 1
+
+    return path

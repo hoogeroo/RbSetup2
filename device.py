@@ -1,14 +1,18 @@
-import numpy as np
-from scipy.interpolate import CubicSpline
-
+from datetime import datetime
 from multiprocessing import Process, Pipe
+import numpy as np
+import os
+from scipy.interpolate import CubicSpline
 
 from camera import CameraConnection
 from device_types import Dc, Stages, FlattenedStages, MultiGoSubmission, DeviceSettings
+from fits import save_settings
 from gui import run_gui
 from multigo import MultiGoCancel, run_multigo_experiment
 from plots import CameraImages, FluorescenceSample
 from variable_types import *
+
+SAVE_PATH = "runs"
 
 '''
 Abstraction over the device to run the gui without artiq
@@ -102,13 +106,32 @@ class AbstractDevice:
         flattened_stages = FlattenedStages(stages, self.variables)
         self.run_experiment_device(flattened_stages)
 
-        # read back the camera
+        # read back the camera images
+        images = None
         if camera:
             # read the image from the camera server
-            picture = camera.read(timeout=1)
+            images = camera.read(timeout=1)
 
             # send the picture to the gui
-            self.device_pipe.send(CameraImages(picture))
+            self.device_pipe.send(CameraImages(images))
+
+        # save the results if requested
+        if self.device_settings.save_runs:
+            # create path using SAVE_PATH and date/time
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            file_path = os.path.join(SAVE_PATH, f"{timestamp}.fits")
+
+            # create the save directory if it doesn't exist
+            os.makedirs(SAVE_PATH, exist_ok=True)
+
+            # save the settings to the file
+            save_settings(
+                file_path,
+                self.variables,
+                stages,
+                images,
+                overwrite=False,
+            )
 
     # dummy method to be overridden by the device
     def run_experiment_device(self, flattened_stages):

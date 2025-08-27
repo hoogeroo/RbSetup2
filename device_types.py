@@ -40,8 +40,9 @@ class MultiGoSubmission:
 
 # device settings that aren't directly related to the experiment stages or dc values
 class DeviceSettings:
-    def __init__(self, load_mot=False):
+    def __init__(self, load_mot=False, save_runs=False):
         self.load_mot = load_mot
+        self.save_runs = save_runs
 
 # pre processed class to send to artiq
 class FlattenedStages:
