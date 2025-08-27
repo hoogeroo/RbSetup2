@@ -65,3 +65,4 @@
   - Show multiple pictures in camera plot
 - 27/08/25
   - Move fits save/load to seperate file
+  - Save and load images from fits file

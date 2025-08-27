@@ -22,6 +22,7 @@ class PlotsGui:
     def __init__(self, window):
         self.window = window
         self.fluorescence_data = np.zeros(FLUORESCENCE_SAMPLES)
+        self.images = None
 
         # camera plots
         self.camera_tabs = QTabWidget()
@@ -36,13 +37,13 @@ class PlotsGui:
         self.window.fluorescence_grid.addWidget(self.fluorescence_canvas)
 
     # update the fluorescence plot with a new sample
-    def update_fluorescence(self, recieved: FluorescenceSample):
+    def update_fluorescence(self, sample: float):
         # put the fluorescence value in the readout
-        self.window.fluorescence.display(recieved.sample)
+        self.window.fluorescence.display(sample)
 
         # put the new value at the end of the buffer
         self.fluorescence_data = np.roll(self.fluorescence_data, -1)
-        self.fluorescence_data[-1] = recieved.sample
+        self.fluorescence_data[-1] = sample
 
         # refresh the plot
         self.fluorescence_points.set_ydata(self.fluorescence_data)
@@ -51,16 +52,19 @@ class PlotsGui:
         self.fluorescence_canvas.draw()
 
     # update the camera images
-    def update_images(self, recieved: CameraImages):
+    def update_images(self, images: np.ndarray):
         self.camera_tabs.clear()
-        for i in range(recieved.images.shape[0]):
+        for i in range(images.shape[0]):
             canvas = FigureCanvas(Figure(figsize=(5, 3)))
             fig = canvas.figure
 
             # plot the new image
             ax = fig.subplots()
-            ax.imshow(recieved.images[0, :, :], aspect='equal')
+            ax.imshow(images[i, :, :], aspect='equal')
             fig.colorbar(ax.images[0], ax=ax)
 
             # add a tab
             self.camera_tabs.addTab(canvas, f"Picture {i}")
+        
+        # store images for saving later
+        self.images = images

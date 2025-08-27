@@ -65,9 +65,9 @@ class Gui(QMainWindow):
             recieved = self.gui_pipe.recv()
 
             if isinstance(recieved, FluorescenceSample):
-                self.plots_gui.update_fluorescence(recieved)
+                self.plots_gui.update_fluorescence(recieved.sample)
             elif isinstance(recieved, CameraImages):
-                self.plots_gui.update_images(recieved)
+                self.plots_gui.update_images(recieved.images)
             elif isinstance(recieved, MultiGoProgress):
                 self.multigo_progress.update_progress(recieved)
             else:

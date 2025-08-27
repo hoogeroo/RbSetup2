@@ -17,6 +17,11 @@ def save_settings(path, window):
     window_layout = window.saveState()
     primary_hdu.header['layout'] = str(window_layout)
 
+    # save the camera images
+    image_hdu = fits.ImageHDU()
+    if window.plots_gui.images is not None:
+        image_hdu.data = window.plots_gui.images.astype(np.uint16)
+
     # add the stages
     stage_columns = []
 
@@ -80,17 +85,22 @@ def save_settings(path, window):
     multigo_hdu.header['fluorthr'] = fluorescence_threshold
 
     # write the HDU array
-    hdul = fits.HDUList([primary_hdu, stages_hdu, multigo_hdu])
+    hdul = fits.HDUList([primary_hdu, image_hdu, stages_hdu, multigo_hdu])
     hdul.writeto(path, overwrite=True)
 
 # load the settings from the file
 def load_settings(path, window):
     # read the fits file
-    primary_hdu, stages_hdu, multigo_hdu = fits.open(path)
+    primary_hdu, images_hdu, stages_hdu, multigo_hdu = fits.open(path)
 
     # load the window layout
     layout = primary_hdu.header['layout']
     window.restoreState(eval(layout))
+
+    # load the camera images
+    images = images_hdu.data
+    if images is not None:
+        window.plots_gui.update_images(images)
 
     # load the stages data
     stages_data = stages_hdu.data
