@@ -97,7 +97,7 @@ class AbstractDevice:
         except Exception as e:
             camera = None
             print("Error occurred while shooting:", e)
-        
+
         # run the experiment on the artiq device
         flattened_stages = FlattenedStages(stages, self.variables)
         self.run_experiment_device(flattened_stages)

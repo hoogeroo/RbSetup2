@@ -15,7 +15,8 @@ class Dc:
         pass
 
 class Stage:
-    def __init__(self, id, enabled):
+    def __init__(self, name, id, enabled):
+        self.name = name
         self.id = id
         self.enabled = enabled
 

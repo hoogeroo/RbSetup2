@@ -114,7 +114,8 @@ class StagesGui:
     def extract_stages(self) -> Stages:
         stages = []
         for gui_stage in self.stages:
-            stage = Stage(gui_stage.id, gui_stage.enabled)
+            name = gui_stage.button.text()
+            stage = Stage(name, gui_stage.id, gui_stage.enabled)
             for i, variable in enumerate(self.variables):
                 setattr(stage, variable.id, gui_stage.widgets[i].get_value())
             stages.append(stage)
