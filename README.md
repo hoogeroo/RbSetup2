@@ -8,6 +8,18 @@ To connect to the core device connect the ethernet cable and make sure the routi
 
 If pinging the core device works but communication with the core device doesn't it may be due to different artiq versions on the host and the device. For compiling artiq refer to [zaviers notes](ZAVIER.txt) and the [official documentation](https://m-labs.hk/artiq/manual/flashing.html).
 
+## Running
+
+First make sure your shell's working directory is this one. Then enter the nix enviroment by running `nix shell`. This will take a while the first time. Then launch the gui:
+```bash
+artiq_run main.py
+```
+To run the gui without the artiq fpga handy (good for working on the gui):
+```bash
+python3 device.py
+```
+This also works outside the nix enviroment if the right dependencies are installed.
+
 ## Developmnet Notes
 
 * To edit the gui open [`gui.ui`](gui.ui) in [qt creator](https://snapcraft.io/qtcreator-ros) or qt designer
