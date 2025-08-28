@@ -2,7 +2,6 @@
 stages.py: this file has the code for managing the stages in the experiment along with the experiment control buttons and checkboxes
 '''
 
-import numpy as np
 from uuid import uuid4
 
 from PyQt6.QtCore import QSize, Qt
@@ -14,7 +13,6 @@ from src.device.multigo import MultiGoSettings
 from src.gui.ai import AiDialog
 from src.gui.multigo import MultiGoDialog, MultiGoProgressDialog
 from src.gui.value_widgets import big
-from src.host.camera import CameraConnection
 from src.variable_types import *
 
 # class to represent a stage in the gui. differs from Stage in that it can't be sent to the device
@@ -43,7 +41,7 @@ class StagesGui:
 
         # add spacers to the dc, label, and copied containers
         spacers = []
-        for i in range(3):
+        for _ in range(3):
             label = QLabel()
             label.setMinimumSize(QSize(0, 24))
             label.setMaximumSize(QSize(big, 24))

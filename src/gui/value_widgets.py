@@ -2,8 +2,6 @@
 value_widgets.py: widgets for each of the value types
 '''
 
-import numpy as np
-
 from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtWidgets import *
 

@@ -68,3 +68,7 @@
   - Save and load images from fits file
   - Refactor fits saving to not need gui
   - Add button to automatically save runs
+- 28/08/25
+  - Refactor codebase into folders for better organisation
+  - Add ai buttons and run variables gui
+  - Save/load run variables for ai and multigo

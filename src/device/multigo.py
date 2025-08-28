@@ -10,14 +10,6 @@ class MultiGoSettings:
         self.run_variables = run_variables
         self.fluorescence_threshold = fluorescence_threshold
 
-class MultiGoRunVariable:
-    def __init__(self, stage_id, variable_id, start, end, steps):
-        self.stage_id = stage_id
-        self.variable_id = variable_id
-        self.start = start
-        self.end = end
-        self.steps = steps
-
 # class for sending multigo progress updates from device to gui
 class MultiGoProgress:
     def __init__(self, current_step, total_steps):

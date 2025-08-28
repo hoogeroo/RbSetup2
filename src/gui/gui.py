@@ -2,8 +2,6 @@
 gui.py: creates the main gui and sends commands to main.py to interface with the device
 '''
 
-import numpy as np
-
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QApplication, QFileDialog, QMainWindow
 from PyQt6.uic import loadUi
@@ -88,6 +86,7 @@ class Gui(QMainWindow):
                 self.stages_gui.extract_stages(),
                 self.plots_gui.images,
                 self.stages_gui.multigo_settings,
+                self.stages_gui.ai_settings,
                 self.saveState(),
             )
 

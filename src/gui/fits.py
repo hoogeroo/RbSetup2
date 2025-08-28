@@ -7,12 +7,13 @@ import os
 
 from astropy.io import fits
 
-from src.device.device_types import Stages
-from src.device.multigo import MultiGoRunVariable, MultiGoSettings
+from src.device.ai import AiSettings
+from src.device.multigo import MultiGoSettings
+from src.gui.run_variables import RunVariable
 from src.value_types import AnyValue
 
 # save the settings to the file. this function takes in the different parts of the file instead of just the gui window so it can be called from the device after each experiment without modifying the gui
-def save_settings(path, variables, stages, images, multigo_settings=None, window_layout=None, overwrite=True):
+def save_settings(path, variables, stages, images, multigo_settings=None, ai_settings=None, window_layout=None, overwrite=True):
     dc = stages.dc
     stages = stages.stages
 
@@ -67,48 +68,31 @@ def save_settings(path, variables, stages, images, multigo_settings=None, window
     # create a fits table hdu for the stages
     stages_hdu = fits.BinTableHDU.from_columns(stage_columns)
 
-    # add the multigo settings
-    multigo_columns = []
+    # create the multigo settings hdu
     if multigo_settings is not None:
-        run_variables = multigo_settings.run_variables
-        fluorescence_threshold = multigo_settings.fluorescence_threshold
-
-        # add the stage ids
-        stage_ids = [var.stage_id for var in run_variables]
-        multigo_columns.append(fits.Column(name='stage_id', format='A36', array=stage_ids))
-
-        # add the variable ids
-        variable_ids = [var.variable_id for var in run_variables]
-        multigo_columns.append(fits.Column(name='variable_id', format='A36', array=variable_ids))
-
-        # add the start and end values
-        start_values = [AnyValue(var.start).to_array() for var in run_variables]
-        multigo_columns.append(fits.Column(name='start_value', format='4D', dim='(4)', array=start_values))
-        end_values = [AnyValue(var.end).to_array() for var in run_variables]
-        multigo_columns.append(fits.Column(name='end_value', format='4D', dim='(4)', array=end_values))
-
-        # add the steps
-        step_values = [var.steps for var in run_variables]
-        multigo_columns.append(fits.Column(name='steps', format='K', array=step_values))
-
-        # create a fits table hdu for the multigo settings
-        multigo_hdu = fits.BinTableHDU.from_columns(multigo_columns)
-        multigo_hdu.header['fluorthr'] = fluorescence_threshold
+        multigo_hdu = run_variable_list_to_hdu(multigo_settings.run_variables)
+        multigo_hdu.header['fluorthr'] = multigo_settings.fluorescence_threshold
     else:
         multigo_hdu = fits.BinTableHDU.from_columns([])
+
+    # create the AI settings HDU
+    if ai_settings is not None:
+        ai_hdu = run_variable_list_to_hdu(ai_settings.run_variables)
+    else:
+        ai_hdu = fits.BinTableHDU.from_columns([])
 
     # make sure path is unique if not overwriting
     if not overwrite:
         path = uniquify(path)
 
     # write the HDU array
-    hdul = fits.HDUList([primary_hdu, image_hdu, stages_hdu, multigo_hdu])
+    hdul = fits.HDUList([primary_hdu, image_hdu, stages_hdu, multigo_hdu, ai_hdu])
     hdul.writeto(path, overwrite=True)
 
 # load the settings from a fits file into the gui
 def load_settings(path, window):
     # read the fits file
-    primary_hdu, images_hdu, stages_hdu, multigo_hdu = fits.open(path)
+    primary_hdu, images_hdu, stages_hdu, multigo_hdu, ai_hdu = fits.open(path)
 
     # load the window layout
     layout = eval(primary_hdu.header['layout'])
@@ -157,17 +141,48 @@ def load_settings(path, window):
 
     # load the multigo settings
     if len(multigo_hdu.data) > 0:
-        multigo_settings = MultiGoSettings([], 0.0)
-        for row in multigo_hdu.data:
-            multigo_settings.run_variables.append(MultiGoRunVariable(
-                row['stage_id'],
-                row['variable_id'],
-                AnyValue.from_array(row['start_value']).to_value(),
-                AnyValue.from_array(row['end_value']).to_value(),
-                row['steps']
-            ))
-        multigo_settings.fluorescence_threshold = multigo_hdu.header['fluorthr']
-        window.stages_gui.multigo_settings = multigo_settings
+        run_variables = run_variable_hdu_to_list(multigo_hdu)
+        fluorescence_threshold = multigo_hdu.header['fluorthr']
+        window.stages_gui.multigo_settings = MultiGoSettings(run_variables, fluorescence_threshold)
+
+    # load the ai settings
+    if len(ai_hdu.data) > 0:
+        run_variables = run_variable_hdu_to_list(ai_hdu)
+        window.stages_gui.ai_settings = AiSettings(run_variables)
+
+# saves run variables to a fits file
+def save_run_variables(file_path, run_variables):
+    hdu = run_variable_list_to_hdu(run_variables)
+    hdu.writeto(file_path, overwrite=True)
+
+# loads run variables from a fits file
+def load_run_variables(file_path):
+    primary_hdu, table_hdu = fits.open(file_path)
+    return run_variable_hdu_to_list(table_hdu)
+
+# creates a table hdu of run variables
+def run_variable_list_to_hdu(run_variables):
+    columns = [
+        fits.Column(name='stage_id', format='A36', array=[var.stage_id for var in run_variables]),
+        fits.Column(name='variable_id', format='A36', array=[var.variable_id for var in run_variables]),
+        fits.Column(name='start_value', format='4D', dim='(4)', array=[AnyValue(var.start).to_array() for var in run_variables]),
+        fits.Column(name='end_value', format='4D', dim='(4)', array=[AnyValue(var.end).to_array() for var in run_variables]),
+        fits.Column(name='steps', format='K', array=[var.steps for var in run_variables])
+    ]
+    return fits.BinTableHDU.from_columns(columns)
+
+# loads run variables from a fits table hdu
+def run_variable_hdu_to_list(hdu):
+    run_variables = []
+    for row in hdu.data:
+        run_variables.append(RunVariable(
+            stage_id=row['stage_id'].strip(),
+            variable_id=row['variable_id'].strip(),
+            start=AnyValue.from_array(row['start_value']).to_value(),
+            end=AnyValue.from_array(row['end_value']).to_value(),
+            steps=row['steps']
+        ))
+    return run_variables
 
 # turns a file path into a unique one by adding a number to the end
 def uniquify(path):
