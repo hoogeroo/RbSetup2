@@ -4,20 +4,103 @@ from src.device.device_types import Stages
 from src.device.multigo import MultiGoCancel, MultiGoProgress, MultiGoRunVariable, MultiGoSettings
 from src.gui.plots import FluorescenceSample
 
-BUTTON_COLUMN = 5
-
 # dialog for chaning multigo settings
 class MultiGoDialog(QDialog):
     def __init__(self, stages):
         super().__init__()
 
         self.stages = stages
-        self.run_variables = []
 
         self.setWindowTitle("MultiGo")
 
+        # set the layout
         layout = QVBoxLayout()
+        self.setLayout(layout)
+
+        # add run variable selection widget
+        self.run_variable_widget = RunVariableWidget(stages)
+        layout.addWidget(self.run_variable_widget)
+        layout.addStretch()
+
+        # add fluorescence threshold
+        form_layout = QFormLayout()
+        self.fluorescence_threshold = QDoubleSpinBox()
+        form_layout.addRow(QLabel("Fluorescence Threshold"), self.fluorescence_threshold)
+        layout.addLayout(form_layout)
+
+        # add buttons
+        self.button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
+        self.button_box.accepted.connect(self.save_run_variables)
+        layout.addWidget(self.button_box)
+
+        # add the current settings
+        multigo_settings = stages.multigo_settings
+        self.fluorescence_threshold.setValue(multigo_settings.fluorescence_threshold)
+        for run_variable in multigo_settings.run_variables:
+            self.run_variable_widget.add_run_variable(run_variable)
+
+    # saves the settings currently in the gui into the `StagesGui`'s multigo_settings
+    def save_run_variables(self):
+        # get the currently selected run variables
+        run_variables = self.run_variable_widget.get_run_variables()
+
+        # get the fluorescence threshold
+        fluorescence_threshold = self.fluorescence_threshold.value()
+
+        # store the new settings
+        self.stages.multigo_settings = MultiGoSettings(run_variables, fluorescence_threshold)
+
+        # closes the dialog
+        self.accept()
+
+# for showing progress of a multigo submission
+class MultiGoProgressDialog(QDialog):
+    def __init__(self, window):
+        super().__init__()
+
+        self.window = window
+
+        self.setWindowTitle("MultiGo Progress")
+        self.setModal(True)
+
+        layout = QVBoxLayout(self)
+        self.setLayout(layout)
+
+        # add the progress label
+        self.progress_label = QLabel("Submitting to device...", self)
+        layout.addWidget(self.progress_label)
+
+        # add the progress bar
+        self.progress_bar = QProgressBar(self)
+        layout.addWidget(self.progress_bar)
+
+        # add the cancel button
+        self.button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel)
+        self.button_box.rejected.connect(self.cancel_multigo)
+        layout.addWidget(self.button_box)
+
+    def cancel_multigo(self):
+        self.window.gui_pipe.send(MultiGoCancel())
+
+    def update_progress(self, received: MultiGoProgress):
+        self.progress_label.setText(f"Running step {received.current_step} of {received.total_steps}")
+        self.progress_bar.setValue(int(received.current_step / received.total_steps * 100))
+
+        if received.current_step == received.total_steps:
+            self.accept()
+
+# custom widget for adding run_variables
+class RunVariableWidget(QWidget):
+    def __init__(self, stages, steps=True):
+        super().__init__()
+
+        self.stages = stages
+        self.run_variables = []
+        self.steps = steps
+        self.button_column = 5 - int(not steps)
+
         self.grid = QGridLayout()
+        self.setLayout(self.grid)
 
         # stage selection
         stage_dropdown = QComboBox()
@@ -34,62 +117,37 @@ class MultiGoDialog(QDialog):
         # labels
         self.grid.addWidget(QLabel("Start"), 0, 2)
         self.grid.addWidget(QLabel("End"), 0, 3)
-        self.grid.addWidget(QLabel("Steps"), 0, 4)
+        if steps:
+            self.grid.addWidget(QLabel("Steps"), 0, 4)
 
         # add add button
         add_button = QPushButton("Add")
         add_button.clicked.connect(lambda: self.new_run_variable(stage_dropdown.currentIndex(), variable_dropdown.currentIndex()))
-        self.grid.addWidget(add_button, 0, BUTTON_COLUMN)
+        self.grid.addWidget(add_button, 0, self.button_column)
 
-        # add all existing run variables
-        multigo_settings = self.stages.multigo_settings
-        for run_variable in multigo_settings.run_variables:
-            self.add_run_variable(run_variable)
-
-        # add fluorescence threshold
-        form_layout = QFormLayout()
-        self.fluorescence_threshold = QDoubleSpinBox()
-        self.fluorescence_threshold.setValue(multigo_settings.fluorescence_threshold)
-        form_layout.addRow(QLabel("Fluorescence Threshold"), self.fluorescence_threshold)
-
-        # add buttons
-        self.button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
-        self.button_box.accepted.connect(self.save_run_variables)
-
-        # finalise layout
-        layout.addLayout(self.grid)
-        layout.addStretch()
-        layout.addLayout(form_layout)
-        layout.addWidget(self.button_box)        
-        self.setLayout(layout)
-
-    # saves the settings currently in the gui into the `StagesGui`'s multigo_settings
-    def save_run_variables(self):
-        multigo_settings = MultiGoSettings([], 0.0)
+    # gets the currently selected run variables
+    def get_run_variables(self):
+        run_variables = []
 
         # add all the run variables that havent been deleted
         for i, run_variable in enumerate(self.run_variables):
-            item = self.grid.itemAtPosition(i + 1, BUTTON_COLUMN)
+            item = self.grid.itemAtPosition(i + 1, self.button_column)
             if item:
                 # update run_variable to the current values in the widgets
                 start = self.grid.itemAtPosition(i + 1, 2).widget().get_value()
                 end = self.grid.itemAtPosition(i + 1, 3).widget().get_value()
-                steps = self.grid.itemAtPosition(i + 1, 4).widget().value()
                 run_variable.start = start
                 run_variable.end = end
-                run_variable.steps = steps
+
+                # only set steps if the widget exists
+                if self.steps:
+                    steps = self.grid.itemAtPosition(i + 1, 4).widget().value()
+                    run_variable.steps = steps
 
                 # add the run_variable to the global list
-                multigo_settings.run_variables.append(run_variable)
+                run_variables.append(run_variable)
 
-        # set the fluorescence threshold
-        multigo_settings.fluorescence_threshold = self.fluorescence_threshold.value()
-
-        # store the new settings
-        self.stages.multigo_settings = multigo_settings
-
-        # closes the dialog
-        self.accept()
+        return run_variables
 
     # create a new run variable
     def new_run_variable(self, idx, variable):
@@ -99,7 +157,7 @@ class MultiGoDialog(QDialog):
             self.stages.variables[variable].id,
             current_value,
             current_value,
-            1
+            0
         )
         self.add_run_variable(run_variable)
 
@@ -122,15 +180,16 @@ class MultiGoDialog(QDialog):
         self.grid.addWidget(end_widget, row, 3)
 
         # add steps
-        steps = QSpinBox()
-        steps.setMinimum(1)
-        steps.setValue(run_variable.steps)
-        self.grid.addWidget(steps, row, 4)
+        if self.steps:
+            steps = QSpinBox()
+            steps.setMinimum(1)
+            steps.setValue(run_variable.steps)
+            self.grid.addWidget(steps, row, 4)
 
         # add remove button
         remove_button = QPushButton(f"Remove {row}")
         remove_button.clicked.connect(self.remove_run_variable)
-        self.grid.addWidget(remove_button, row, BUTTON_COLUMN)
+        self.grid.addWidget(remove_button, row, self.button_column)
 
         # add to run variables
         self.run_variables.append(run_variable)
@@ -141,7 +200,7 @@ class MultiGoDialog(QDialog):
         rows = self.grid.rowCount()
         for i in range(rows):
             # find row that contains the button
-            item = self.grid.itemAtPosition(i, BUTTON_COLUMN)
+            item = self.grid.itemAtPosition(i, self.button_column)
             if item and item.widget() == button:
                 # delete all the widgets in that row
                 columns = self.grid.columnCount()
@@ -150,40 +209,3 @@ class MultiGoDialog(QDialog):
                     if widget:
                         widget.widget().deleteLater()
                 break
-
-# for showing progress of a multigo submission
-class MultiGoProgressDialog(QDialog):
-    def __init__(self, window):
-        super().__init__()
-
-        self.window = window
-
-        self.setWindowTitle("MultiGo Progress")
-        self.setModal(True)
-
-        layout = QVBoxLayout(self)
-
-        # add the progress label
-        self.progress_label = QLabel("Submitting to device...", self)
-        layout.addWidget(self.progress_label)
-
-        # add the progress bar
-        self.progress_bar = QProgressBar(self)
-        layout.addWidget(self.progress_bar)
-
-        # add the cancel button
-        self.button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel)
-        self.button_box.rejected.connect(self.cancel_multigo)
-        layout.addWidget(self.button_box)
-
-        self.setLayout(layout)
-
-    def cancel_multigo(self):
-        self.window.gui_pipe.send(MultiGoCancel())
-
-    def update_progress(self, received: MultiGoProgress):
-        self.progress_label.setText(f"Running step {received.current_step} of {received.total_steps}")
-        self.progress_bar.setValue(int(received.current_step / received.total_steps * 100))
-
-        if received.current_step == received.total_steps:
-            self.accept()

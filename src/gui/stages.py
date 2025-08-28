@@ -4,8 +4,10 @@ from uuid import uuid4
 from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtWidgets import *
 
+from src.device.ai import AiSettings
 from src.device.device_types import Dc, DeviceSettings, MultiGoSubmission, Stage, Stages
 from src.device.multigo import MultiGoSettings
+from src.gui.ai import AiDialog
 from src.gui.multigo import MultiGoDialog, MultiGoProgressDialog
 from src.gui.value_widgets import big
 from src.host.camera import CameraConnection
@@ -28,6 +30,7 @@ class StagesGui:
         self.window = window
         self.variables = variables
         self.multigo_settings = MultiGoSettings([], 0.0)
+        self.ai_settings = AiSettings([])
 
         # store reference to all the widgets to get their values later
         self.dc_widgets = []
@@ -73,10 +76,12 @@ class StagesGui:
         self.window.label_container.addStretch()
         self.window.copied_container.addStretch()
 
-        # connect the multigo options button
-        self.window.multigo_options.clicked.connect(self.multigo_dialog)
+        # connect the ai buttons
+        self.window.ai_options.clicked.connect(self.ai_dialog)
+        # self.window.ai.clicked.connect(self.submit_ai)
 
-        # connect the multigo button
+        # connect the multigo buttons
+        self.window.multigo_options.clicked.connect(self.multigo_dialog)
         self.window.multigo.clicked.connect(self.submit_multigo)
 
         # connect the run button to the submit_experiment method
@@ -137,6 +142,11 @@ class StagesGui:
     def submit_experiment(self):
         # run the actual experiment
         self.window.gui_pipe.send(self.extract_stages())
+
+    # open the multigo options popup
+    def multigo_dialog(self):
+        multigo = MultiGoDialog(self)
+        multigo.exec()
     
     # sends the multigo event down the pipe with the gui state
     def submit_multigo(self):
@@ -145,10 +155,10 @@ class StagesGui:
         self.window.multigo_progress = MultiGoProgressDialog(self.window)
         self.window.multigo_progress.exec()
 
-    # open the multigo options popup
-    def multigo_dialog(self):
-        multigo = MultiGoDialog(self)
-        multigo.exec()
+    # open the ai options popup
+    def ai_dialog(self):
+        ai = AiDialog(self)
+        ai.exec()
 
     # send the current device settings to the device
     def update_device_settings(self):
