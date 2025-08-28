@@ -1,3 +1,7 @@
+'''
+multigo.py: has the code for running multigo experiments
+'''
+
 from src.device.device_types import Stages
 from src.gui.plots import FluorescenceSample
 

@@ -1,8 +1,13 @@
+'''
+ai.py: this file contains the gui dialogs for running ai models
+'''
+
 from PyQt6.QtWidgets import *
 
 from src.device.ai import AiSettings
 from src.gui.multigo import RunVariableWidget
 
+# dialog for changing AI settings
 class AiDialog(QDialog):
     def __init__(self, stages):
         super().__init__()

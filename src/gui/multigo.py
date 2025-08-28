@@ -1,3 +1,7 @@
+'''
+multigo.py: this file contains the gui dialogs for running multigo experiments
+'''
+
 from PyQt6.QtWidgets import *
 
 from src.device.device_types import Stages

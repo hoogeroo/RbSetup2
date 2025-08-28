@@ -1,3 +1,7 @@
+'''
+stages.py: this file has the code for managing the stages in the experiment along with the experiment control buttons and checkboxes
+'''
+
 import numpy as np
 from uuid import uuid4
 

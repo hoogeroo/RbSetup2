@@ -1,3 +1,7 @@
+'''
+fits.py: this file has the code for saving and loading the gui state as fits files
+'''
+
 import numpy as np
 import os
 
@@ -7,7 +11,7 @@ from src.device.device_types import Stages
 from src.device.multigo import MultiGoRunVariable, MultiGoSettings
 from src.value_types import AnyValue
 
-# save the settings to the file
+# save the settings to the file. this function takes in the different parts of the file instead of just the gui window so it can be called from the device after each experiment without modifying the gui
 def save_settings(path, variables, stages, images, multigo_settings=None, window_layout=None, overwrite=True):
     dc = stages.dc
     stages = stages.stages
@@ -101,7 +105,7 @@ def save_settings(path, variables, stages, images, multigo_settings=None, window
     hdul = fits.HDUList([primary_hdu, image_hdu, stages_hdu, multigo_hdu])
     hdul.writeto(path, overwrite=True)
 
-# load the settings from the file
+# load the settings from a fits file into the gui
 def load_settings(path, window):
     # read the fits file
     primary_hdu, images_hdu, stages_hdu, multigo_hdu = fits.open(path)

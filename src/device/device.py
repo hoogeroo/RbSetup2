@@ -1,3 +1,7 @@
+'''
+device.py: has the device code that works without artiq. mainly talking to the gui and taking photos
+'''
+
 from datetime import datetime
 from multiprocessing import Pipe, Process
 import numpy as np
