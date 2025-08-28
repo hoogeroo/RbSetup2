@@ -1,13 +1,13 @@
 '''
-gui_types.py: abstraction boilerplate for the various variable types used in gui and custom gui widgets for each variable type
+value_widgets.py: widgets for each of the value types
 '''
 
 import numpy as np
 
-from PyQt6.QtWidgets import *
 from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtWidgets import *
 
-from value_types import *
+from src.value_types import *
 
 # Used to set the maximum size of the widgets
 big = 16777215

@@ -5,14 +5,13 @@ gui.py: creates the main gui and sends commands to main.py to interface with the
 import numpy as np
 
 from PyQt6.QtCore import QTimer
-from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog
+from PyQt6.QtWidgets import QApplication, QFileDialog, QMainWindow
 from PyQt6.uic import loadUi
 
-from fits import save_settings, load_settings
-from multigo import MultiGoProgress, MultiGoRunVariable, MultiGoSettings
-from plots import PlotsGui, CameraImages, FluorescenceSample
-from stages import StagesGui
-from value_types import AnyValue
+from src.gui.fits import load_settings, save_settings
+from src.gui.multigo import MultiGoProgress
+from src.gui.plots import CameraImages, FluorescenceSample, PlotsGui
+from src.gui.stages import StagesGui
 
 def run_gui(variables, gui_pipe):
     app = QApplication([])

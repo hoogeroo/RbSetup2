@@ -1,14 +1,15 @@
 import numpy as np
 from uuid import uuid4
 
+from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtWidgets import *
-from PyQt6.QtCore import Qt, QSize
 
-from camera import CameraConnection
-from device_types import Dc, Stage, Stages, MultiGoSubmission, DeviceSettings
-from gui_types import big
-from multigo import MultiGoDialog, MultiGoProgressDialog, MultiGoSettings
-from variable_types import *
+from src.device.device_types import Dc, DeviceSettings, MultiGoSubmission, Stage, Stages
+from src.device.multigo import MultiGoSettings
+from src.gui.multigo import MultiGoDialog, MultiGoProgressDialog
+from src.gui.value_widgets import big
+from src.host.camera import CameraConnection
+from src.variable_types import *
 
 # class to represent a stage in the gui. differs from Stage in that it can't be sent to the device
 class GuiStage:

@@ -2,11 +2,11 @@
 variable_types.py: different variable types used in the GUI and sent to the device
 '''
 
-from scipy.interpolate import PPoly
 from astropy.io import fits
+from scipy.interpolate import PPoly
 
-from gui_types import BoolWidget, IntWidget, FloatWidget
-from value_types import BoolValue, IntValue, FloatValue
+from src.gui.value_widgets import BoolWidget, FloatWidget, IntWidget
+from src.value_types import BoolValue, FloatValue, IntValue
 
 class VariableTypeBool:
     def __init__(self, label, id):

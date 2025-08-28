@@ -4,8 +4,8 @@ simply stores classes used to send data to and from the device. kept in a separa
 
 import numpy as np
 
-from value_types import FloatValue
-from variable_types import VariableTypeFloat
+from src.value_types import FloatValue
+from src.variable_types import VariableTypeFloat
 
 # dummy class used to represent the device's digital and analog outputs
 # this class will be filled with ids set in the variables array then 

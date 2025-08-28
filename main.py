@@ -5,9 +5,9 @@ main.py: connects to the artiq device and starts the gui
 import numpy as np
 import scipy as sp
 
-from device import AbstractDevice
-from gui import *
-from value_types import *
+from src.device.device import AbstractDevice
+from src.gui import *
+from src.value_types import *
 
 from artiq.experiment import *
 

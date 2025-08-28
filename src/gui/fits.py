@@ -1,10 +1,11 @@
-import os
-from astropy.io import fits
 import numpy as np
+import os
 
-from device_types import Stages
-from multigo import MultiGoSettings, MultiGoRunVariable
-from value_types import AnyValue
+from astropy.io import fits
+
+from src.device.device_types import Stages
+from src.device.multigo import MultiGoRunVariable, MultiGoSettings
+from src.value_types import AnyValue
 
 # save the settings to the file
 def save_settings(path, variables, stages, images, multigo_settings=None, window_layout=None, overwrite=True):

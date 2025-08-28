@@ -3,6 +3,7 @@ plots.py: handles the plotting part of the gui and related events
 '''
 
 import numpy as np
+
 from matplotlib.backends.backend_qtagg import FigureCanvas
 from matplotlib.figure import Figure
 

@@ -1,16 +1,16 @@
 from datetime import datetime
-from multiprocessing import Process, Pipe
+from multiprocessing import Pipe, Process
 import numpy as np
 import os
 from scipy.interpolate import CubicSpline
 
-from camera import CameraConnection
-from device_types import Dc, Stages, FlattenedStages, MultiGoSubmission, DeviceSettings
-from fits import save_settings
-from gui import run_gui
-from multigo import MultiGoCancel, run_multigo_experiment
-from plots import CameraImages, FluorescenceSample
-from variable_types import *
+from src.device.device_types import Dc, DeviceSettings, FlattenedStages, MultiGoSubmission, Stages
+from src.device.multigo import MultiGoCancel, run_multigo_experiment
+from src.gui.fits import save_settings
+from src.gui.gui import run_gui
+from src.gui.plots import CameraImages, FluorescenceSample
+from src.host.camera import CameraConnection
+from src.variable_types import *
 
 SAVE_PATH = "runs"
 
@@ -114,7 +114,7 @@ class AbstractDevice:
                 images = camera.read(timeout=1)
             except Exception as e:
                 print("Error occurred while reading camera images:", e)
-
+        if images is not None:
             # send the picture to the gui
             self.device_pipe.send(CameraImages(images))
 
