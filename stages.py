@@ -73,7 +73,7 @@ class StagesGui:
         self.window.copied_container.addStretch()
 
         # connect the multigo options button
-        self.window.options.clicked.connect(self.multigo_dialog)
+        self.window.multigo_options.clicked.connect(self.multigo_dialog)
 
         # connect the multigo button
         self.window.multigo.clicked.connect(self.submit_multigo)

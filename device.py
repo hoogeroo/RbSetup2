@@ -95,11 +95,11 @@ class AbstractDevice:
     # handles the host side functions of running an experiment
     def run_experiment(self, stages):
         # tell the camera server to acquire a frame
+        camera = None
         try:
             camera = CameraConnection()
             camera.shoot(1)
         except Exception as e:
-            camera = None
             print("Error occurred while shooting:", e)
 
         # run the experiment on the artiq device
@@ -109,8 +109,11 @@ class AbstractDevice:
         # read back the camera images
         images = None
         if camera:
-            # read the image from the camera server
-            images = camera.read(timeout=1)
+            try:
+                # read the image from the camera server
+                images = camera.read(timeout=1)
+            except Exception as e:
+                print("Error occurred while reading camera images:", e)
 
             # send the picture to the gui
             self.device_pipe.send(CameraImages(images))
