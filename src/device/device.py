@@ -151,10 +151,3 @@ class AbstractDevice:
     # read fluorescence signal
     def read_fluorescence(self) -> float:
         return 100.0
-
-if __name__ == '__main__':
-    device = AbstractDevice()
-    device.build()
-    device.run()
-
-    exit(0)

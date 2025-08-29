@@ -16,7 +16,7 @@ artiq_run main.py
 ```
 To run the gui without the artiq fpga handy (good for working on the gui):
 ```bash
-python3 device.py
+python3 main.py
 ```
 This also works outside the nix enviroment if the right dependencies are installed.
 
