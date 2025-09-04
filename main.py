@@ -23,6 +23,12 @@ try:
             self.setattr_device('fastino0')
             self.setattr_device("sampler0")
             self.setattr_device('urukul0_ch0')
+            self.setattr_device('urukul0_ch1')
+            self.setattr_device('urukul0_ch2')
+            self.setattr_device('urukul0_ch3')
+            self.setattr_device('urukul1_ch0')
+            self.setattr_device('urukul1_ch1')
+            self.setattr_device('urukul1_ch2')
 
         @host_only
         def run(self):
@@ -41,6 +47,30 @@ try:
             self.urukul0_ch0.init()
             self.urukul0_ch0.cfg_sw(True)
             self.urukul0_ch0.set_att(6.0 * dB)
+            self.urukul0_ch1.cpld.init()
+            self.urukul0_ch1.init()
+            self.urukul0_ch1.cfg_sw(True)
+            self.urukul0_ch1.set_att(6.0 * dB)
+            self.urukul0_ch2.cpld.init()
+            self.urukul0_ch2.init()
+            self.urukul0_ch2.cfg_sw(True)
+            self.urukul0_ch2.set_att(6.0 * dB)
+            self.urukul0_ch3.cpld.init()
+            self.urukul0_ch3.init()
+            self.urukul0_ch3.cfg_sw(True)
+            self.urukul0_ch3.set_att(6.0 * dB)
+            self.urukul1_ch0.cpld.init()
+            self.urukul1_ch0.init()
+            self.urukul1_ch0.cfg_sw(True)
+            self.urukul1_ch0.set_att(6.0 * dB)
+            self.urukul1_ch1.cpld.init()
+            self.urukul1_ch1.init()
+            self.urukul1_ch1.cfg_sw(True)
+            self.urukul1_ch1.set_att(6.0 * dB)
+            self.urukul1_ch2.cpld.init()
+            self.urukul1_ch2.init()
+            self.urukul1_ch2.cfg_sw(True)
+            self.urukul1_ch2.set_att(6.0 * dB)
 
         # for some reason the `Dc` class type hint doesn't work but at runtime it works
         @kernel
@@ -53,13 +83,45 @@ try:
             else:
                 self.ttl5.off()
 
-            # update analog output
-            self.fastino0.set_dac(0, dc.analog)
+            # update analog outputs
+            dac = [0.0] * 32
+            dac[0] = 5.0 if dc.shutter else 0.0
+            dac[1] = 5.0 if dc.grey_molasses_shutter else 0.0
+            dac[2] = dc.mot2_coils_current 
+            dac[3] = dc.x_field
+            dac[4] = dc.y_field
+            dac[5] = dc.z_field
+            dac[6] = dc.dipole_amplitude
+            self.fastino0.set_group(0, dac)
 
             # update rf output
             self.urukul0_ch0.set(
-                dc.rf_freq * MHz,
-                amplitude=dc.rf_magnitude
+                dc.repump_frequency * MHz,
+                amplitude=dc.repump_amplitude * 0.6
+            )
+            self.urukul0_ch1.set(
+                dc.mot1_frequency * MHz,
+                amplitude=dc.mot1_amplitude * 0.6
+            )
+            self.urukul0_ch2.set(
+                dc.mot2_frequency * MHz,
+                amplitude=dc.mot2_amplitude * 0.6
+            )
+            self.urukul0_ch3.set(
+                dc.push_frequency * MHz,
+                amplitude=dc.push_amplitude * 0.6
+            )
+            self.urukul1_ch0.set(
+                dc.shadow_frequency * MHz,
+                amplitude=dc.shadow_amplitude * 0.6
+            )
+            self.urukul1_ch1.set(
+                dc.sheet_frequency * MHz,
+                amplitude=dc.sheet_amplitude * 0.6
+            )
+            self.urukul1_ch2.set(
+                dc.optical_pump_frequency * MHz,
+                amplitude=dc.optical_pump_amplitude * 0.6
             )
 
         @kernel
@@ -99,7 +161,7 @@ try:
             self.core.break_realtime()
             sample = [0.0]*8
             self.sampler0.sample(sample)
-            return -100.0 * sample[0]
+            return -1000.0 * sample[0]
 
 # if artiq isn't available run the gui without it
 except ImportError:
