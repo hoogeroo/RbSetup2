@@ -14,7 +14,7 @@ from src.gui.fits import save_settings
 from src.gui.gui import run_gui
 from src.gui.plots import CameraImages, FluorescenceSample
 from src.host.camera import CameraConnection
-from src.variable_types import *
+from src.variable_types import VariableTypeBool, VariableTypeInt, VariableTypeFloat
 
 SAVE_PATH = "runs"
 

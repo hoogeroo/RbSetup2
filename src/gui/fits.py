@@ -14,8 +14,7 @@ from src.value_types import AnyValue
 
 # save the settings to the file. this function takes in the different parts of the file instead of just the gui window so it can be called from the device after each experiment without modifying the gui
 def save_settings(path, variables, stages, images, multigo_settings=None, ai_settings=None, window_layout=None, overwrite=True):
-    dc = stages.dc
-    stages = stages.stages
+    stages = [stages.dc] + stages.stages  # include the dc as the first stage
 
     # create the primary HDU
     primary_hdu = fits.PrimaryHDU()
@@ -33,29 +32,22 @@ def save_settings(path, variables, stages, images, multigo_settings=None, ai_set
 
     # add the stage name column
     stage_names = [stage.name for stage in stages]
-    stage_names.insert(0, 'dc')
     stage_columns.append(fits.Column(name='stage_name', format='A20', array=stage_names))
     
     # add the enabled column
     enabled = [stage.enabled for stage in stages]
-    enabled.insert(0, True)  # dc is always enabled
     stage_columns.append(fits.Column(name='enabled', format='L', array=enabled))
 
     # add the id column
     ids = [stage.id for stage in stages]
-    ids.insert(0, 'dc')
     stage_columns.append(fits.Column(name='id', format='A36', array=ids))
 
     # add columns for each variable in the gui
     for i, variable in enumerate(variables):
         col = variable.fits_column()
 
-        # gather the column of data
+        # initialize the data array with the dc value
         data = []
-
-        # add the dc value
-        dc_value = getattr(dc, variable.id)
-        data.append(variable.value_type.constant(dc_value).to_array())
 
         # add the stage values
         for stage in stages:

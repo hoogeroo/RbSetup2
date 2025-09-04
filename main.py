@@ -8,6 +8,7 @@ import scipy as sp
 from src.device.device import AbstractDevice
 from src.gui import *
 from src.value_types import *
+from src.variable_types import *
 
 try:
     from artiq.experiment import *
@@ -58,13 +59,13 @@ try:
             self.setattr_device("ttl6")
             self.setattr_device('fastino0')
             self.setattr_device("sampler0")
-            self.setattr_device('urukul0_ch0')
-            self.setattr_device('urukul0_ch1')
-            self.setattr_device('urukul0_ch2')
-            self.setattr_device('urukul0_ch3')
-            self.setattr_device('urukul1_ch0')
-            self.setattr_device('urukul1_ch1')
-            self.setattr_device('urukul1_ch2')
+            # self.setattr_device('urukul0_ch0')
+            # self.setattr_device('urukul0_ch1')
+            # self.setattr_device('urukul0_ch2')
+            # self.setattr_device('urukul0_ch3')
+            # self.setattr_device('urukul1_ch0')
+            # self.setattr_device('urukul1_ch1')
+            # self.setattr_device('urukul1_ch2')
 
         @host_only
         def run(self):
@@ -79,12 +80,12 @@ try:
             self.fastino0.init()
             self.sampler0.init()
             self.sampler0.set_gain_mu(0, 0)
-            urukul_channels = ["urukul0_ch0", "urukul0_ch1", "urukul0_ch2", "urukul0_ch3", "urukul1_ch0", "urukul1_ch1", "urukul1_ch2"]
-            for ch in urukul_channels:
-                getattr(self, ch).cpld.init()
-                getattr(self, ch).init()
-                getattr(self, ch).cfg_sw(True)
-                getattr(self, ch).set_att(6.0 * dB)
+            # urukul_channels = ["urukul0_ch0", "urukul0_ch1", "urukul0_ch2", "urukul0_ch3", "urukul1_ch0", "urukul1_ch1", "urukul1_ch2"]
+            # for ch in urukul_channels:
+            #     getattr(self, ch).cpld.init()
+            #     getattr(self, ch).init()
+            #     getattr(self, ch).cfg_sw(True)
+            #     getattr(self, ch).set_att(6.0 * dB)
 
         @kernel
         def run_experiment_device(self, flattened_stages):
@@ -112,46 +113,34 @@ try:
                 self.fastino0.set_group(0, dac)
 
                 # update rf output
-                self.urukul0_ch0.set(
-                    s.repump_frequency[i] * MHz,
-                    amplitude=s.repump_amplitude[i] * 0.6
-                )
-                self.urukul0_ch1.set(
-                    s.mot1_frequency[i] * MHz,
-                    amplitude=s.mot1_amplitude[i] * 0.6
-                )
-                self.urukul0_ch2.set(
-                    s.mot2_frequency[i] * MHz,
-                    amplitude=s.mot2_amplitude[i] * 0.6
-                )
-                self.urukul0_ch3.set(
-                    s.push_frequency[i] * MHz,
-                    amplitude=s.push_amplitude[i] * 0.6
-                )
-                self.urukul1_ch0.set(
-                    s.shadow_frequency[i] * MHz,
-                    amplitude=s.shadow_amplitude[i] * 0.6
-                )
-                self.urukul1_ch1.set(
-                    s.sheet_frequency[i] * MHz,
-                    amplitude=s.sheet_amplitude[i] * 0.6
-                )
-                self.urukul1_ch2.set(
-                    s.optical_pump_frequency[i] * MHz,
-                    amplitude=s.optical_pump_amplitude[i] * 0.6
-                )
-
-                # update digital output
-                if s.digital[i]:
-                    self.ttl5.on()
-                else:
-                    self.ttl5.off()
-
-                # update analog output
-                self.fastino0.set_dac(0, s.analog[i])
-
-                # update rf output
-                self.urukul0_ch0.set(s.rf_freq[i] * MHz, amplitude=s.rf_magnitude[i])
+                # self.urukul0_ch0.set(
+                #     s.repump_frequency[i] * MHz,
+                #     amplitude=s.repump_amplitude[i] * 0.6
+                # )
+                # self.urukul0_ch1.set(
+                #     s.mot1_frequency[i] * MHz,
+                #     amplitude=s.mot1_amplitude[i] * 0.6
+                # )
+                # self.urukul0_ch2.set(
+                #     s.mot2_frequency[i] * MHz,
+                #     amplitude=s.mot2_amplitude[i] * 0.6
+                # )
+                # self.urukul0_ch3.set(
+                #     s.push_frequency[i] * MHz,
+                #     amplitude=s.push_amplitude[i] * 0.6
+                # )
+                # self.urukul1_ch0.set(
+                #     s.shadow_frequency[i] * MHz,
+                #     amplitude=s.shadow_amplitude[i] * 0.6
+                # )
+                # self.urukul1_ch1.set(
+                #     s.sheet_frequency[i] * MHz,
+                #     amplitude=s.sheet_amplitude[i] * 0.6
+                # )
+                # self.urukul1_ch2.set(
+                #     s.optical_pump_frequency[i] * MHz,
+                #     amplitude=s.optical_pump_amplitude[i] * 0.6
+                # )
 
                 # wait for a short time to simulate the experiment duration
                 delay(s.time[i] * ms)
