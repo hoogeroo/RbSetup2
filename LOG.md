@@ -72,3 +72,7 @@
   - Refactor codebase into folders for better organisation
   - Add ai buttons and run variables gui
   - Save/load run variables for ai and multigo
+- 4/09/25
+  - Start switch to artiq in the lab :D
+  - Combine update dc into run_experiment
+  - Refactor/fix file saving for above
