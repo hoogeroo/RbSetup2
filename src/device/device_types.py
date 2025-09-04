@@ -10,19 +10,15 @@ from src.variable_types import VariableTypeFloat
 # dummy class used to represent the device's digital and analog outputs
 # this class will be filled with ids set in the variables array then 
 # sent to the device
-class Dc:
-    def __init__(self):
-        pass
-
 class Stage:
     def __init__(self, name, id, enabled):
         self.name = name
         self.id = id
         self.enabled = enabled
 
-# same as above but for an experiment stage
+# a collection of states to send to the device
 class Stages:
-    def __init__(self, dc, stages):
+    def __init__(self, dc: Stage, stages: list[Stage]):
         self.dc = dc
         self.stages = stages
 
@@ -44,13 +40,15 @@ class DeviceSettings:
         self.load_mot = load_mot
         self.save_runs = save_runs
 
-# pre processed class to send to artiq
+# pre processed class to send to artiq - ramps and calibration are pre calculated
 class FlattenedStages:
     def __init__(self, stages: Stages, variables):
         # initialise the variable lists with the dc value for each variable
         for i, variable in enumerate(variables):
             dc_value = getattr(stages.dc, variable.id)
-            setattr(self, variable.id, [dc_value])
+            if not dc_value.is_constant():
+                raise ValueError(f"DC value for {variable.id} is not constant")
+            setattr(self, variable.id, [dc_value.constant_value()])
 
         # extend the lists with the stage values
         for stage in stages.stages:

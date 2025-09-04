@@ -14,8 +14,44 @@ try:
 
     class Device(AbstractDevice, EnvExperiment):
         def build(self):
+            # coil_current_calibration = lambda percentage: 5.0 * percentage / 100.0
+
+            # percentage = np.concatenate((np.arange(3, 10, 1), np.arange(10, 70, 10))) 
+            # dipole_powers = np.array([23.3E-3, 59E-3, 0.165, 0.377, 0.715, 1.18, 1.79, 2.51, 14.6, 31, 49.3, 65.4, 71.1]) # in milliWatts
+            # dipole_powers *= 100 / max(dipole_powers)
+            # dipole_volts = 3.4 * percentage / max(percentage) # in Volts
+            # dipole_calibration = np.polyfit(dipole_powers, dipole_volts, 5) # We want to put in a desired power and get back a voltage
+
             # initializes the variables for the device and gui
-            AbstractDevice.build(self)
+            self.variables = [
+                VariableTypeFloat("Time (ms)", "time", 0.0, 10000.0, 100.0, 'ms'),
+                VariableTypeInt("Samples", "samples", 1, 10000, 100),
+                VariableTypeBool("Digital", "digital"),
+                VariableTypeFloat("Dipole Amplitude", "dipole_amplitude", 0.0, 3.0, 0.1),
+                VariableTypeFloat("MOT 2 coils current", "mot2_coils_current", 0.0, 5.0, 0.5),
+                VariableTypeFloat("x Field", "x_field", 0.0, 5.0, 0.01),
+                VariableTypeFloat("y Field", "y_field", 0.0, 5.0, 0.01),
+                VariableTypeFloat("z Field", "z_field", 0.0, 5.0, 0.01),
+                VariableTypeFloat("Repump Amplitude", "repump_amplitude"),
+                VariableTypeFloat("Repump Frequency (MHz)", "repump_frequency", 55.0, 120.0, 1.0, 'MHz'),
+                VariableTypeFloat("1st MOT Amplitude", "mot1_amplitude"),
+                VariableTypeFloat("1st MOT Frequency (MHz)", "mot1_frequency", 55.0, 120.0, 1.0, 'MHz'),
+                VariableTypeFloat("2nd MOT Amplitude", "mot2_amplitude"),
+                VariableTypeFloat("2nd MOT Frequency (MHz)", "mot2_frequency", 55.0, 120.0, 1.0, 'MHz'),
+                VariableTypeFloat("Push Amplitude", "push_amplitude"),
+                VariableTypeFloat("Push Frequency (MHz)", "push_frequency", 55.0, 120.0, 1.0, 'MHz'),
+                VariableTypeFloat("Shadow Amplitude", "shadow_amplitude"),
+                VariableTypeFloat("Shadow Frequency (MHz)", "shadow_frequency", 55.0, 120.0, 1.0, 'MHz'),
+                VariableTypeFloat("Optical Pump Amplitude", "optical_pump_amplitude"),
+                VariableTypeFloat("Optical Pump Frequency (MHz)", "optical_pump_frequency", 55.0, 120.0, 1.0, 'MHz'),
+                VariableTypeFloat("Sheet Amplitude", "sheet_amplitude"),
+                VariableTypeFloat("Sheet Frequency (MHz)", "sheet_frequency", 55.0, 120.0, 1.0, 'MHz'),
+                VariableTypeBool("Shutter", "shutter"),
+                VariableTypeBool("Grey Molasses Shutter", "grey_molasses_shutter"),
+
+                # VariableTypeBool("RF Disable", "rf_disable"),
+                # VariableTypeBool("RF Freq Ramp", "rf_freq_ramp"),
+            ]
 
             self.setattr_device("core")
             self.setattr_device("ttl5")
@@ -43,86 +79,12 @@ try:
             self.fastino0.init()
             self.sampler0.init()
             self.sampler0.set_gain_mu(0, 0)
-            self.urukul0_ch0.cpld.init()
-            self.urukul0_ch0.init()
-            self.urukul0_ch0.cfg_sw(True)
-            self.urukul0_ch0.set_att(6.0 * dB)
-            self.urukul0_ch1.cpld.init()
-            self.urukul0_ch1.init()
-            self.urukul0_ch1.cfg_sw(True)
-            self.urukul0_ch1.set_att(6.0 * dB)
-            self.urukul0_ch2.cpld.init()
-            self.urukul0_ch2.init()
-            self.urukul0_ch2.cfg_sw(True)
-            self.urukul0_ch2.set_att(6.0 * dB)
-            self.urukul0_ch3.cpld.init()
-            self.urukul0_ch3.init()
-            self.urukul0_ch3.cfg_sw(True)
-            self.urukul0_ch3.set_att(6.0 * dB)
-            self.urukul1_ch0.cpld.init()
-            self.urukul1_ch0.init()
-            self.urukul1_ch0.cfg_sw(True)
-            self.urukul1_ch0.set_att(6.0 * dB)
-            self.urukul1_ch1.cpld.init()
-            self.urukul1_ch1.init()
-            self.urukul1_ch1.cfg_sw(True)
-            self.urukul1_ch1.set_att(6.0 * dB)
-            self.urukul1_ch2.cpld.init()
-            self.urukul1_ch2.init()
-            self.urukul1_ch2.cfg_sw(True)
-            self.urukul1_ch2.set_att(6.0 * dB)
-
-        # for some reason the `Dc` class type hint doesn't work but at runtime it works
-        @kernel
-        def update_dc(self, dc):
-            self.core.break_realtime()
-
-            # update digital output
-            if dc.digital:
-                self.ttl5.on()
-            else:
-                self.ttl5.off()
-
-            # update analog outputs
-            dac = [0.0] * 32
-            dac[0] = 5.0 if dc.shutter else 0.0
-            dac[1] = 5.0 if dc.grey_molasses_shutter else 0.0
-            dac[2] = dc.mot2_coils_current 
-            dac[3] = dc.x_field
-            dac[4] = dc.y_field
-            dac[5] = dc.z_field
-            dac[6] = dc.dipole_amplitude
-            self.fastino0.set_group(0, dac)
-
-            # update rf output
-            self.urukul0_ch0.set(
-                dc.repump_frequency * MHz,
-                amplitude=dc.repump_amplitude * 0.6
-            )
-            self.urukul0_ch1.set(
-                dc.mot1_frequency * MHz,
-                amplitude=dc.mot1_amplitude * 0.6
-            )
-            self.urukul0_ch2.set(
-                dc.mot2_frequency * MHz,
-                amplitude=dc.mot2_amplitude * 0.6
-            )
-            self.urukul0_ch3.set(
-                dc.push_frequency * MHz,
-                amplitude=dc.push_amplitude * 0.6
-            )
-            self.urukul1_ch0.set(
-                dc.shadow_frequency * MHz,
-                amplitude=dc.shadow_amplitude * 0.6
-            )
-            self.urukul1_ch1.set(
-                dc.sheet_frequency * MHz,
-                amplitude=dc.sheet_amplitude * 0.6
-            )
-            self.urukul1_ch2.set(
-                dc.optical_pump_frequency * MHz,
-                amplitude=dc.optical_pump_amplitude * 0.6
-            )
+            urukul_channels = ["urukul0_ch0", "urukul0_ch1", "urukul0_ch2", "urukul0_ch3", "urukul1_ch0", "urukul1_ch1", "urukul1_ch2"]
+            for ch in urukul_channels:
+                getattr(self, ch).cpld.init()
+                getattr(self, ch).init()
+                getattr(self, ch).cfg_sw(True)
+                getattr(self, ch).set_att(6.0 * dB)
 
         @kernel
         def run_experiment_device(self, flattened_stages):
@@ -132,6 +94,53 @@ try:
             # iterate through the stages and get their values
             s = flattened_stages
             for i in range(len(s.time)):
+                # update digital output
+                if s.digital[i]:
+                    self.ttl5.on()
+                else:
+                    self.ttl5.off()
+
+                # update analog outputs
+                dac = [0.0] * 32
+                dac[0] = 5.0 if s.shutter[i] else 0.0
+                dac[1] = 5.0 if s.grey_molasses_shutter[i] else 0.0
+                dac[2] = s.mot2_coils_current[i] 
+                dac[3] = s.x_field[i]
+                dac[4] = s.y_field[i]
+                dac[5] = s.z_field[i]
+                dac[6] = s.dipole_amplitude[i]
+                self.fastino0.set_group(0, dac)
+
+                # update rf output
+                self.urukul0_ch0.set(
+                    s.repump_frequency[i] * MHz,
+                    amplitude=s.repump_amplitude[i] * 0.6
+                )
+                self.urukul0_ch1.set(
+                    s.mot1_frequency[i] * MHz,
+                    amplitude=s.mot1_amplitude[i] * 0.6
+                )
+                self.urukul0_ch2.set(
+                    s.mot2_frequency[i] * MHz,
+                    amplitude=s.mot2_amplitude[i] * 0.6
+                )
+                self.urukul0_ch3.set(
+                    s.push_frequency[i] * MHz,
+                    amplitude=s.push_amplitude[i] * 0.6
+                )
+                self.urukul1_ch0.set(
+                    s.shadow_frequency[i] * MHz,
+                    amplitude=s.shadow_amplitude[i] * 0.6
+                )
+                self.urukul1_ch1.set(
+                    s.sheet_frequency[i] * MHz,
+                    amplitude=s.sheet_amplitude[i] * 0.6
+                )
+                self.urukul1_ch2.set(
+                    s.optical_pump_frequency[i] * MHz,
+                    amplitude=s.optical_pump_amplitude[i] * 0.6
+                )
+
                 # update digital output
                 if s.digital[i]:
                     self.ttl5.on()

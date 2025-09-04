@@ -8,7 +8,7 @@ import numpy as np
 import os
 from scipy.interpolate import CubicSpline
 
-from src.device.device_types import Dc, DeviceSettings, FlattenedStages, MultiGoSubmission, Stages
+from src.device.device_types import DeviceSettings, FlattenedStages, MultiGoSubmission, Stage, Stages
 from src.device.multigo import MultiGoCancel, run_multigo_experiment
 from src.gui.fits import save_settings
 from src.gui.gui import run_gui
@@ -23,46 +23,17 @@ Abstraction over the device to run the gui without artiq
 '''
 class AbstractDevice:
     def build(self):
-        # coil_current_calibration = lambda percentage: 5.0 * percentage / 100.0
-
-        # percentage = np.concatenate((np.arange(3, 10, 1), np.arange(10, 70, 10))) 
-        # dipole_powers = np.array([23.3E-3, 59E-3, 0.165, 0.377, 0.715, 1.18, 1.79, 2.51, 14.6, 31, 49.3, 65.4, 71.1]) # in milliWatts
-        # dipole_powers *= 100 / max(dipole_powers)
-        # dipole_volts = 3.4 * percentage / max(percentage) # in Volts
-        # dipole_calibration = np.polyfit(dipole_powers, dipole_volts, 5) # We want to put in a desired power and get back a voltage
+        x = np.linspace(0.0, 1.0, 10)
+        y = x**3
+        calibration = CubicSpline(x, y)
 
         self.variables = [
             VariableTypeFloat("Time (ms)", "time", 0.0, 10000.0, 100.0, 'ms'),
             VariableTypeInt("Samples", "samples", 1, 10000, 100),
             VariableTypeBool("Digital", "digital"),
-            VariableTypeFloat("Dipole Amplitude", "dipole_amplitude", 0.0, 3.0, 0.1),
-            VariableTypeFloat("MOT 2 coils current", "mot2_coils_current", 0.0, 5.0, 0.5),
-            VariableTypeFloat("x Field", "x_field", 0.0, 5.0, 0.01),
-            VariableTypeFloat("y Field", "y_field", 0.0, 5.0, 0.01),
-            VariableTypeFloat("z Field", "z_field", 0.0, 5.0, 0.01),
-            VariableTypeFloat("Repump Amplitude", "repump_amplitude"),
-            VariableTypeFloat("Repump Frequency (MHz)", "repump_frequency", 55.0, 120.0, 1.0, 'MHz'),
-            VariableTypeFloat("1st MOT Amplitude", "mot1_amplitude"),
-            VariableTypeFloat("1st MOT Frequency (MHz)", "mot1_frequency", 55.0, 120.0, 1.0, 'MHz'),
-            VariableTypeFloat("2nd MOT Amplitude", "mot2_amplitude"),
-            VariableTypeFloat("2nd MOT Frequency (MHz)", "mot2_frequency", 55.0, 120.0, 1.0, 'MHz'),
-            VariableTypeFloat("Push Amplitude", "push_amplitude"),
-            VariableTypeFloat("Push Frequency (MHz)", "push_frequency", 55.0, 120.0, 1.0, 'MHz'),
-            VariableTypeFloat("Shadow Amplitude", "shadow_amplitude"),
-            VariableTypeFloat("Shadow Frequency (MHz)", "shadow_frequency", 55.0, 120.0, 1.0, 'MHz'),
-            VariableTypeFloat("Optical Pump Amplitude", "optical_pump_amplitude"),
-            VariableTypeFloat("Optical Pump Frequency (MHz)", "optical_pump_frequency", 55.0, 120.0, 1.0, 'MHz'),
-            VariableTypeFloat("Sheet Amplitude", "sheet_amplitude"),
-            VariableTypeFloat("Sheet Frequency (MHz)", "sheet_frequency", 55.0, 120.0, 1.0, 'MHz'),
-            VariableTypeBool("Shutter", "shutter"),
-            VariableTypeBool("Grey Molasses Shutter", "grey_molasses_shutter"),
-
-            # VariableTypeBool("RF Disable", "rf_disable"),
-            # VariableTypeBool("RF Freq Ramp", "rf_freq_ramp"),
-
-            # VariableTypeFloat("Rf Magnitude", "rf_magnitude"),
-            # VariableTypeFloat("Rf Freq (MHz)", "rf_freq", 1.0, 100.0, 1.0, 'MHz'),
-
+            VariableTypeFloat("Analog", "analog", calibration=calibration),
+            VariableTypeFloat("Rf Magnitude", "rf_magnitude"),
+            VariableTypeFloat("Rf Freq (MHz)", "rf_freq", 1.0, 100.0, 1.0, 'MHz'),
         ]
 
     # spawns the gui in a separate process
@@ -85,9 +56,9 @@ class AbstractDevice:
             if device_pipe.poll(0.1):
                 msg = device_pipe.recv()
 
-                if isinstance(msg, Dc):
-                    # update the device with the new values
-                    self.update_dc(msg)
+                if isinstance(msg, Stage):
+                    # sets the outputs to the ones in a stage (for dc)
+                    self.run_stage(msg)
                 elif isinstance(msg, Stages):
                     # run the experiment with the provided stages
                     self.run_experiment(msg)
@@ -121,9 +92,10 @@ class AbstractDevice:
         self.gui_process.terminate()
         self.gui_process.join()
 
-    # dummy method to be overridden by the device
-    def update_dc(self, dc):
-        print("DC updated:", dc)
+    # sets the current output values to the ones in a stage
+    def run_stage(self, stage):
+        flattened_stages = FlattenedStages(Stages(stage, []), self.variables)
+        self.run_experiment_device(flattened_stages)
 
     # handles the host side functions of running an experiment
     def run_experiment(self, stages):

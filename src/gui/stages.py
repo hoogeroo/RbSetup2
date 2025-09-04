@@ -8,7 +8,7 @@ from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtWidgets import *
 
 from src.device.ai import AiSettings
-from src.device.device_types import Dc, DeviceSettings, MultiGoSubmission, Stage, Stages
+from src.device.device_types import DeviceSettings, MultiGoSubmission, Stage, Stages
 from src.device.multigo import MultiGoSettings
 from src.gui.ai import AiDialog
 from src.gui.multigo import MultiGoDialog, MultiGoProgressDialog
@@ -112,11 +112,11 @@ class StagesGui:
     '''
 
     # extracts the values from the dc widgets and creates a Dc object
-    def extract_dc(self) -> Dc:
+    def extract_dc(self) -> Stage:
         # uses setattr to dynamically create a Dc object with the values from the widgets
-        dc = Dc()
+        dc = Stage("DC Values", "dc", True)
         for i, variable in enumerate(self.variables):
-            setattr(dc, variable.id, self.dc_widgets[i].get_value().constant_value())
+            setattr(dc, variable.id, self.dc_widgets[i].get_value())
         return dc
 
     # extracts the values from the stage widgets and creates a Stages object to send to the device
