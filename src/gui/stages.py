@@ -28,15 +28,16 @@ class GuiStage:
         return self.button.text()
 
 class StagesGui:
-    def __init__(self, window, variables):
+    def __init__(self, window, variables, hidden_gui):
         self.window = window
         self.variables = variables
+        self.hidden_gui = hidden_gui
         self.multigo_settings = MultiGoSettings([], 0.0)
         self.ai_settings = AiSettings(0, 0)
 
         # store reference to all the widgets to get their values later
-        self.dc_widgets = []
-        self.copy_widgets = []
+        self.dc_widgets = {}
+        self.copy_widgets = {}
         self.stages = []
 
         # add spacers to the dc, label, and copied containers
@@ -51,20 +52,24 @@ class StagesGui:
         self.window.copied_container.addWidget(spacers[2])
 
         # fill dc, label, and copied containers with widgets
-        for i, variable in enumerate(self.variables):
+        for variable in self.variables:
+            # skip hidden variables for the stages GUI
+            if variable.hidden:
+                continue
+
             # add the widget to the dc container
             dc_widget = variable.widget()
             if variable.id == "time" or variable.id == "samples":
                 dc_widget.setEnabled(False)  # time and samples don't make sense for dc
             dc_widget.changed_signal().connect(self.update_dc)
             self.window.dc_container.addWidget(dc_widget)
-            self.dc_widgets.append(dc_widget)
+            self.dc_widgets[variable.id] = dc_widget
 
             # add the widget to the copied container
             copied_widget = variable.widget()
             copied_widget.setEnabled(False)
             self.window.copied_container.addWidget(copied_widget)
-            self.copy_widgets.append(copied_widget)
+            self.copy_widgets[variable.id] = copied_widget
 
             # add the label to the label container
             label = QLabel()
@@ -115,8 +120,16 @@ class StagesGui:
     def extract_dc(self) -> Stage:
         # uses setattr to dynamically create a Dc object with the values from the widgets
         dc = Stage("DC Values", "dc", True)
-        for i, variable in enumerate(self.variables):
-            setattr(dc, variable.id, self.dc_widgets[i].get_value())
+        for variable in self.variables:
+            # get the widget for the variable based on its visibility
+            if variable.hidden:
+                widget = self.hidden_gui.widgets[variable.id]
+            else:
+                widget = self.dc_widgets[variable.id]
+
+            # set the value of the variable in the dc object
+            setattr(dc, variable.id, widget.get_value())
+
         return dc
 
     # extracts the values from the stage widgets and creates a Stages object to send to the device
@@ -125,8 +138,15 @@ class StagesGui:
         for gui_stage in self.stages:
             name = gui_stage.button.text()
             stage = Stage(name, gui_stage.id, gui_stage.enabled)
-            for i, variable in enumerate(self.variables):
-                setattr(stage, variable.id, gui_stage.widgets[i].get_value())
+            for variable in self.variables:
+                # get the widget for the variable based on its visibility
+                if variable.hidden:
+                    widget = self.hidden_gui.widgets[variable.id]
+                else:
+                    widget = gui_stage.widgets[variable.id]
+
+                # set the value of the variable in the stage object
+                setattr(stage, variable.id, widget.get_value())
             stages.append(stage)
         dc = self.extract_dc()
         return Stages(dc, stages)
@@ -211,11 +231,16 @@ class StagesGui:
         stage_container.addWidget(button)
 
         # create widgets for each variable and add them to the layout
-        widgets = []
+        widgets = {}
         for variable in self.variables:
+            # skip hidden variables for the stages GUI
+            if variable.hidden:
+                continue
+
+            # add the widget for the variable
             widget = variable.widget()
             stage_container.addWidget(widget)
-            widgets.append(widget)
+            widgets[variable.id] = widget
 
         # add a spacer to the stage container
         stage_container.addStretch()

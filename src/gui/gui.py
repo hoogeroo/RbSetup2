@@ -9,6 +9,7 @@ from PyQt6.uic import loadUi
 from src.device.ai import AiProgress
 from src.device.multigo import MultiGoProgress
 from src.gui.fits import load_settings, save_settings
+from src.gui.hidden import HiddenGui
 from src.gui.plots import CameraImages, FluorescenceSample, PlotsGui
 from src.gui.stages import StagesGui
 
@@ -39,8 +40,11 @@ class Gui(QMainWindow):
         self.action_save.triggered.connect(self.save_settings_dialog)
         self.action_load.triggered.connect(self.load_settings_dialog)
 
+        # create the hidden GUI
+        self.hidden_gui = HiddenGui(self, variables)
+
         # create the stages GUI
-        self.stages_gui = StagesGui(self, variables)
+        self.stages_gui = StagesGui(self, variables, self.hidden_gui)
 
         # create the plots GUI
         self.plots_gui = PlotsGui(self)

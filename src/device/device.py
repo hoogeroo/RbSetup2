@@ -29,12 +29,14 @@ class AbstractDevice:
         calibration = CubicSpline(x, y)
 
         self.variables = [
-            VariableTypeFloat("Time (ms)", "time", 0.0, 10000.0, 100.0, 'ms'),
+            VariableTypeFloat("Time (ms)", "time", 0.0, 10000.0, 100.0),
             VariableTypeInt("Samples", "samples", 1, 10000, 100),
             VariableTypeBool("Digital", "digital"),
             VariableTypeFloat("Analog", "analog", calibration=calibration),
+            VariableTypeFloat("x Field", "x_field", 0.0, 5.0, 0.1, hidden=True),
+            VariableTypeFloat("z Field", "z_field", 0.0, 5.0, 0.1, hidden=True),
             VariableTypeFloat("Rf Magnitude", "rf_magnitude"),
-            VariableTypeFloat("Rf Freq (MHz)", "rf_freq", 1.0, 100.0, 1.0, 'MHz'),
+            VariableTypeFloat("Rf Freq (MHz)", "rf_freq", 1.0, 100.0, 1.0),
         ]
 
     # spawns the gui in a separate process

@@ -99,15 +99,20 @@ def load_settings(path, window):
     # load the stages data
     stages_data = stages_hdu.data
 
-    # update the dc widgets with the values from the file
-    for dc_widget in window.stages_gui.dc_widgets:
-        if dc_widget.variable.id in stages_data.names:
-            array = stages_data[0][dc_widget.variable.id]
-            value = dc_widget.variable.value_type.from_array(array)
-            dc_widget.set_value(value)
-        else:
-            print(f"Warning: '{dc_widget.variable.id}' not in dc data")
-    stages_data = stages_data[1:]  # skip the first row which is the dc
+    # update the dc and hidden widgets with the values from the file
+    dc_widgets = window.stages_gui.dc_widgets
+    hidden_widgets = window.hidden_gui.widgets
+    for variable_id in stages_data.names:
+        array = stages_data[0][variable_id]
+        if variable_id in dc_widgets:
+            value = dc_widgets[variable_id].variable.value_type.from_array(array)
+            dc_widgets[variable_id].set_value(value)
+        elif variable_id in hidden_widgets:
+            value = hidden_widgets[variable_id].variable.value_type.from_array(array)
+            hidden_widgets[variable_id].set_value(value)
+
+    # skip the first row which is the dc
+    stages_data = stages_data[1:]
 
     # clear the current stage widgets
     for i in reversed(range(len(window.stages_gui.stages))):
@@ -123,9 +128,9 @@ def load_settings(path, window):
         window.stages_gui.insert_stage(len(window.stages_gui.stages), name=stage_name, enabled=enabled, id=id)
 
         # fill the stage widgets with the values from the file
-        for widget in window.stages_gui.stages[i].widgets:
-            if widget.variable.id in stages_data.names:
-                array = stage_row[widget.variable.id]
+        for variable_id, widget in window.stages_gui.stages[i].widgets.items():
+            if variable_id in stages_data.names:
+                array = stage_row[variable_id]
                 value = widget.variable.value_type.from_array(array)
                 widget.set_value(value)
             else:

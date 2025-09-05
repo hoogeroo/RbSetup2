@@ -9,9 +9,10 @@ from src.gui.value_widgets import BoolWidget, FloatWidget, IntWidget
 from src.value_types import BoolValue, FloatValue, IntValue
 
 class VariableTypeBool:
-    def __init__(self, label, id):
+    def __init__(self, label, id, hidden=False):
         self.label = label
         self.id = id
+        self.hidden = hidden
         self.value_type = BoolValue
 
     def widget(self):
@@ -21,12 +22,13 @@ class VariableTypeBool:
         return fits.Column(name=self.id, format='2L', dim='(2)')
 
 class VariableTypeInt:
-    def __init__(self, label, id, minimum=0, maximum=100, step=1):
+    def __init__(self, label, id, minimum=0, maximum=100, step=1, hidden=False):
         self.label = label
         self.id = id
         self.minimum = minimum
         self.maximum = maximum
         self.step = step
+        self.hidden = hidden
         self.value_type = IntValue
 
     def widget(self):
@@ -36,18 +38,18 @@ class VariableTypeInt:
         return fits.Column(name=self.id, format='2K', dim='(2)')
 
 class VariableTypeFloat:
-    def __init__(self, label, id, minimum=0.0, maximum=1.0, step=0.1, unit='', calibration: None|PPoly=None):
+    def __init__(self, label, id, minimum=0.0, maximum=1.0, step=0.1, calibration: None|PPoly=None, hidden=False):
         self.label = label
         self.id = id
         self.minimum = minimum
         self.maximum = maximum
         self.step = step
-        self.unit = unit
         self.calibration = calibration
+        self.hidden = hidden
         self.value_type = FloatValue
 
     def widget(self):
         return FloatWidget(self)
     
     def fits_column(self):
-        return fits.Column(name=self.id, format='3D', dim='(3)', unit=self.unit)
+        return fits.Column(name=self.id, format='3D', dim='(3)')
