@@ -55,7 +55,7 @@
     <number>2</number>
    </attribute>
    <widget class="QWidget" name="controls_widget">
-    <layout class="QGridLayout" name="camera_grid">
+    <layout class="QGridLayout" name="controls_grid">
      <item row="4" column="0">
       <widget class="QCheckBox" name="load_mot">
        <property name="text">
@@ -352,7 +352,7 @@
     <number>8</number>
    </attribute>
    <widget class="QWidget" name="camera_widget">
-    <layout class="QGridLayout" name="gridLayout_3"/>
+    <layout class="QGridLayout" name="camera_grid"/>
    </widget>
   </widget>
   <action name="action_save">

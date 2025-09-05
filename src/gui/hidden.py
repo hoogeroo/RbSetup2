@@ -20,5 +20,10 @@ class HiddenGui:
 
             # create the widget for the variable
             widget = variable.widget()
+            widget.changed_signal().connect(self.update_hidden)
             form_layout.addRow(variable.label, widget)
             self.widgets[variable.id] = widget
+
+    # updates the device with the values from the widgets
+    def update_hidden(self):
+        self.window.stages_gui.update_dc()
