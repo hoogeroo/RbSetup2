@@ -40,7 +40,17 @@
     <addaction name="action_save"/>
     <addaction name="action_load"/>
    </widget>
+   <widget class="QMenu" name="menuFiltering">
+    <property name="title">
+     <string>Filtering</string>
+    </property>
+    <addaction name="action_fringe_removal"/>
+    <addaction name="action_pca"/>
+    <addaction name="action_low_pass_filter"/>
+    <addaction name="action_fft_filter"/>
+   </widget>
    <addaction name="menu_file"/>
+   <addaction name="menuFiltering"/>
   </widget>
   <widget class="QStatusBar" name="statusbar">
    <property name="sizeGripEnabled">
@@ -375,6 +385,38 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+O</string>
+   </property>
+  </action>
+  <action name="action_fringe_removal">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Fringe Removal</string>
+   </property>
+  </action>
+  <action name="action_pca">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>PCA</string>
+   </property>
+  </action>
+  <action name="action_low_pass_filter">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Low Pass</string>
+   </property>
+  </action>
+  <action name="action_fft_filter">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>FFT</string>
    </property>
   </action>
  </widget>

@@ -9,6 +9,8 @@ from matplotlib.figure import Figure
 
 from PyQt6.QtWidgets import QTabWidget
 
+from src.gui.filtering import low_pass
+
 FLUORESCENCE_SAMPLES = 100
 
 class CameraImages:
@@ -54,6 +56,20 @@ class PlotsGui:
 
     # update the camera images
     def update_images(self, images: np.ndarray):
+        # store unfiltered images for saving later
+        self.images = images
+
+        # apply filtering
+        if self.window.action_fringe_removal.isChecked():
+            # todo
+        if self.window.action_pca.isChecked():
+            # todo
+        if self.window.action_low_pass.isChecked():
+            images = low_pass(images)
+        if self.window.action_fft_filter.isChecked():
+            # todo
+
+        # load
         self.camera_tabs.clear()
         for i in range(images.shape[0]):
             canvas = FigureCanvas(Figure(figsize=(5, 3)))
@@ -66,6 +82,3 @@ class PlotsGui:
 
             # add a tab
             self.camera_tabs.addTab(canvas, f"Picture {i}")
-        
-        # store images for saving later
-        self.images = images
