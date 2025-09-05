@@ -68,10 +68,10 @@ def save_settings(path, variables, stages, images, multigo_settings=None, ai_set
         multigo_hdu = fits.BinTableHDU.from_columns([])
 
     # create the AI settings HDU
+    ai_hdu = fits.BinTableHDU.from_columns([])
     if ai_settings is not None:
-        ai_hdu = run_variable_list_to_hdu(ai_settings.run_variables)
-    else:
-        ai_hdu = fits.BinTableHDU.from_columns([])
+        ai_hdu.header['pretrain'] = ai_settings.pre_training_steps
+        ai_hdu.header['train'] = ai_settings.training_steps
 
     # make sure path is unique if not overwriting
     if not overwrite:
@@ -138,9 +138,11 @@ def load_settings(path, window):
         window.stages_gui.multigo_settings = MultiGoSettings(run_variables, fluorescence_threshold)
 
     # load the ai settings
-    if len(ai_hdu.data) > 0:
-        run_variables = run_variable_hdu_to_list(ai_hdu)
-        window.stages_gui.ai_settings = AiSettings(run_variables)
+    if ai_hdu.header.get("pretrain") is not fits.card.Undefined:
+        window.stages_gui.ai_settings = AiSettings(
+            ai_hdu.header['pretrain'],
+            ai_hdu.header['train']
+        )
 
 # saves run variables to a fits file
 def save_run_variables(file_path, run_variables):

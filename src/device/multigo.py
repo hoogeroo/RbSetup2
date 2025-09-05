@@ -92,5 +92,4 @@ def run_multigo_experiment(device, multigo_settings: MultiGoSettings, stages: St
             break
 
     # send final progress update
-    progress = MultiGoProgress(total_runs, total_runs)
-    device.device_pipe.send(progress)
+    device.device_pipe.send(MultiGoProgress(total_runs, total_runs))

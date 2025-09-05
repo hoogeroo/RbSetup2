@@ -6,8 +6,9 @@ from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QApplication, QFileDialog, QMainWindow
 from PyQt6.uic import loadUi
 
+from src.device.ai import AiProgress
+from src.device.multigo import MultiGoProgress
 from src.gui.fits import load_settings, save_settings
-from src.gui.multigo import MultiGoProgress
 from src.gui.plots import CameraImages, FluorescenceSample, PlotsGui
 from src.gui.stages import StagesGui
 
@@ -67,6 +68,8 @@ class Gui(QMainWindow):
                 self.plots_gui.update_images(recieved.images)
             elif isinstance(recieved, MultiGoProgress):
                 self.multigo_progress.update_progress(recieved)
+            elif isinstance(recieved, AiProgress):
+                self.ai_progress.update_progress(recieved)
             else:
                 print("Received unknown message type from device:", type(recieved))
 

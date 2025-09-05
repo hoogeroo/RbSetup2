@@ -8,9 +8,9 @@ from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtWidgets import *
 
 from src.device.ai import AiSettings
-from src.device.device_types import DeviceSettings, MultiGoSubmission, Stage, Stages
+from src.device.device_types import AiSubmission, DeviceSettings, MultiGoSubmission, Stage, Stages
 from src.device.multigo import MultiGoSettings
-from src.gui.ai import AiDialog
+from src.gui.ai import AiDialog, AiProgressDialog
 from src.gui.multigo import MultiGoDialog, MultiGoProgressDialog
 from src.gui.value_widgets import big
 from src.variable_types import *
@@ -32,7 +32,7 @@ class StagesGui:
         self.window = window
         self.variables = variables
         self.multigo_settings = MultiGoSettings([], 0.0)
-        self.ai_settings = AiSettings([])
+        self.ai_settings = AiSettings(0, 0)
 
         # store reference to all the widgets to get their values later
         self.dc_widgets = []
@@ -80,7 +80,7 @@ class StagesGui:
 
         # connect the ai buttons
         self.window.ai_options.clicked.connect(self.ai_dialog)
-        # self.window.ai.clicked.connect(self.submit_ai)
+        self.window.ai.clicked.connect(self.submit_ai)
 
         # connect the multigo buttons
         self.window.multigo_options.clicked.connect(self.multigo_dialog)
@@ -161,6 +161,13 @@ class StagesGui:
     def ai_dialog(self):
         ai = AiDialog(self)
         ai.exec()
+
+    # submits the AI job to the device
+    def submit_ai(self):
+        self.window.gui_pipe.send(AiSubmission(self.multigo_settings, self.ai_settings, self.extract_stages()))
+
+        self.window.ai_progress = AiProgressDialog(self.window)
+        self.window.ai_progress.exec()
 
     # send the current device settings to the device
     def update_device_settings(self):

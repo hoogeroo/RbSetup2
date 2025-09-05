@@ -15,6 +15,7 @@ class MultiGoDialog(QDialog):
         self.stages = stages
 
         self.setWindowTitle("MultiGo")
+        self.setModal(True)
 
         # set the layout
         layout = QVBoxLayout()
@@ -33,17 +34,17 @@ class MultiGoDialog(QDialog):
 
         # add buttons
         self.button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
-        self.button_box.accepted.connect(self.save_run_variables)
+        self.button_box.accepted.connect(self.save_multigo_settings)
         layout.addWidget(self.button_box)
 
-        # add the current settings
+        # load the current settings
         multigo_settings = stages.multigo_settings
         self.fluorescence_threshold.setValue(multigo_settings.fluorescence_threshold)
         for run_variable in multigo_settings.run_variables:
             self.run_variable_widget.add_run_variable(run_variable)
 
     # saves the settings currently in the gui into the `StagesGui`'s multigo_settings
-    def save_run_variables(self):
+    def save_multigo_settings(self):
         # get the currently selected run variables
         run_variables = self.run_variable_widget.get_run_variables()
 
@@ -66,15 +67,15 @@ class MultiGoProgressDialog(QDialog):
         self.setWindowTitle("MultiGo Progress")
         self.setModal(True)
 
-        layout = QVBoxLayout(self)
+        layout = QVBoxLayout()
         self.setLayout(layout)
 
         # add the progress label
-        self.progress_label = QLabel("Submitting to device...", self)
+        self.progress_label = QLabel("Submitting to device...")
         layout.addWidget(self.progress_label)
 
         # add the progress bar
-        self.progress_bar = QProgressBar(self)
+        self.progress_bar = QProgressBar()
         layout.addWidget(self.progress_bar)
 
         # add the cancel button

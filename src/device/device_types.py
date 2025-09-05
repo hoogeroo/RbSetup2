@@ -16,7 +16,7 @@ class Stage:
         self.id = id
         self.enabled = enabled
 
-# a collection of states to send to the device
+# a collection of stages to be sent to the device
 class Stages:
     def __init__(self, dc: Stage, stages: list[Stage]):
         self.dc = dc
@@ -32,6 +32,13 @@ class Stages:
 class MultiGoSubmission:
     def __init__(self, multigo_settings, stages: Stages):
         self.multigo_settings = multigo_settings
+        self.stages = stages
+
+# represents an AI submission
+class AiSubmission:
+    def __init__(self, multigo_settings, ai_settings, stages: Stages):
+        self.multigo_settings = multigo_settings
+        self.ai_settings = ai_settings
         self.stages = stages
 
 # device settings that aren't directly related to the experiment stages or dc values
