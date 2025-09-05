@@ -76,3 +76,7 @@
   - Start switch to artiq in the lab :D
   - Combine update dc into run_experiment
   - Refactor/fix file saving for above
+- 5/09/25
+  - Setup ai pipeline with settings and progress
+  - Add hidden variable tab
+  - Stop repeated dc updates clogging the device

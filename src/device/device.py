@@ -53,13 +53,32 @@ class AbstractDevice:
         # initialize the device settings
         self.device_settings = DeviceSettings()
 
-        # wait for the gui to send a message
+        # process all the messages from the gui
+        queue = []
         while True:
-            # check for messages from the gui
+            # grab all the messages from the gui into the queue
             if device_pipe.poll(0.1):
-                msg = device_pipe.recv()
+                while device_pipe.poll():
+                    msg = device_pipe.recv()
+                    queue.append(msg)
+                print("polled queue", queue)
 
+            # process all the messages from the queue
+            while queue:
+                # get the next message
+                msg = queue.pop(0)
+
+                # process the message based on its type
                 if isinstance(msg, Stage):
+                    # only use the latest dc message (skip message if newer one exists)
+                    found = False
+                    for m in queue:
+                        if isinstance(m, Stage):
+                            found = True
+                            break
+                    if found:
+                        continue
+
                     # sets the outputs to the ones in a stage (for dc)
                     self.run_stage(msg)
                 elif isinstance(msg, Stages):
