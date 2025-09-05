@@ -80,3 +80,5 @@
   - Setup ai pipeline with settings and progress
   - Add hidden variable tab
   - Stop repeated dc updates clogging the device
+  - Start adding filters
+  

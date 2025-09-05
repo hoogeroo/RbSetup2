@@ -61,13 +61,13 @@ class PlotsGui:
 
         # apply filtering
         if self.window.action_fringe_removal.isChecked():
-            # todo
+            pass # todo
         if self.window.action_pca.isChecked():
-            # todo
+            pass # todo
         if self.window.action_low_pass.isChecked():
             images = low_pass(images)
         if self.window.action_fft_filter.isChecked():
-            # todo
+            pass # todo
 
         # load
         self.camera_tabs.clear()
