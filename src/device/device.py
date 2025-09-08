@@ -16,6 +16,8 @@ from src.gui.gui import run_gui
 from src.gui.plots import CameraImages, FluorescenceSample
 from src.host.camera import CameraConnection
 from src.variable_types import VariableTypeBool, VariableTypeInt, VariableTypeFloat
+from src.device import filtering
+from src.device.data_analysis import ImageAnalysis
 
 SAVE_PATH = "runs"
 
@@ -52,6 +54,15 @@ class AbstractDevice:
 
         # initialize the device settings
         self.device_settings = DeviceSettings()
+
+        # Initialize image analysis
+        self.image_analysis = ImageAnalysis()
+        
+        # Initialize background management for filtering
+        self.background_bank = np.zeros((512, 512, 100))  # Background image bank
+        self.number_of_backgrounds = 0
+        self.Natoms = []
+        self.MaxOD = []
 
         # process all the messages from the gui
         queue = []
@@ -148,8 +159,30 @@ class AbstractDevice:
             except Exception as e:
                 print("Error occurred while reading camera images:", e)
         if images is not None:
+            # Process images
+            Foreground = images[0,:,:] - images[2,:,:]
+            Background = images[1,:,:] - images[2,:,:]
+            self.save_background(Background) # Saves new background if unique
+            ODimage = -np.log((Foreground)/(Background))
+
+            self.Natoms.append(self.image_analysis.get_atom_number(ODimage = ODimage))
+            self.MaxOD.append(self.image_analysis.get_max_od(ODimage = ODimage))
+
+            # apply filtering based on device settings
+            if self.device_settings.fringe_removal  and self.number_of_backgrounds > 5:
+                ODimage, opref = filtering.fringe_removal(Foreground, self.background_bank[:,:,:self.number_of_backgrounds])
+            
+            if self.device_settings.pca and self.number_of_backgrounds > 5:
+                ODimage, opref = filtering.pca(Foreground, self.background_bank[:,:,:self.number_of_backgrounds])
+            
+            if self.device_settings.low_pass:
+                ODimage = filtering.low_pass(images)
+            
+            if self.device_settings.fft_filter:
+                ODimage = filtering.fft_filter(ODimage)    
+
             # send the picture to the gui
-            self.device_pipe.send(CameraImages(images))
+            self.device_pipe.send(CameraImages(images, ODimage))
 
         # save the results if requested
         if self.device_settings.save_runs:
@@ -180,3 +213,21 @@ class AbstractDevice:
     # read fluorescence signal
     def read_fluorescence(self) -> float:
         return 100.0
+
+
+    def save_background(self, new_background: np.ndarray):
+        # Saves Bacground image to bank if unique
+        # Uses circular buffer to keep the 100 most recent backgrounds.
+        # Check if this background already exists
+        for i in range(self.background_bank.shape[2]):
+            if np.allclose(self.background_bank[:, :, i], new_background, atol=0):
+                return False 
+        
+        # Add new background at current BGindex position
+        self.background_bank[:, :, self.BGindex] = new_background
+        
+        # Increment BGindex and wrap around if bank is full using modulo
+        self.BGindex = (self.BGindex + 1) % self.background_bank.shape[2]
+        self.number_of_backgrounds += 1
+        
+        return True  # Background was added

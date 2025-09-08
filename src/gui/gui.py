@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import QApplication, QFileDialog, QMainWindow
 from PyQt6.uic import loadUi
 
 from src.device.ai import AiProgress
+from src.device.device_types import DeviceSettings
 from src.device.multigo import MultiGoProgress
 from src.gui.ai import AiPlotData
 from src.gui.fits import load_settings, save_settings
@@ -55,6 +56,9 @@ class Gui(QMainWindow):
 
         # mark the UI as loaded
         self.ui_loaded = True
+        
+        # Send device settings to device on startup
+        self.stages_gui.update_device_settings()
 
         # event timer
         self.event_timer = QTimer()
@@ -81,6 +85,22 @@ class Gui(QMainWindow):
                     self.ai_progress.update_ai_plots(recieved)
             else:
                 print("Received unknown message type from device:", type(recieved))
+
+    def send_filtering_settings(self):
+        # Send current filtering settings to the device
+        
+        # Create DeviceSettings with current filtering
+        device_settings = DeviceSettings(
+            load_mot=self.load_mot.isChecked(),
+            save_runs=self.save_runs.isChecked(),
+            fringe_removal=self.action_fringe_removal.isChecked(),
+            pca=self.action_pca.isChecked(),
+            low_pass=self.action_low_pass_filter.isChecked(),
+            fft_filter=self.action_fft_filter.isChecked()
+        )
+        # Send via pipe to device
+        self.gui_pipe.send(device_settings)
+        print(f"Sent filtering settings: {device_settings}")
 
     '''
     methods to save and load settings from a file
