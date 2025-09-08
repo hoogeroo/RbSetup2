@@ -8,6 +8,7 @@ from PyQt6.uic import loadUi
 
 from src.device.ai import AiProgress
 from src.device.multigo import MultiGoProgress
+from src.gui.ai import AiPlotData
 from src.gui.fits import load_settings, save_settings
 from src.gui.hidden import HiddenGui
 from src.gui.plots import CameraImages, FluorescenceSample, PlotsGui
@@ -39,7 +40,7 @@ class Gui(QMainWindow):
         # connect the menu actions
         self.action_save.triggered.connect(self.save_settings_dialog)
         self.action_load.triggered.connect(self.load_settings_dialog)
-
+        
         # create the hidden GUI
         self.hidden_gui = HiddenGui(self, variables)
 
@@ -74,6 +75,10 @@ class Gui(QMainWindow):
                 self.multigo_progress.update_progress(recieved)
             elif isinstance(recieved, AiProgress):
                 self.ai_progress.update_progress(recieved)
+            elif isinstance(recieved, AiPlotData):
+                # Pass AI plot data to the AI progress dialog if it exists
+                if hasattr(self, 'ai_progress') and self.ai_progress:
+                    self.ai_progress.update_ai_plots(recieved)
             else:
                 print("Received unknown message type from device:", type(recieved))
 

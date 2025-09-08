@@ -72,6 +72,8 @@ def save_settings(path, variables, stages, images, multigo_settings=None, ai_set
     if ai_settings is not None:
         ai_hdu.header['pretrain'] = ai_settings.pre_training_steps
         ai_hdu.header['train'] = ai_settings.training_steps
+        ai_hdu.header['learner'] = ai_settings.learner
+
 
     # make sure path is unique if not overwriting
     if not overwrite:
@@ -144,9 +146,11 @@ def load_settings(path, window):
 
     # load the ai settings
     if ai_hdu.header.get("pretrain") is not fits.card.Undefined:
+        learner = ai_hdu.header.get('learner', 'neural_net')  # default to neural_net if not found
         window.stages_gui.ai_settings = AiSettings(
             ai_hdu.header['pretrain'],
-            ai_hdu.header['train']
+            ai_hdu.header['train'],
+            learner
         )
 
 # saves run variables to a fits file

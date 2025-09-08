@@ -8,7 +8,7 @@ import numpy as np
 import os
 from scipy.interpolate import CubicSpline
 
-from src.device.ai import CancelAi, run_ai_experiment
+from src.device.ai import AiCancel, AiExecuter
 from src.device.device_types import AiSubmission, DeviceSettings, FlattenedStages, MultiGoSubmission, Stage, Stages
 from src.device.multigo import MultiGoCancel, run_multigo_experiment
 from src.gui.fits import save_settings
@@ -89,13 +89,14 @@ class AbstractDevice:
                     run_multigo_experiment(self, msg.multigo_settings, msg.stages)
                 elif isinstance(msg, AiSubmission):
                     # run the AI routine
-                    run_ai_experiment(self, msg.multigo_settings, msg.ai_settings, msg.stages)
+                    ai_executer = AiExecuter(self, msg.multigo_settings, msg.ai_settings, msg.stages)
+                    ai_executer.run_ai_experiment()
                 elif isinstance(msg, DeviceSettings):
                     # update the device settings
                     self.device_settings = msg
                 elif isinstance(msg, MultiGoCancel):
                     print("Can't cancel multigo - not running")
-                elif isinstance(msg, CancelAi):
+                elif isinstance(msg, AiCancel):
                     print("Can't cancel AI - not running")
                 else:
                     print(f"Received unknown message type: {type(msg)}")

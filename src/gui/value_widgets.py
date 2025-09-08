@@ -57,7 +57,7 @@ class BoolWidget(QWidget):
             self.mode_hold()
         if value.is_constant():
             self.mode_constant()
-            self.checkbox.setChecked(value.constant_value())
+            self.checkbox.setChecked(bool(value.constant_value()))
 
     def changed_signal(self):
         return self.checkbox.stateChanged
