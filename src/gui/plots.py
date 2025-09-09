@@ -56,7 +56,7 @@ class PlotsGui:
         self.fluorescence_canvas.draw()
 
     # update the camera images
-    def update_images(self, images: np.ndarray, ODimage: np.ndarray):
+    def update_images(self, images: np.ndarray, od_image: np.ndarray):
         # store unfiltered images for saving later
         self.images = images
 
@@ -69,7 +69,7 @@ class PlotsGui:
 
         # plot the optical density image
         ax = od_canvas.figure.subplots()
-        ax.imshow(ODimage, aspect='equal')
+        ax.imshow(od_image, aspect='equal')
         od_canvas.figure.colorbar(ax.images[0], ax=ax) 
 
         # plot the original images

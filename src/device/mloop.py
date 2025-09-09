@@ -108,8 +108,8 @@ class MLOOPInterface(mli.Interface):
             self.MLOOP_parameters_to_pyqtgui_parameters(mloop_params)
 
             # Initialize results
-            Natoms_list = []
-            OD_peak_list = []
+            n_atoms_list = []
+            od_peak_list = []
             
             # Start the timer to begin the experiment
             # For MLOOP, we typically run a single experiment per iteration
@@ -162,29 +162,29 @@ class MLOOPInterface(mli.Interface):
                     try:
                         # Get experiment results from the princeton camera interface
                         # Note: blackfly/bfcam is no longer in use
-                        Natoms = self.device.Natoms[-1]
-                        OD_peak = self.device.ODpeak[-1]
-                        Natoms_list.append(Natoms)
-                        OD_peak_list.append(OD_peak)
-                        print(f"MLOOP: Acquired data - Natoms: {Natoms:.2e}, OD_peak: {OD_peak:.3f}")
+                        n_atoms = self.device.n_atoms[-1]
+                        od_peak = self.device.od_peak[-1]
+                        n_atoms_list.append(n_atoms)
+                        od_peak_list.append(od_peak)
+                        print(f"MLOOP: Acquired data - n_atoms: {n_atoms:.2e}, od_peak: {od_peak:.3f}")
                     except (IndexError, AttributeError) as e:
                         print(f'Error getting experiment data from princeton camera: {e}')
                         # Use default/fallback values if data extraction fails
-                        Natoms = 0.0
-                        OD_peak = 0.0
-                        Natoms_list.append(Natoms)
-                        OD_peak_list.append(OD_peak)
+                        n_atoms = 0.0
+                        od_peak = 0.0
+                        n_atoms_list.append(n_atoms)
+                        od_peak_list.append(od_peak)
                         break
                 else:
                     print('Ending experiment due to no data from experiment')
                     break
 
             # Calculate cost based on results
-            if experiment_completed and Natoms_list and OD_peak_list:
+            if experiment_completed and n_atoms_list and od_peak_list:
                 # Use average if multiple iterations
-                avg_Natoms = np.mean(Natoms_list)
-                avg_OD_peak = np.mean(OD_peak_list)
-                cost, uncer, bad = self.cost_function(avg_Natoms, avg_OD_peak)
+                avg_n_atoms = np.mean(n_atoms_list)
+                avg_od_peak = np.mean(od_peak_list)
+                cost, uncer, bad = self.cost_function(avg_n_atoms, avg_od_peak)
             else:
                 cost, uncer, bad = self.cost_function(0, 0)
 
@@ -204,8 +204,8 @@ class MLOOPInterface(mli.Interface):
                 print('iteration success, plotting cost')
                 self.history['trials'].append(histvec)
                 # Store results consistently
-                self.history['cost'].append([cost, avg_Natoms if 'avg_Natoms' in locals() else 0, 
-                                           avg_OD_peak if 'avg_OD_peak' in locals() else 0, uncer])
+                self.history['cost'].append([cost, avg_n_atoms if 'avg_n_atoms' in locals() else 0, 
+                                           avg_od_peak if 'avg_od_peak' in locals() else 0, uncer])
                 self.plotcost()
 
             # FINAL HALT CHECK: Before returning results
@@ -225,14 +225,14 @@ class MLOOPInterface(mli.Interface):
             traceback.print_exc()
             return {'cost': float('inf'), 'uncer': 0.0, 'bad': True}
 
-    def cost_function(self, N, OD_peak):
+    def cost_function(self, N, od_peak):
         """
         Improved cost function with better handling
         """
         is_bad_result = False
         maximum_cost = 9e99
         
-        if (N <= 0) or (OD_peak <= 0): # Guarantees that faulty determinations of N, OD_peak won't be optimal
+        if (N <= 0) or (od_peak <= 0): # Guarantees that faulty determinations of N, od_peak won't be optimal
             is_bad_result = True
             cost = maximum_cost
             uncertainty = 0.0
@@ -241,7 +241,7 @@ class MLOOPInterface(mli.Interface):
             alpha = 1 # normally 0.5 or 1
             normaliser_lowN = 2 / (1 + np.exp(1e3/N)) # avoid divergences at small N
             
-            cost = -normaliser_lowN * (OD_peak**3) * N**(alpha - 1.8) * 1e6
+            cost = -normaliser_lowN * (od_peak**3) * N**(alpha - 1.8) * 1e6
             self.cost_array = np.append(self.cost_array, cost)
             if self.run_num > self.pre_training_steps:
               uncertainty = np.abs(np.std(self.cost_array))

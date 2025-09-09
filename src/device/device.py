@@ -33,8 +33,8 @@ class AbstractDevice:
         self.image_analysis = ImageAnalysis()
         self.background_bank = np.zeros((512, 512, 100))
         self.number_of_backgrounds = 0
-        self.Natoms = []
-        self.MaxOD = []
+        self.n_atoms = []
+        self.max_od = []
 
     def build(self):
         # example calibration for an analog output
@@ -163,26 +163,26 @@ class AbstractDevice:
             Foreground = images[0,:,:] - images[2,:,:]
             Background = images[1,:,:] - images[2,:,:]
             self.save_background(Background) # Saves new background if unique
-            ODimage = -np.log((Foreground)/(Background))
+            od_image = -np.log((Foreground)/(Background))
 
-            self.Natoms.append(self.image_analysis.get_atom_number(ODimage = ODimage))
-            self.MaxOD.append(self.image_analysis.get_max_od(ODimage = ODimage))
+            self.n_atoms.append(self.image_analysis.get_atom_number(od_image = od_image))
+            self.max_od.append(self.image_analysis.get_max_od(od_image = od_image))
 
             # apply filtering based on device settings
             if self.device_settings.fringe_removal  and self.number_of_backgrounds > 5:
-                ODimage, opref = filtering.fringe_removal(Foreground, self.background_bank[:,:,:self.number_of_backgrounds])
+                od_image, opref = filtering.fringe_removal(Foreground, self.background_bank[:,:,:self.number_of_backgrounds])
             
             if self.device_settings.pca and self.number_of_backgrounds > 5:
-                ODimage, opref = filtering.pca(Foreground, self.background_bank[:,:,:self.number_of_backgrounds])
+                od_image, opref = filtering.pca(Foreground, self.background_bank[:,:,:self.number_of_backgrounds])
             
             if self.device_settings.low_pass:
-                ODimage = filtering.low_pass(images)
+                od_image = filtering.low_pass(images)
             
             if self.device_settings.fft_filter:
-                ODimage = filtering.fft_filter(ODimage)    
+                od_image = filtering.fft_filter(od_image)    
 
             # send the picture to the gui
-            self.device_pipe.send(CameraImages(images, ODimage))
+            self.device_pipe.send(CameraImages(images, od_image))
 
         # save the results if requested
         if self.device_settings.save_runs:

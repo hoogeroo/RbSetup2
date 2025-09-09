@@ -15,17 +15,17 @@ class ImageAnalysis:
     def __init__(self):
         pass
     
-    def get_max_OD(self, ODimage: np.ndarray) -> float:
+    def get_max_od(self, od_image: np.ndarray) -> float:
         """
         Calculate maximum optical density OD.
         
         Args:
-            ODimage: Optical density image
+            od_image: Optical density image
             
         Returns:
             Float
         """
-        od_max = round(np.max(ODimage), 2)
+        od_max = round(np.max(od_image), 2)
         
         return od_max
     
@@ -41,7 +41,7 @@ class ImageAnalysis:
         Returns:
             Total atom number
         """
-        # Integrate OD over the image and convert to atom number
+        # integrate optical density over the image and convert to atom number
         atom_number = float(round((pixel_size**2) * np.sum(odimage) / crosssection, 2))
         keys = ['K', 'M', 'B', 'T']
         count = 0
