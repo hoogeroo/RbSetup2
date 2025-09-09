@@ -41,7 +41,11 @@ class Gui(QMainWindow):
         # connect the menu actions
         self.action_save.triggered.connect(self.save_settings_dialog)
         self.action_load.triggered.connect(self.load_settings_dialog)
-        
+        self.action_fringe_removal.triggered.connect(self.update_device_settings)
+        self.action_pca.triggered.connect(self.update_device_settings)
+        self.action_low_pass_filter.triggered.connect(self.update_device_settings)
+        self.action_fft_filter.triggered.connect(self.update_device_settings)
+
         # create the hidden GUI
         self.hidden_gui = HiddenGui(self, variables)
 
@@ -56,15 +60,16 @@ class Gui(QMainWindow):
 
         # mark the UI as loaded
         self.ui_loaded = True
-        
+
         # Send device settings to device on startup
-        self.stages_gui.update_device_settings()
+        self.update_device_settings()
 
         # event timer
         self.event_timer = QTimer()
         self.event_timer.timeout.connect(self.handle_device_events)
         self.event_timer.start(100)
 
+    # polls the gui pipe for messages from the device
     def handle_device_events(self):
         # poll the pipe with no timeout (only read already queued values)
         if self.gui_pipe.poll():
@@ -86,21 +91,29 @@ class Gui(QMainWindow):
             else:
                 print("Received unknown message type from device:", type(recieved))
 
-    def send_filtering_settings(self):
-        # Send current filtering settings to the device
+    # send the current device settings to the device
+    def update_device_settings(self):
+        # create a DeviceSettings object with the current values
+        load_mot = self.load_mot.isChecked()
+        save_runs = self.save_runs.isChecked()
         
-        # Create DeviceSettings with current filtering
+        # Get current filtering settings from the menu actions
+        fringe_removal = self.action_fringe_removal.isChecked()
+        pca = self.action_pca.isChecked()
+        low_pass = self.action_low_pass_filter.isChecked()
+        fft_filter = self.action_fft_filter.isChecked()
+        
         device_settings = DeviceSettings(
-            load_mot=self.load_mot.isChecked(),
-            save_runs=self.save_runs.isChecked(),
-            fringe_removal=self.action_fringe_removal.isChecked(),
-            pca=self.action_pca.isChecked(),
-            low_pass=self.action_low_pass_filter.isChecked(),
-            fft_filter=self.action_fft_filter.isChecked()
+            load_mot=load_mot,
+            save_runs=save_runs,
+            fringe_removal=fringe_removal,
+            pca=pca,
+            low_pass=low_pass,
+            fft_filter=fft_filter
         )
-        # Send via pipe to device
+
+        # send the device settings to the device
         self.gui_pipe.send(device_settings)
-        print(f"Sent filtering settings: {device_settings}")
 
     '''
     methods to save and load settings from a file

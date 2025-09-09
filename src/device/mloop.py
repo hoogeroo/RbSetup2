@@ -1,9 +1,7 @@
-#Imports for M-LOOP
+# imports for M-LOOP
 import mloop.interfaces as mli
-import mloop.controllers as mlc
-import mloop.visualizations as mlv
 
-#Other imports
+# other imports
 import matplotlib.pyplot as plt
 import matplotlib.colors
 import numpy as np

@@ -95,14 +95,8 @@ class StagesGui:
         self.window.run_experiment.clicked.connect(self.submit_experiment)
 
         # connect the load mot and save runs checkbox to the update_device_settings method
-        self.window.load_mot.stateChanged.connect(self.update_device_settings)
-        self.window.save_runs.stateChanged.connect(self.update_device_settings)
-        
-        # Connect filtering menu actions to update_device_settings method
-        self.window.action_fringe_removal.triggered.connect(self.update_device_settings)
-        self.window.action_pca.triggered.connect(self.update_device_settings)
-        self.window.action_low_pass_filter.triggered.connect(self.update_device_settings)
-        self.window.action_fft_filter.triggered.connect(self.update_device_settings)
+        self.window.load_mot.stateChanged.connect(self.window.update_device_settings)
+        self.window.save_runs.stateChanged.connect(self.window.update_device_settings)
 
     # gets a stage using the stage id
     def get_stage(self, stage_id):
@@ -194,30 +188,6 @@ class StagesGui:
 
         self.window.ai_progress = AiProgressDialog(self.window)
         self.window.ai_progress.exec()
-
-    # send the current device settings to the device
-    def update_device_settings(self):
-        # create a DeviceSettings object with the current values
-        load_mot = self.window.load_mot.isChecked()
-        save_runs = self.window.save_runs.isChecked()
-        
-        # Get current filtering settings from the menu actions
-        fringe_removal = self.window.action_fringe_removal.isChecked()
-        pca = self.window.action_pca.isChecked()
-        low_pass = self.window.action_low_pass_filter.isChecked()
-        fft_filter = self.window.action_fft_filter.isChecked()
-        
-        device_settings = DeviceSettings(
-            load_mot=load_mot,
-            save_runs=save_runs,
-            fringe_removal=fringe_removal,
-            pca=pca,
-            low_pass=low_pass,
-            fft_filter=fft_filter
-        )
-
-        # send the device settings to the device
-        self.window.gui_pipe.send(device_settings)
 
     '''
     methods for renaming, copying, creating and deleting stages

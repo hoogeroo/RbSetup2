@@ -25,11 +25,24 @@ SAVE_PATH = "runs"
 Abstraction over the device to run the gui without artiq
 '''
 class AbstractDevice:
+    def __init__(self):
+        # initialize the device settings
+        self.device_settings = DeviceSettings()
+
+        # initialize background management for filtering
+        self.image_analysis = ImageAnalysis()
+        self.background_bank = np.zeros((512, 512, 100))
+        self.number_of_backgrounds = 0
+        self.Natoms = []
+        self.MaxOD = []
+
     def build(self):
+        # example calibration for an analog output
         x = np.linspace(0.0, 1.0, 10)
         y = x**3
         calibration = CubicSpline(x, y)
 
+        # example variable definitions
         self.variables = [
             VariableTypeFloat("Time (ms)", "time", 0.0, 10000.0, 100.0),
             VariableTypeInt("Samples", "samples", 1, 10000, 100),
@@ -52,18 +65,6 @@ class AbstractDevice:
         self.gui_process.daemon = True # so gui exits when main process exits
         self.gui_process.start()
 
-        # initialize the device settings
-        self.device_settings = DeviceSettings()
-
-        # Initialize image analysis
-        self.image_analysis = ImageAnalysis()
-        
-        # Initialize background management for filtering
-        self.background_bank = np.zeros((512, 512, 100))  # Background image bank
-        self.number_of_backgrounds = 0
-        self.Natoms = []
-        self.MaxOD = []
-
         # process all the messages from the gui
         queue = []
         while True:
@@ -72,7 +73,6 @@ class AbstractDevice:
                 while device_pipe.poll():
                     msg = device_pipe.recv()
                     queue.append(msg)
-                print("polled queue", queue)
 
             # process all the messages from the queue
             while queue:

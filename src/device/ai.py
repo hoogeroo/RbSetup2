@@ -4,11 +4,6 @@ from src.device.multigo import MultiGoSettings
 
 import src.device.mloop as ML
 
-# MLOOP imports
-import mloop.controllers as mlc
-import mloop.interfaces as mli
-import mloop.visualizations as mlv
-
 # PyQt6 imports
 from PyQt6.QtWidgets import QMessageBox
 from PyQt6.QtCore import QTimer
@@ -69,6 +64,9 @@ class AiExecuter:
     def start_mloop_controller(self, controller_dict):
         """Start the MLOOP controller"""
         try:
+            # defer importing to speedup startup
+            import mloop.controllers as mlc
+
             # Ensure we have a fresh interface for this optimization run
             print(f"Interface type: {type(self.optimiser)}")
             print(f"Interface boundaries: min={self.optimiser.min_boundary}, max={self.optimiser.max_boundary}")
@@ -127,6 +125,9 @@ class AiExecuter:
             
             # Show visualizations if available
             try:
+                # defer import for faster startup
+                import mloop.visualizations as mlv
+
                 mlv.show_all_default_visualizations(self.mloop_controller)
             except Exception as viz_error:
                 print(f"Could not show visualizations: {viz_error}")
