@@ -16,6 +16,8 @@ from src.gui.gui import run_gui
 from src.gui.plots import CameraImages, FluorescenceSample
 from src.host.camera import CameraConnection
 from src.variable_types import VariableTypeBool, VariableTypeInt, VariableTypeFloat
+from src.device import filtering
+from src.device.data_analysis import ImageAnalysis
 
 SAVE_PATH = "runs"
 
@@ -23,11 +25,24 @@ SAVE_PATH = "runs"
 Abstraction over the device to run the gui without artiq
 '''
 class AbstractDevice:
+    def __init__(self):
+        # initialize the device settings
+        self.device_settings = DeviceSettings()
+
+        # initialize background management for filtering
+        self.image_analysis = ImageAnalysis()
+        self.background_bank = np.zeros((512, 512, 100))
+        self.number_of_backgrounds = 0
+        self.n_atoms = []
+        self.max_od = []
+
     def build(self):
+        # example calibration for an analog output
         x = np.linspace(0.0, 1.0, 10)
         y = x**3
         calibration = CubicSpline(x, y)
 
+        # example variable definitions
         self.variables = [
             VariableTypeFloat("Time (ms)", "time", 0.0, 10000.0, 100.0),
             VariableTypeInt("Samples", "samples", 1, 10000, 100),
@@ -50,9 +65,6 @@ class AbstractDevice:
         self.gui_process.daemon = True # so gui exits when main process exits
         self.gui_process.start()
 
-        # initialize the device settings
-        self.device_settings = DeviceSettings()
-
         # process all the messages from the gui
         queue = []
         while True:
@@ -61,7 +73,6 @@ class AbstractDevice:
                 while device_pipe.poll():
                     msg = device_pipe.recv()
                     queue.append(msg)
-                print("polled queue", queue)
 
             # process all the messages from the queue
             while queue:
@@ -148,8 +159,30 @@ class AbstractDevice:
             except Exception as e:
                 print("Error occurred while reading camera images:", e)
         if images is not None:
+            # Process images
+            Foreground = images[0,:,:] - images[2,:,:]
+            Background = images[1,:,:] - images[2,:,:]
+            self.save_background(Background) # Saves new background if unique
+            od_image = -np.log((Foreground)/(Background))
+
+            self.n_atoms.append(self.image_analysis.get_atom_number(od_image = od_image))
+            self.max_od.append(self.image_analysis.get_max_od(od_image = od_image))
+
+            # apply filtering based on device settings
+            if self.device_settings.fringe_removal  and self.number_of_backgrounds > 5:
+                od_image, opref = filtering.fringe_removal(Foreground, self.background_bank[:,:,:self.number_of_backgrounds])
+            
+            if self.device_settings.pca and self.number_of_backgrounds > 5:
+                od_image, opref = filtering.pca(Foreground, self.background_bank[:,:,:self.number_of_backgrounds])
+            
+            if self.device_settings.low_pass:
+                od_image = filtering.low_pass(images)
+            
+            if self.device_settings.fft_filter:
+                od_image = filtering.fft_filter(od_image)    
+
             # send the picture to the gui
-            self.device_pipe.send(CameraImages(images))
+            self.device_pipe.send(CameraImages(images, od_image))
 
         # save the results if requested
         if self.device_settings.save_runs:
@@ -180,3 +213,21 @@ class AbstractDevice:
     # read fluorescence signal
     def read_fluorescence(self) -> float:
         return 100.0
+
+
+    def save_background(self, new_background: np.ndarray):
+        # Saves Bacground image to bank if unique
+        # Uses circular buffer to keep the 100 most recent backgrounds.
+        # Check if this background already exists
+        for i in range(self.background_bank.shape[2]):
+            if np.allclose(self.background_bank[:, :, i], new_background, atol=0):
+                return False 
+        
+        # Add new background at current BGindex position
+        self.background_bank[:, :, self.BGindex] = new_background
+        
+        # Increment BGindex and wrap around if bank is full using modulo
+        self.BGindex = (self.BGindex + 1) % self.background_bank.shape[2]
+        self.number_of_backgrounds += 1
+        
+        return True  # Background was added

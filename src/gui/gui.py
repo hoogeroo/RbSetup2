@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import QApplication, QFileDialog, QMainWindow
 from PyQt6.uic import loadUi
 
 from src.device.ai import AiProgress
+from src.device.device_types import DeviceSettings
 from src.device.multigo import MultiGoProgress
 from src.gui.ai import AiPlotData
 from src.gui.fits import load_settings, save_settings
@@ -40,7 +41,11 @@ class Gui(QMainWindow):
         # connect the menu actions
         self.action_save.triggered.connect(self.save_settings_dialog)
         self.action_load.triggered.connect(self.load_settings_dialog)
-        
+        self.action_fringe_removal.triggered.connect(self.update_device_settings)
+        self.action_pca.triggered.connect(self.update_device_settings)
+        self.action_low_pass_filter.triggered.connect(self.update_device_settings)
+        self.action_fft_filter.triggered.connect(self.update_device_settings)
+
         # create the hidden GUI
         self.hidden_gui = HiddenGui(self, variables)
 
@@ -56,11 +61,15 @@ class Gui(QMainWindow):
         # mark the UI as loaded
         self.ui_loaded = True
 
+        # Send device settings to device on startup
+        self.update_device_settings()
+
         # event timer
         self.event_timer = QTimer()
         self.event_timer.timeout.connect(self.handle_device_events)
         self.event_timer.start(100)
 
+    # polls the gui pipe for messages from the device
     def handle_device_events(self):
         # poll the pipe with no timeout (only read already queued values)
         if self.gui_pipe.poll():
@@ -81,6 +90,30 @@ class Gui(QMainWindow):
                     self.ai_progress.update_ai_plots(recieved)
             else:
                 print("Received unknown message type from device:", type(recieved))
+
+    # send the current device settings to the device
+    def update_device_settings(self):
+        # create a DeviceSettings object with the current values
+        load_mot = self.load_mot.isChecked()
+        save_runs = self.save_runs.isChecked()
+        
+        # Get current filtering settings from the menu actions
+        fringe_removal = self.action_fringe_removal.isChecked()
+        pca = self.action_pca.isChecked()
+        low_pass = self.action_low_pass_filter.isChecked()
+        fft_filter = self.action_fft_filter.isChecked()
+        
+        device_settings = DeviceSettings(
+            load_mot=load_mot,
+            save_runs=save_runs,
+            fringe_removal=fringe_removal,
+            pca=pca,
+            low_pass=low_pass,
+            fft_filter=fft_filter
+        )
+
+        # send the device settings to the device
+        self.gui_pipe.send(device_settings)
 
     '''
     methods to save and load settings from a file

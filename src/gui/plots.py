@@ -9,7 +9,8 @@ from matplotlib.figure import Figure
 
 from PyQt6.QtWidgets import QTabWidget
 
-from src.gui.filtering import low_pass
+from src.device import filtering
+from src.device.data_analysis import ImageAnalysis
 
 FLUORESCENCE_SAMPLES = 100
 
@@ -55,22 +56,23 @@ class PlotsGui:
         self.fluorescence_canvas.draw()
 
     # update the camera images
-    def update_images(self, images: np.ndarray):
+    def update_images(self, images: np.ndarray, od_image: np.ndarray):
         # store unfiltered images for saving later
         self.images = images
 
-        # apply filtering
-        if self.window.action_fringe_removal.isChecked():
-            pass # todo
-        if self.window.action_pca.isChecked():
-            pass # todo
-        if self.window.action_low_pass.isChecked():
-            images = low_pass(images)
-        if self.window.action_fft_filter.isChecked():
-            pass # todo
-
-        # load
+        # clear existing tabs
         self.camera_tabs.clear()
+
+        # add the optical density tab
+        od_canvas = FigureCanvas(Figure(figsize=(5, 3)))
+        self.camera_tabs.addTab(od_canvas, "OD Image")
+
+        # plot the optical density image
+        ax = od_canvas.figure.subplots()
+        ax.imshow(od_image, aspect='equal')
+        od_canvas.figure.colorbar(ax.images[0], ax=ax) 
+
+        # plot the original images
         for i in range(images.shape[0]):
             canvas = FigureCanvas(Figure(figsize=(5, 3)))
             fig = canvas.figure
