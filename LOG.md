@@ -81,4 +81,5 @@
   - Add hidden variable tab
   - Stop repeated dc updates clogging the device
   - Start adding filters
-  
+- 9/09/25
+  - Merge Bens changes
