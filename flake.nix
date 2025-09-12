@@ -4,13 +4,50 @@
     let
       pkgs = extrapkg.pkgs;
       artiq = extrapkg.packages.x86_64-linux;
+      
+      # Custom m-loop package from PyPI
+      mloop = pkgs.python312Packages.buildPythonPackage rec {
+        pname = "M-LOOP";
+        version = "3.3.2";
+        format = "setuptools";
+        
+        src = pkgs.python312Packages.fetchPypi {
+          inherit pname version;
+          sha256 = "sha256-1CWoN36oyMyhbfba3QSkcICZDNKKsXIC5jqBEcob9ts=";
+        };
+        
+        nativeBuildInputs = with pkgs.python312Packages; [
+          setuptools
+          wheel
+        ];
+        
+        propagatedBuildInputs = with pkgs.python312Packages; [
+          numpy
+          scipy
+          matplotlib
+          h5py
+        ];
+        
+        # Skip tests as they might not be available or might require additional setup
+        doCheck = false;
+        
+        # Disable setup_requires to avoid pytest-runner dependency
+        postPatch = ''
+          substituteInPlace setup.py \
+            --replace "setup_requires=['pytest-runner']," "" \
+            --replace "setup_requires=['pytest-runner']" ""
+        '';
+        
+        meta = with pkgs.lib; {
+          description = "Machine-learning online optimization package";
+          homepage = "https://github.com/michaelhush/M-LOOP";
+          license = licenses.mit;
+        };
+      };
     in {
       defaultPackage.x86_64-linux = pkgs.buildEnv {
         name = "artiq-env";
         paths = [
-          # ========================================
-          # EDIT BELOW
-          # ========================================
           (pkgs.python312.withPackages(ps: [
             # List desired Python packages here.
             artiq.artiq
@@ -18,54 +55,10 @@
             ps.pip
             ps.matplotlib
             ps.astropy
-            # ps.numba
-            # ps.astropy
-            # ps.spyder-kernels
-            # ps.spyder
-            # ps.pandas
-            # ps.json
-            # ps.scikit-learn
-            # ps.pyvisa
-            # ps.daqprops
-                
-
-            #ps.paramiko  # needed if and only if flashing boards remotely (artiq_flash -H)
-            #artiq.flake8-artiq
-            #artiq.dax
-            #artiq.dax-applets
-
-            # The NixOS package collection contains many other packages that you may find
-            # interesting. Here are some examples:
-            #ps.pandas
-            
-            
-            
-            # or if you need Qt (will recompile):
-            #(ps.matplotlib.override { enableQt = true; })
-            #ps.bokeh
-            #ps.cirq
-            #ps.qiskit
-            # Note that NixOS also provides packages ps.numpy and ps.scipy, but it is
-            # not necessary to explicitly add these, since they are dependencies of
-            # ARTIQ and available with an ARTIQ install anyway.
+            ps.scikit-learn
+            mloop
           ]))
-          #artiq.korad_ka3005p
-          #artiq.novatech409b
-          # List desired non-Python packages here
-          # Other potentially interesting non-Python packages from the NixOS package collection:
-          #pkgs.gtkwave
-          #pkgs.libaiousb
-          #pkgs.R
-          #pkgs.json
-          # pkgs.glibc
-          # pkgs.busybox-sandbox-shell
-          # pkgs.fxload
-          #pkgs.sklearn
-          #pkgs.julia
           pkgs.qt6.qtwayland
-          # ========================================
-          # EDIT ABOVE
-          # ========================================
         ];
       };
     };

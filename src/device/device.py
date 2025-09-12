@@ -25,17 +25,6 @@ SAVE_PATH = "runs"
 Abstraction over the device to run the gui without artiq
 '''
 class AbstractDevice:
-    def __init__(self):
-        # initialize the device settings
-        self.device_settings = DeviceSettings()
-
-        # initialize background management for filtering
-        self.image_analysis = ImageAnalysis()
-        self.background_bank = np.zeros((512, 512, 100))
-        self.number_of_backgrounds = 0
-        self.n_atoms = []
-        self.max_od = []
-
     def build(self):
         # example calibration for an analog output
         x = np.linspace(0.0, 1.0, 10)
@@ -53,6 +42,16 @@ class AbstractDevice:
             VariableTypeFloat("Rf Magnitude", "rf_magnitude"),
             VariableTypeFloat("Rf Freq (MHz)", "rf_freq", 1.0, 100.0, 1.0),
         ]
+
+        # initialize the device settings
+        self.device_settings = DeviceSettings()
+
+        # initialize background management for filtering
+        self.image_analysis = ImageAnalysis()
+        self.background_bank = np.zeros((512, 512, 100))
+        self.number_of_backgrounds = 0
+        self.n_atoms = []
+        self.max_od = []
 
     # spawns the gui in a separate process
     def run(self):

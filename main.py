@@ -15,6 +15,8 @@ try:
 
     class Device(AbstractDevice, EnvExperiment):
         def build(self):
+            AbstractDevice.build(self)
+
             # coil_current_calibration = lambda percentage: 5.0 * percentage / 100.0
 
             # percentage = np.concatenate((np.arange(3, 10, 1), np.arange(10, 70, 10))) 
@@ -25,7 +27,7 @@ try:
 
             # initializes the variables for the device and gui
             self.variables = [
-                VariableTypeFloat("Time (ms)", "time", 0.0, 10000.0, 100.0, 'ms'),
+                VariableTypeFloat("Time (ms)", "time", 0.0, 10000.0, 100.0),
                 VariableTypeInt("Samples", "samples", 1, 10000, 100),
                 VariableTypeBool("Digital", "digital"),
                 VariableTypeFloat("Dipole Amplitude", "dipole_amplitude", 0.0, 3.0, 0.1),
@@ -34,23 +36,25 @@ try:
                 VariableTypeFloat("y Field", "y_field", 0.0, 5.0, 0.01),
                 VariableTypeFloat("z Field", "z_field", 0.0, 5.0, 0.01, hidden=True),
                 VariableTypeFloat("Repump Amplitude", "repump_amplitude"),
-                VariableTypeFloat("Repump Frequency (MHz)", "repump_frequency", 55.0, 120.0, 1.0, 'MHz'),
+                VariableTypeFloat("Repump Frequency (MHz)", "repump_frequency", 55.0, 120.0, 1.0),
                 VariableTypeFloat("1st MOT Amplitude", "mot1_amplitude"),
-                VariableTypeFloat("1st MOT Frequency (MHz)", "mot1_frequency", 55.0, 120.0, 1.0, 'MHz'),
+                VariableTypeFloat("1st MOT Frequency (MHz)", "mot1_frequency", 55.0, 120.0, 1.0),
                 VariableTypeFloat("2nd MOT Amplitude", "mot2_amplitude"),
-                VariableTypeFloat("2nd MOT Frequency (MHz)", "mot2_frequency", 55.0, 120.0, 1.0, 'MHz'),
+                VariableTypeFloat("2nd MOT Frequency (MHz)", "mot2_frequency", 55.0, 120.0, 1.0),
                 VariableTypeFloat("Push Amplitude", "push_amplitude"),
-                VariableTypeFloat("Push Frequency (MHz)", "push_frequency", 55.0, 120.0, 1.0, 'MHz'),
+                VariableTypeFloat("Push Frequency (MHz)", "push_frequency", 55.0, 120.0, 1.0),
                 VariableTypeFloat("Shadow Amplitude", "shadow_amplitude"),
-                VariableTypeFloat("Shadow Frequency (MHz)", "shadow_frequency", 55.0, 120.0, 1.0, 'MHz'),
+                VariableTypeFloat("Shadow Frequency (MHz)", "shadow_frequency", 55.0, 120.0, 1.0),
                 VariableTypeFloat("Optical Pump Amplitude", "optical_pump_amplitude"),
-                VariableTypeFloat("Optical Pump Frequency (MHz)", "optical_pump_frequency", 55.0, 120.0, 1.0, 'MHz'),
+                VariableTypeFloat("Optical Pump Frequency (MHz)", "optical_pump_frequency", 55.0, 120.0, 1.0),
                 VariableTypeFloat("Sheet Amplitude", "sheet_amplitude"),
-                VariableTypeFloat("Sheet Frequency (MHz)", "sheet_frequency", 55.0, 120.0, 1.0, 'MHz'),
+                VariableTypeFloat("Sheet Frequency (MHz)", "sheet_frequency", 55.0, 120.0, 1.0),
+                VariableTypeFloat("RF Amplitude", "RF_amplitude"),
+                VariableTypeFloat("RF Frequency (MHz)", "RF_frequency", 0, 100.0, 1.0),
                 VariableTypeBool("Shutter", "shutter"),
                 VariableTypeBool("Grey Molasses Shutter", "grey_molasses_shutter"),
+                VariableTypeBool("RF Disable", "rf_disable"),
 
-                # VariableTypeBool("RF Disable", "rf_disable"),
                 # VariableTypeBool("RF Freq Ramp", "rf_freq_ramp"),
             ]
 
@@ -110,6 +114,7 @@ try:
                 dac[4] = s.y_field[i]
                 dac[5] = s.z_field[i]
                 dac[6] = s.dipole_amplitude[i]
+                dac[7] = 5.0 if s.rf_disable[i] else 0.0
                 self.fastino0.set_group(0, dac)
 
                 # update rf output
