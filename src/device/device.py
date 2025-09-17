@@ -7,6 +7,7 @@ from multiprocessing import Pipe, Process
 import numpy as np
 import os
 from scipy.interpolate import CubicSpline
+import time
 
 from src.device.ai import AiCancel, AiExecuter
 from src.device.device_types import AiSubmission, DeviceSettings, FlattenedStages, MultiGoSubmission, Stage, Stages
@@ -20,6 +21,10 @@ from src.device import filtering
 from src.device.data_analysis import ImageAnalysis
 
 SAVE_PATH = "runs"
+
+# TCP settings for pulse control
+TCP_IP = "130.216.51.242"  # localhost
+TCP_PORT = 8833       # default port
 
 '''
 Abstraction over the device to run the gui without artiq
@@ -103,7 +108,7 @@ class AbstractDevice:
                     ai_executer.run_ai_experiment()
                 elif isinstance(msg, DeviceSettings):
                     # update the device settings
-                    self.device_settings = msg
+                    self.update_device_settings(msg)
                 elif isinstance(msg, MultiGoCancel):
                     print("Can't cancel multigo - not running")
                 elif isinstance(msg, AiCancel):
@@ -137,6 +142,8 @@ class AbstractDevice:
 
     # handles the host side functions of running an experiment
     def run_experiment(self, stages):
+        disable_pulsing()  
+    
         # tell the camera server to acquire a frame
         camera = None
         try:
@@ -148,6 +155,8 @@ class AbstractDevice:
         # run the experiment on the artiq device
         flattened_stages = FlattenedStages(stages, self.variables)
         self.run_experiment_device(flattened_stages)
+
+        enable_pulsing()
 
         # read back the camera images
         images = None
@@ -230,3 +239,34 @@ class AbstractDevice:
         self.number_of_backgrounds += 1
         
         return True  # Background was added
+    
+    def update_device_settings(self, device_settings):
+        self.device_settings = device_settings
+
+        # Check if MOT loading is enabled and handle pulsing accordingly
+        if self.device_settings.load_mot:
+            enable_pulsing()
+        else:
+            disable_pulsing()
+
+    
+def enable_pulsing():
+    import socket
+    print("Enabling pulsing")
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect((TCP_IP, TCP_PORT))
+    ml = 'PULSE,ON'
+    s.send(ml.encode())
+    s.close()
+    time.sleep(0.1)
+
+def disable_pulsing():
+    import socket
+    print("Disabling pulsing")
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect((TCP_IP, TCP_PORT))
+    ml = 'PULSE,OFF'
+    s.send(ml.encode())
+    print("PULSE OFF sent")
+    s.close()
+    time.sleep(0.1)
