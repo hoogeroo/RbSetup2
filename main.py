@@ -17,7 +17,7 @@ try:
         def build(self):
             AbstractDevice.build(self)
 
-            # coil_current_calibration = lambda percentage: 5.0 * percentage / 100.0
+            coil_current_calibration = lambda percentage: 5.0 * percentage / 100.0
 
             # percentage = np.concatenate((np.arange(3, 10, 1), np.arange(10, 70, 10))) 
             # dipole_powers = np.array([23.3E-3, 59E-3, 0.165, 0.377, 0.715, 1.18, 1.79, 2.51, 14.6, 31, 49.3, 65.4, 71.1]) # in milliWatts
@@ -31,7 +31,7 @@ try:
                 VariableTypeInt("Samples", "samples", 1, 10000, 100),
                 VariableTypeBool("Digital", "digital"),
                 VariableTypeFloat("Dipole Amplitude", "dipole_amplitude", 0.0, 3.0, 0.1),
-                VariableTypeFloat("MOT 2 coils current", "mot2_coils_current", 0.0, 5.0, 0.5),
+                VariableTypeFloat("MOT 2 coils current", "mot2_coils_current", 0.0, 100.0, 0.5, calibration=coil_current_calibration),
                 VariableTypeFloat("x Field", "x_field", 0.0, 5.0, 0.01, hidden=True),
                 VariableTypeFloat("y Field", "y_field", 0.0, 5.0, 0.01),
                 VariableTypeFloat("z Field", "z_field", 0.0, 5.0, 0.01, hidden=True),
@@ -49,13 +49,11 @@ try:
                 VariableTypeFloat("Optical Pump Frequency (MHz)", "optical_pump_frequency", 55.0, 120.0, 1.0),
                 VariableTypeFloat("Sheet Amplitude", "sheet_amplitude"),
                 VariableTypeFloat("Sheet Frequency (MHz)", "sheet_frequency", 55.0, 120.0, 1.0),
-                VariableTypeFloat("RF Amplitude", "RF_amplitude"),
-                VariableTypeFloat("RF Frequency (MHz)", "RF_frequency", 0, 100.0, 1.0),
+                VariableTypeFloat("RF Amplitude", "rf_amplitude", hidden=True),
+                VariableTypeFloat("RF Frequency (MHz)", "rf_frequency", 0, 100.0, 1.0),
                 VariableTypeBool("Shutter", "shutter"),
                 VariableTypeBool("Grey Molasses Shutter", "grey_molasses_shutter"),
                 VariableTypeBool("RF Disable", "rf_disable"),
-
-                # VariableTypeBool("RF Freq Ramp", "rf_freq_ramp"),
             ]
 
             self.setattr_device("core")
@@ -70,6 +68,7 @@ try:
             # self.setattr_device('urukul1_ch0')
             # self.setattr_device('urukul1_ch1')
             # self.setattr_device('urukul1_ch2')
+            # self.setattr_device('urukul1_ch3')
 
         @host_only
         def run(self):
@@ -84,12 +83,38 @@ try:
             self.fastino0.init()
             self.sampler0.init()
             self.sampler0.set_gain_mu(0, 0)
-            # urukul_channels = ["urukul0_ch0", "urukul0_ch1", "urukul0_ch2", "urukul0_ch3", "urukul1_ch0", "urukul1_ch1", "urukul1_ch2"]
-            # for ch in urukul_channels:
-            #     getattr(self, ch).cpld.init()
-            #     getattr(self, ch).init()
-            #     getattr(self, ch).cfg_sw(True)
-            #     getattr(self, ch).set_att(6.0 * dB)
+            # self.urukul0_ch0.cpld.init()
+            # self.urukul0_ch0.init()
+            # self.urukul0_ch0.cfg_sw(True)
+            # self.urukul0_ch0.set_att(6.0 * dB)
+            # self.urukul0_ch1.cpld.init()
+            # self.urukul0_ch1.init()
+            # self.urukul0_ch1.set_att(6.0 * dB)
+            # self.urukul0_ch1.cfg_sw(True)
+            # self.urukul0_ch2.cpld.init()
+            # self.urukul0_ch2.init()
+            # self.urukul0_ch2.cfg_sw(True)
+            # self.urukul0_ch2.set_att(6.0 * dB)
+            # self.urukul0_ch3.cpld.init()
+            # self.urukul0_ch3.init()
+            # self.urukul0_ch3.set_att(6.0 * dB)
+            # self.urukul0_ch3.cfg_sw(True)
+            # self.urukul1_ch0.cpld.init()
+            # self.urukul1_ch0.init()
+            # self.urukul1_ch0.cfg_sw(True)
+            # self.urukul1_ch0.set_att(6.0 * dB)
+            # self.urukul1_ch1.cpld.init()
+            # self.urukul1_ch1.init()
+            # self.urukul1_ch1.cfg_sw(True)
+            # self.urukul1_ch1.set_att(6.0 * dB)
+            # self.urukul1_ch2.cpld.init()
+            # self.urukul1_ch2.init()
+            # self.urukul1_ch2.cfg_sw(True)
+            # self.urukul1_ch2.set_att(6.0 * dB)
+            # self.urukul1_ch3.cpld.init()
+            # self.urukul1_ch3.init()
+            # self.urukul1_ch3.cfg_sw(True)
+            # self.urukul1_ch3.set_att(6.0 * dB)
 
         @kernel
         def run_experiment_device(self, flattened_stages):
@@ -145,6 +170,10 @@ try:
                 # self.urukul1_ch2.set(
                 #     s.optical_pump_frequency[i] * MHz,
                 #     amplitude=s.optical_pump_amplitude[i] * 0.6
+                # )
+                # self.urukul1_ch3.set(
+                #     s.rf_frequency[i] * MHz,
+                #     amplitude=s.rf_amplitude[i] * 0.6
                 # )
 
                 # wait for a short time to simulate the experiment duration

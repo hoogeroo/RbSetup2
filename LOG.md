@@ -83,3 +83,10 @@
   - Start adding filters
 - 9/09/25
   - Merge Bens changes
+- 12/09/25
+  - Add mloop to the artiq install
+  - Trying to speed up pulsing of the laser
+- 17/09/25
+  - Work on switching urukul channels using ttl to have fast switching
+  - Back to compiling artiq as the device_db.py file doesn't have the correct channels set up
+  - Fix removing/copy/paste stages

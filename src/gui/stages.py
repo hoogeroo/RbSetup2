@@ -237,7 +237,7 @@ class StagesGui:
 
         self.stages.insert(idx, GuiStage(button, stage_container, widgets, enabled, id))
         if not enabled:
-            for widget in widgets:
+            for widget in widgets.values():
                 widget.setEnabled(False)
 
     # disable stage
@@ -247,7 +247,7 @@ class StagesGui:
         self.stages[idx].enabled = not enabled
 
         # disable the stage
-        for widget in self.stages[idx].widgets:
+        for widget in self.stages[idx].widgets.values():
             widget.setEnabled(not enabled)
 
     # renames the stage in the gui
@@ -257,7 +257,7 @@ class StagesGui:
         current_text = button.text()
 
         # create a dialog to get the new name
-        new_name, ok = QInputDialog.getText(self, "Rename Stage", "Enter new stage name:", text=current_text)
+        new_name, ok = QInputDialog.getText(self.window, "Rename Stage", "Enter new stage name:", text=current_text)
 
         if ok and new_name:
             # set the new name to the button
@@ -265,15 +265,17 @@ class StagesGui:
 
     # copies the right clicked stage's values to the copied widgets
     def copy_stage(self, idx: int):
-        for i, variable in enumerate(self.variables):
-            value = self.stages[idx].widgets[i].get_value()
-            self.copy_widgets[i].set_value(value)
+        for variable in self.variables:
+            if not variable.hidden:
+                value = self.stages[idx].widgets[variable.id].get_value()
+                self.copy_widgets[variable.id].set_value(value)
 
     # pastes the copied values to the right clicked stage
     def paste_stage(self, idx: int):
-        for i, variable in enumerate(self.variables):
-            value = self.copy_widgets[i].get_value()
-            self.stages[idx].widgets[i].set_value(value)
+        for variable in self.variables:
+            if not variable.hidden:
+                value = self.copy_widgets[variable.id].get_value()
+                self.stages[idx].widgets[variable.id].set_value(value)
 
     # creates a new stage to the left
     def insert_stage_left(self, idx: int):
