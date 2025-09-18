@@ -129,9 +129,12 @@ device_db["eeprom_urukul0"] = {
     "type": "local",
     "module": "artiq.coredevice.kasli_i2c",
     "class": "KasliEEPROM",
-    "arguments": {"port": "EEM3"}
-}
-
+    "arguments": {
+        "port": "EEM3",
+        "busno": 0,
+        "sw0_device": "i2c_switch0",
+        "sw1_device": "i2c_switch1"}
+    }
 device_db["spi_urukul0"] = {
     "type": "local",
     "module": "artiq.coredevice.spi2",
@@ -144,6 +147,34 @@ device_db["ttl_urukul0_io_update"] = {
     "module": "artiq.coredevice.ttl",
     "class": "TTLOut",
     "arguments": {"channel": 0x00000b}
+}
+
+device_db["ttl_urukul0_sw0"] = {
+    "type": "local",
+    "module": "artiq.coredevice.ttl",
+    "class": "TTLOut",
+    "arguments": {"channel": 0x00000c}
+}
+
+device_db["ttl_urukul0_sw1"] = {
+    "type": "local",
+    "module": "artiq.coredevice.ttl",
+    "class": "TTLOut",
+    "arguments": {"channel": 0x00000d}
+}
+
+device_db["ttl_urukul0_sw2"] = {
+    "type": "local",
+    "module": "artiq.coredevice.ttl",
+    "class": "TTLOut",
+    "arguments": {"channel": 0x00000e}
+}
+
+device_db["ttl_urukul0_sw3"] = {
+    "type": "local",
+    "module": "artiq.coredevice.ttl",
+    "class": "TTLOut",
+    "arguments": {"channel": 0x00000f}
 }
 
 device_db["urukul0_cpld"] = {
@@ -168,7 +199,8 @@ device_db["urukul0_ch0"] = {
         "pll_n": 40,
         "pll_en": 1,
         "chip_select": 4,
-        "cpld_device": "urukul0_cpld"
+        "cpld_device": "urukul0_cpld",
+        "sw_device": "ttl_urukul0_sw0"
     }
 }
 
@@ -180,7 +212,8 @@ device_db["urukul0_ch1"] = {
         "pll_n": 40,
         "pll_en": 1,
         "chip_select": 5,
-        "cpld_device": "urukul0_cpld"
+        "cpld_device": "urukul0_cpld",
+        "sw_device": "ttl_urukul0_sw1"
     }
 }
 
@@ -192,7 +225,8 @@ device_db["urukul0_ch2"] = {
         "pll_n": 40,
         "pll_en": 1,
         "chip_select": 6,
-        "cpld_device": "urukul0_cpld"
+        "cpld_device": "urukul0_cpld",
+        "sw_device": "ttl_urukul0_sw2"
     }
 }
 
@@ -204,7 +238,8 @@ device_db["urukul0_ch3"] = {
         "pll_n": 40,
         "pll_en": 1,
         "chip_select": 7,
-        "cpld_device": "urukul0_cpld"
+        "cpld_device": "urukul0_cpld",
+        "sw_device": "ttl_urukul0_sw3"
     }
 }
 
@@ -212,19 +247,19 @@ device_db["spi_sampler0_adc"] = {
     "type": "local",
     "module": "artiq.coredevice.spi2",
     "class": "SPIMaster",
-    "arguments": {"channel": 0x00000c}
+    "arguments": {"channel": 0x000010}
 }
 device_db["spi_sampler0_pgia"] = {
     "type": "local",
     "module": "artiq.coredevice.spi2",
     "class": "SPIMaster",
-    "arguments": {"channel": 0x00000d}
+    "arguments": {"channel": 0x000011}
 }
 device_db["ttl_sampler0_cnv"] = {
     "type": "local",
     "module": "artiq.coredevice.ttl",
     "class": "TTLOut",
-    "arguments": {"channel": 0x00000e},
+    "arguments": {"channel": 0x000012},
 }
 device_db["sampler0"] = {
     "type": "local",
@@ -242,28 +277,59 @@ device_db["fastino0"] = {
     "type": "local",
     "module": "artiq.coredevice.fastino",
     "class": "Fastino",
-    "arguments": {"channel": 0x00000f, "log2_width": 5}
+    "arguments": {"channel": 0x000013, "log2_width": 5}
 }
 
 device_db["eeprom_urukul1"] = {
     "type": "local",
     "module": "artiq.coredevice.kasli_i2c",
     "class": "KasliEEPROM",
-    "arguments": {"port": "EEM8"}
-}
-
+    "arguments": {
+        "port": "EEM8",
+        "busno": 0,
+        "sw0_device": "i2c_switch0",
+        "sw1_device": "i2c_switch1"}
+    }
 device_db["spi_urukul1"] = {
     "type": "local",
     "module": "artiq.coredevice.spi2",
     "class": "SPIMaster",
-    "arguments": {"channel": 0x000010}
+    "arguments": {"channel": 0x000014}
 }
 
 device_db["ttl_urukul1_io_update"] = {
     "type": "local",
     "module": "artiq.coredevice.ttl",
     "class": "TTLOut",
-    "arguments": {"channel": 0x000011}
+    "arguments": {"channel": 0x000015}
+}
+
+device_db["ttl_urukul1_sw0"] = {
+    "type": "local",
+    "module": "artiq.coredevice.ttl",
+    "class": "TTLOut",
+    "arguments": {"channel": 0x000016}
+}
+
+device_db["ttl_urukul1_sw1"] = {
+    "type": "local",
+    "module": "artiq.coredevice.ttl",
+    "class": "TTLOut",
+    "arguments": {"channel": 0x000017}
+}
+
+device_db["ttl_urukul1_sw2"] = {
+    "type": "local",
+    "module": "artiq.coredevice.ttl",
+    "class": "TTLOut",
+    "arguments": {"channel": 0x000018}
+}
+
+device_db["ttl_urukul1_sw3"] = {
+    "type": "local",
+    "module": "artiq.coredevice.ttl",
+    "class": "TTLOut",
+    "arguments": {"channel": 0x000019}
 }
 
 device_db["urukul1_cpld"] = {
@@ -288,7 +354,8 @@ device_db["urukul1_ch0"] = {
         "pll_n": 40,
         "pll_en": 1,
         "chip_select": 4,
-        "cpld_device": "urukul1_cpld"
+        "cpld_device": "urukul1_cpld",
+        "sw_device": "ttl_urukul1_sw0"
     }
 }
 
@@ -300,7 +367,8 @@ device_db["urukul1_ch1"] = {
         "pll_n": 40,
         "pll_en": 1,
         "chip_select": 5,
-        "cpld_device": "urukul1_cpld"
+        "cpld_device": "urukul1_cpld",
+        "sw_device": "ttl_urukul1_sw1"
     }
 }
 
@@ -312,7 +380,8 @@ device_db["urukul1_ch2"] = {
         "pll_n": 40,
         "pll_en": 1,
         "chip_select": 6,
-        "cpld_device": "urukul1_cpld"
+        "cpld_device": "urukul1_cpld",
+        "sw_device": "ttl_urukul1_sw2"
     }
 }
 
@@ -324,7 +393,8 @@ device_db["urukul1_ch3"] = {
         "pll_n": 40,
         "pll_en": 1,
         "chip_select": 7,
-        "cpld_device": "urukul1_cpld"
+        "cpld_device": "urukul1_cpld",
+        "sw_device": "ttl_urukul1_sw3"
     }
 }
 
@@ -332,12 +402,12 @@ device_db["led0"] = {
     "type": "local",
     "module": "artiq.coredevice.ttl",
     "class": "TTLOut",
-    "arguments": {"channel": 0x000012}
+    "arguments": {"channel": 0x00001a}
 }
 
 device_db["led1"] = {
     "type": "local",
     "module": "artiq.coredevice.ttl",
     "class": "TTLOut",
-    "arguments": {"channel": 0x000013}
+    "arguments": {"channel": 0x00001b}
 }

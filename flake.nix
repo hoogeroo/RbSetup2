@@ -1,5 +1,5 @@
 {
-  inputs.extrapkg.url = "git+https://git.m-labs.hk/M-Labs/artiq-extrapkg.git";
+  inputs.extrapkg.url = "git+https://git.m-labs.hk/M-Labs/artiq-extrapkg.git?ref=release-8";
   outputs = { self, extrapkg }:
     let
       pkgs = extrapkg.pkgs;
@@ -62,6 +62,7 @@
         ];
       };
     };
+  # This section configures additional settings to be able to use M-Labs binary caches
   nixConfig = {  # work around https://github.com/NixOS/nix/issues/6771
     extra-trusted-public-keys = "nixbld.m-labs.hk-1:5aSRVA5b320xbNvu30tqxVPXpld73bhtOeH6uAjRyHc=";
     extra-substituters = "https://nixbld.m-labs.hk";

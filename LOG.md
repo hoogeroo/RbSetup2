@@ -90,3 +90,7 @@
   - Work on switching urukul channels using ttl to have fast switching
   - Back to compiling artiq as the device_db.py file doesn't have the correct channels set up
   - Fix removing/copy/paste stages
+- 18/09/25
+  - Compiled artiq release 8
+  - Flashed artiq with new build
+  - Updated device_db with ttl switches to match the new build 

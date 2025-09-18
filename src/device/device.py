@@ -72,11 +72,17 @@ class AbstractDevice:
         # process all the messages from the gui
         queue = []
         while True:
+            import time
+            start = time.time()
+            print("Main loop start")
+
             # grab all the messages from the gui into the queue
             if device_pipe.poll(0.1):
                 while device_pipe.poll():
                     msg = device_pipe.recv()
                     queue.append(msg)
+
+            print(f"Polled at {time.time() - start} seconds")
 
             # process all the messages from the queue
             while queue:
@@ -117,6 +123,8 @@ class AbstractDevice:
                     print(f"Received unknown message type: {type(msg)}")
                     break
 
+            print(f"Processed queue at {time.time() - start} seconds")
+
             # check if the GUI process is still alive
             if not self.gui_process.is_alive():
                 break
@@ -128,6 +136,8 @@ class AbstractDevice:
             # pulse the push laser if requested
             if self.device_settings.load_mot:
                 self.pulse_push_laser()
+
+                print(f"Pulsed at {time.time() - start} seconds")
 
         print("Exiting...")
 

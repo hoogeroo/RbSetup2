@@ -47,7 +47,7 @@ try:
                 VariableTypeFloat("Shadow Frequency (MHz)", "shadow_frequency", 55.0, 120.0, 1.0),
                 VariableTypeFloat("Optical Pump Amplitude", "optical_pump_amplitude"),
                 VariableTypeFloat("Optical Pump Frequency (MHz)", "optical_pump_frequency", 55.0, 120.0, 1.0),
-                VariableTypeFloat("Sheet Amplitude", "sheet_amplitude"),
+                VariableTypeFloat("Sheet Amplitude", "sheet_amplitude", step=0.01),
                 VariableTypeFloat("Sheet Frequency (MHz)", "sheet_frequency", 55.0, 120.0, 1.0),
                 VariableTypeFloat("RF Amplitude", "rf_amplitude", hidden=True),
                 VariableTypeFloat("RF Frequency (MHz)", "rf_frequency", 0, 100.0, 1.0),
@@ -61,14 +61,14 @@ try:
             self.setattr_device("ttl6")
             self.setattr_device('fastino0')
             self.setattr_device("sampler0")
-            # self.setattr_device('urukul0_ch0')
-            # self.setattr_device('urukul0_ch1')
-            # self.setattr_device('urukul0_ch2')
-            # self.setattr_device('urukul0_ch3')
-            # self.setattr_device('urukul1_ch0')
-            # self.setattr_device('urukul1_ch1')
-            # self.setattr_device('urukul1_ch2')
-            # self.setattr_device('urukul1_ch3')
+            self.setattr_device('urukul0_ch0')
+            self.setattr_device('urukul0_ch1')
+            self.setattr_device('urukul0_ch2')
+            self.setattr_device('urukul0_ch3')
+            self.setattr_device('urukul1_ch0')
+            self.setattr_device('urukul1_ch1')
+            self.setattr_device('urukul1_ch2')
+            self.setattr_device('urukul1_ch3')
 
         @host_only
         def run(self):
@@ -83,38 +83,38 @@ try:
             self.fastino0.init()
             self.sampler0.init()
             self.sampler0.set_gain_mu(0, 0)
-            # self.urukul0_ch0.cpld.init()
-            # self.urukul0_ch0.init()
-            # self.urukul0_ch0.cfg_sw(True)
-            # self.urukul0_ch0.set_att(6.0 * dB)
-            # self.urukul0_ch1.cpld.init()
-            # self.urukul0_ch1.init()
-            # self.urukul0_ch1.set_att(6.0 * dB)
-            # self.urukul0_ch1.cfg_sw(True)
-            # self.urukul0_ch2.cpld.init()
-            # self.urukul0_ch2.init()
-            # self.urukul0_ch2.cfg_sw(True)
-            # self.urukul0_ch2.set_att(6.0 * dB)
-            # self.urukul0_ch3.cpld.init()
-            # self.urukul0_ch3.init()
-            # self.urukul0_ch3.set_att(6.0 * dB)
-            # self.urukul0_ch3.cfg_sw(True)
-            # self.urukul1_ch0.cpld.init()
-            # self.urukul1_ch0.init()
-            # self.urukul1_ch0.cfg_sw(True)
-            # self.urukul1_ch0.set_att(6.0 * dB)
-            # self.urukul1_ch1.cpld.init()
-            # self.urukul1_ch1.init()
-            # self.urukul1_ch1.cfg_sw(True)
-            # self.urukul1_ch1.set_att(6.0 * dB)
-            # self.urukul1_ch2.cpld.init()
-            # self.urukul1_ch2.init()
-            # self.urukul1_ch2.cfg_sw(True)
-            # self.urukul1_ch2.set_att(6.0 * dB)
-            # self.urukul1_ch3.cpld.init()
-            # self.urukul1_ch3.init()
-            # self.urukul1_ch3.cfg_sw(True)
-            # self.urukul1_ch3.set_att(6.0 * dB)
+            self.urukul0_ch0.cpld.init()
+            self.urukul0_ch0.init()
+            self.urukul0_ch0.cfg_sw(True)
+            self.urukul0_ch0.set_att(6.0 * dB)
+            self.urukul0_ch1.cpld.init()
+            self.urukul0_ch1.init()
+            self.urukul0_ch1.set_att(6.0 * dB)
+            self.urukul0_ch1.cfg_sw(True)
+            self.urukul0_ch2.cpld.init()
+            self.urukul0_ch2.init()
+            self.urukul0_ch2.cfg_sw(True)
+            self.urukul0_ch2.set_att(6.0 * dB)
+            self.urukul0_ch3.cpld.init()
+            self.urukul0_ch3.init()
+            self.urukul0_ch3.set_att(6.0 * dB)
+            self.urukul0_ch3.cfg_sw(True)
+            self.urukul1_ch0.cpld.init()
+            self.urukul1_ch0.init()
+            self.urukul1_ch0.cfg_sw(True)
+            self.urukul1_ch0.set_att(6.0 * dB)
+            self.urukul1_ch1.cpld.init()
+            self.urukul1_ch1.init()
+            self.urukul1_ch1.cfg_sw(True)
+            self.urukul1_ch1.set_att(6.0 * dB)
+            self.urukul1_ch2.cpld.init()
+            self.urukul1_ch2.init()
+            self.urukul1_ch2.cfg_sw(True)
+            self.urukul1_ch2.set_att(6.0 * dB)
+            self.urukul1_ch3.cpld.init()
+            self.urukul1_ch3.init()
+            self.urukul1_ch3.cfg_sw(True)
+            self.urukul1_ch3.set_att(6.0 * dB)
 
         @kernel
         def run_experiment_device(self, flattened_stages):
@@ -143,49 +143,54 @@ try:
                 self.fastino0.set_group(0, dac)
 
                 # update rf output
-                # self.urukul0_ch0.set(
-                #     s.repump_frequency[i] * MHz,
-                #     amplitude=s.repump_amplitude[i] * 0.6
-                # )
-                # self.urukul0_ch1.set(
-                #     s.mot1_frequency[i] * MHz,
-                #     amplitude=s.mot1_amplitude[i] * 0.6
-                # )
-                # self.urukul0_ch2.set(
-                #     s.mot2_frequency[i] * MHz,
-                #     amplitude=s.mot2_amplitude[i] * 0.6
-                # )
-                # self.urukul0_ch3.set(
-                #     s.push_frequency[i] * MHz,
-                #     amplitude=s.push_amplitude[i] * 0.6
-                # )
-                # self.urukul1_ch0.set(
-                #     s.shadow_frequency[i] * MHz,
-                #     amplitude=s.shadow_amplitude[i] * 0.6
-                # )
-                # self.urukul1_ch1.set(
-                #     s.sheet_frequency[i] * MHz,
-                #     amplitude=s.sheet_amplitude[i] * 0.6
-                # )
-                # self.urukul1_ch2.set(
-                #     s.optical_pump_frequency[i] * MHz,
-                #     amplitude=s.optical_pump_amplitude[i] * 0.6
-                # )
-                # self.urukul1_ch3.set(
-                #     s.rf_frequency[i] * MHz,
-                #     amplitude=s.rf_amplitude[i] * 0.6
-                # )
+                self.urukul0_ch0.set(
+                    s.repump_frequency[i] * MHz,
+                    amplitude=s.repump_amplitude[i] * 0.6
+                )
+                self.urukul0_ch1.set(
+                    s.mot1_frequency[i] * MHz,
+                    amplitude=s.mot1_amplitude[i] * 0.6
+                )
+                self.urukul0_ch2.set(
+                    s.mot2_frequency[i] * MHz,
+                    amplitude=s.mot2_amplitude[i] * 0.6
+                )
+                self.urukul0_ch3.set(
+                    s.push_frequency[i] * MHz,
+                    amplitude=s.push_amplitude[i] * 0.6
+                )
+                self.urukul1_ch0.set(
+                    s.shadow_frequency[i] * MHz,
+                    amplitude=s.shadow_amplitude[i] * 0.6
+                )
+                self.urukul1_ch1.set(
+                    s.sheet_frequency[i] * MHz,
+                    amplitude=s.sheet_amplitude[i] * 0.6
+                )
+                self.urukul1_ch2.set(
+                    s.optical_pump_frequency[i] * MHz,
+                    amplitude=s.optical_pump_amplitude[i] * 0.6
+                )
+                self.urukul1_ch3.set(
+                    s.rf_frequency[i] * MHz,
+                    amplitude=s.rf_amplitude[i] * 0.6
+                )
 
-                # wait for a short time to simulate the experiment duration
+                # wait for the duration of the stage
                 delay(s.time[i] * ms)
 
         @kernel
         def pulse_push_laser(self):
             # push the laser for a short time
             self.core.break_realtime()
-            self.ttl6.on()
-            delay(10 * ms)
-            self.ttl6.off()
+
+            self.urukul0_ch3.sw.on()
+            self.urukul0_ch1.sw.off()
+
+            delay(10*ms)
+
+            self.urukul0_ch3.sw.off()
+            self.urukul0_ch1.sw.on()
 
         @kernel
         def read_fluorescence(self) -> float:
