@@ -143,12 +143,19 @@ class AbstractDevice:
     # handles the host side functions of running an experiment
     def run_experiment(self, stages):
         disable_pulsing()  
-    
+
         # tell the camera server to acquire a frame
         camera = None
         try:
-            camera = CameraConnection()
-            camera.shoot(1)
+            # count the number of times the camera is triggered
+            n_triggers = 0
+            for stage in stages.stages:
+                if stage.camera.is_constant():
+                    n_triggers += stage.camera.constant_value()
+
+            if n_triggers > 0:
+                camera = CameraConnection()
+                camera.shoot(n_triggers)
         except Exception as e:
             print("Error occurred while shooting:", e)
 
