@@ -167,32 +167,8 @@ class AbstractDevice:
             except Exception as e:
                 print("Error occurred while reading camera images:", e)
         if images is not None:
-            od_image = None
-            if images.shape[0] == 3:
-                # Process images
-                Foreground = images[0,:,:] - images[2,:,:]
-                Background = images[1,:,:] - images[2,:,:]
-                self.save_background(Background) # Saves new background if unique
-                od_image = -np.log((Foreground)/(Background))
-
-                self.n_atoms.append(self.image_analysis.get_atom_number(od_image = od_image))
-                self.max_od.append(self.image_analysis.get_max_od(od_image = od_image))
-
-                # apply filtering based on device settings
-                if self.device_settings.fringe_removal  and self.number_of_backgrounds > 5:
-                    od_image, opref = filtering.fringe_removal(Foreground, self.background_bank[:,:,:self.number_of_backgrounds])
-
-                if self.device_settings.pca and self.number_of_backgrounds > 5:
-                    od_image, opref = filtering.pca(Foreground, self.background_bank[:,:,:self.number_of_backgrounds])
-
-                if self.device_settings.low_pass:
-                    od_image = filtering.low_pass(images)
-
-                if self.device_settings.fft_filter:
-                    od_image = filtering.fft_filter(od_image)
-
             # send the picture to the gui
-            self.device_pipe.send(CameraImages(images, od_image))
+            self.device_pipe.send(CameraImages(self.filter_images(images)))
 
         # save the results if requested
         if self.device_settings.save_runs:
@@ -250,6 +226,34 @@ class AbstractDevice:
         else:
             disable_pulsing()
 
+    def filter_images(self, images: np.ndarray) -> np.ndarray:
+        if images.shape[0] == 3:
+            # Process images
+            Foreground = images[0,:,:] - images[2,:,:]
+            Background = images[1,:,:] - images[2,:,:]
+            self.save_background(Background) # Saves new background if unique
+            od_image = -np.log((Foreground)/(Background))
+
+            self.n_atoms.append(self.image_analysis.get_atom_number(od_image = od_image))
+            self.max_od.append(self.image_analysis.get_max_od(od_image = od_image))
+
+            # apply filtering based on device settings
+            if self.device_settings.fringe_removal  and self.number_of_backgrounds > 5:
+                od_image, opref = filtering.fringe_removal(Foreground, self.background_bank[:,:,:self.number_of_backgrounds])
+
+            if self.device_settings.pca and self.number_of_backgrounds > 5:
+                od_image, opref = filtering.pca(Foreground, self.background_bank[:,:,:self.number_of_backgrounds])
+
+            if self.device_settings.low_pass:
+                od_image = filtering.low_pass(images)
+
+            if self.device_settings.fft_filter:
+                od_image = filtering.fft_filter(od_image)
+
+            # append the processed image to the original images
+            images = images.append(od_image)
+
+        return images
     
 def enable_pulsing():
     import socket

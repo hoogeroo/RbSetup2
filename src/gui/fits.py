@@ -7,6 +7,7 @@ import os
 
 from astropy.io import fits
 
+from src.gui.plots import CameraImages
 from src.device.ai import AiSettings
 from src.device.multigo import MultiGoSettings
 from src.gui.run_variables import RunVariable
@@ -74,7 +75,6 @@ def save_settings(path, variables, stages, images, multigo_settings=None, ai_set
         ai_hdu.header['train'] = ai_settings.training_steps
         ai_hdu.header['learner'] = ai_settings.learner
 
-
     # make sure path is unique if not overwriting
     if not overwrite:
         path = uniquify(path)
@@ -96,7 +96,7 @@ def load_settings(path, window):
     # load the camera images
     images = images_hdu.data
     if images is not None:
-        window.plots_gui.update_images(images)
+        window.plots_gui.update_images(CameraImages(images))
 
     # load the stages data
     stages_data = stages_hdu.data

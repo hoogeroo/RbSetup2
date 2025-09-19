@@ -9,15 +9,11 @@ from matplotlib.figure import Figure
 
 from PyQt6.QtWidgets import QTabWidget
 
-from src.device import filtering
-from src.device.data_analysis import ImageAnalysis
-
 FLUORESCENCE_SAMPLES = 100
 
 class CameraImages:
-    def __init__(self, images: np.ndarray, od_image: np.ndarray | None):
+    def __init__(self, images: np.ndarray):
         self.images = images
-        self.od_image = od_image
 
 class FluorescenceSample:
     def __init__(self, sample: float):
@@ -66,17 +62,7 @@ class PlotsGui:
         # clear existing tabs
         self.camera_tabs.clear()
 
-        # add the optical density tab
-        if camera_images.od_image is not None:
-            od_canvas = FigureCanvas(Figure(figsize=(5, 3)))
-            self.camera_tabs.addTab(od_canvas, "OD Image")
-
-            # plot the optical density image
-            ax = od_canvas.figure.subplots()
-            ax.imshow(camera_images.od_image, aspect='equal')
-            od_canvas.figure.colorbar(ax.images[0], ax=ax) 
-
-        # plot the original images
+        # plot the images
         for i in range(camera_images.images.shape[0]):
             canvas = FigureCanvas(Figure(figsize=(5, 3)))
             fig = canvas.figure
@@ -86,5 +72,5 @@ class PlotsGui:
             ax.imshow(camera_images.images[i, :, :], aspect='equal')
             fig.colorbar(ax.images[0], ax=ax)
 
-            # add a tab
+            # add a tab for the images
             self.camera_tabs.addTab(canvas, f"Picture {i}")
