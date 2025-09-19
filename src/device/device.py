@@ -23,8 +23,8 @@ from src.device.data_analysis import ImageAnalysis
 SAVE_PATH = "runs"
 
 # TCP settings for pulse control
-TCP_IP = "130.216.51.242"  # localhost
-TCP_PORT = 8833       # default port
+TCP_IP = "130.216.51.242"
+TCP_PORT = 8833
 
 '''
 Abstraction over the device to run the gui without artiq
@@ -72,17 +72,11 @@ class AbstractDevice:
         # process all the messages from the gui
         queue = []
         while True:
-            import time
-            start = time.time()
-            print("Main loop start")
-
             # grab all the messages from the gui into the queue
             if device_pipe.poll(0.1):
                 while device_pipe.poll():
                     msg = device_pipe.recv()
                     queue.append(msg)
-
-            print(f"Polled at {time.time() - start} seconds")
 
             # process all the messages from the queue
             while queue:
@@ -123,8 +117,6 @@ class AbstractDevice:
                     print(f"Received unknown message type: {type(msg)}")
                     break
 
-            print(f"Processed queue at {time.time() - start} seconds")
-
             # check if the GUI process is still alive
             if not self.gui_process.is_alive():
                 break
@@ -136,8 +128,6 @@ class AbstractDevice:
             # pulse the push laser if requested
             if self.device_settings.load_mot:
                 self.pulse_push_laser()
-
-                print(f"Pulsed at {time.time() - start} seconds")
 
         print("Exiting...")
 
@@ -177,27 +167,29 @@ class AbstractDevice:
             except Exception as e:
                 print("Error occurred while reading camera images:", e)
         if images is not None:
-            # Process images
-            Foreground = images[0,:,:] - images[2,:,:]
-            Background = images[1,:,:] - images[2,:,:]
-            self.save_background(Background) # Saves new background if unique
-            od_image = -np.log((Foreground)/(Background))
+            od_image = None
+            if images.shape[0] == 3:
+                # Process images
+                Foreground = images[0,:,:] - images[2,:,:]
+                Background = images[1,:,:] - images[2,:,:]
+                self.save_background(Background) # Saves new background if unique
+                od_image = -np.log((Foreground)/(Background))
 
-            self.n_atoms.append(self.image_analysis.get_atom_number(od_image = od_image))
-            self.max_od.append(self.image_analysis.get_max_od(od_image = od_image))
+                self.n_atoms.append(self.image_analysis.get_atom_number(od_image = od_image))
+                self.max_od.append(self.image_analysis.get_max_od(od_image = od_image))
 
-            # apply filtering based on device settings
-            if self.device_settings.fringe_removal  and self.number_of_backgrounds > 5:
-                od_image, opref = filtering.fringe_removal(Foreground, self.background_bank[:,:,:self.number_of_backgrounds])
-            
-            if self.device_settings.pca and self.number_of_backgrounds > 5:
-                od_image, opref = filtering.pca(Foreground, self.background_bank[:,:,:self.number_of_backgrounds])
-            
-            if self.device_settings.low_pass:
-                od_image = filtering.low_pass(images)
-            
-            if self.device_settings.fft_filter:
-                od_image = filtering.fft_filter(od_image)    
+                # apply filtering based on device settings
+                if self.device_settings.fringe_removal  and self.number_of_backgrounds > 5:
+                    od_image, opref = filtering.fringe_removal(Foreground, self.background_bank[:,:,:self.number_of_backgrounds])
+
+                if self.device_settings.pca and self.number_of_backgrounds > 5:
+                    od_image, opref = filtering.pca(Foreground, self.background_bank[:,:,:self.number_of_backgrounds])
+
+                if self.device_settings.low_pass:
+                    od_image = filtering.low_pass(images)
+
+                if self.device_settings.fft_filter:
+                    od_image = filtering.fft_filter(od_image)
 
             # send the picture to the gui
             self.device_pipe.send(CameraImages(images, od_image))
@@ -232,7 +224,6 @@ class AbstractDevice:
     def read_fluorescence(self) -> float:
         return 100.0
 
-
     def save_background(self, new_background: np.ndarray):
         # Saves Bacground image to bank if unique
         # Uses circular buffer to keep the 100 most recent backgrounds.
@@ -262,21 +253,22 @@ class AbstractDevice:
     
 def enable_pulsing():
     import socket
-    print("Enabling pulsing")
+
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((TCP_IP, TCP_PORT))
     ml = 'PULSE,ON'
     s.send(ml.encode())
+
     s.close()
     time.sleep(0.1)
 
 def disable_pulsing():
     import socket
-    print("Disabling pulsing")
+
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((TCP_IP, TCP_PORT))
     ml = 'PULSE,OFF'
     s.send(ml.encode())
-    print("PULSE OFF sent")
+
     s.close()
     time.sleep(0.1)

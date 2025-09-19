@@ -15,8 +15,9 @@ from src.device.data_analysis import ImageAnalysis
 FLUORESCENCE_SAMPLES = 100
 
 class CameraImages:
-    def __init__(self, images: np.ndarray):
+    def __init__(self, images: np.ndarray, od_image: np.ndarray | None):
         self.images = images
+        self.od_image = od_image
 
 class FluorescenceSample:
     def __init__(self, sample: float):
@@ -41,7 +42,9 @@ class PlotsGui:
         self.window.fluorescence_grid.addWidget(self.fluorescence_canvas)
 
     # update the fluorescence plot with a new sample
-    def update_fluorescence(self, sample: float):
+    def update_fluorescence(self, sample: FluorescenceSample):
+        sample = sample.sample
+
         # put the fluorescence value in the readout
         self.window.fluorescence.display(sample)
 
@@ -56,30 +59,31 @@ class PlotsGui:
         self.fluorescence_canvas.draw()
 
     # update the camera images
-    def update_images(self, images: np.ndarray, od_image: np.ndarray):
+    def update_images(self, camera_images: CameraImages):
         # store unfiltered images for saving later
-        self.images = images
+        self.images = camera_images.images
 
         # clear existing tabs
         self.camera_tabs.clear()
 
         # add the optical density tab
-        od_canvas = FigureCanvas(Figure(figsize=(5, 3)))
-        self.camera_tabs.addTab(od_canvas, "OD Image")
+        if camera_images.od_image is not None:
+            od_canvas = FigureCanvas(Figure(figsize=(5, 3)))
+            self.camera_tabs.addTab(od_canvas, "OD Image")
 
-        # plot the optical density image
-        ax = od_canvas.figure.subplots()
-        ax.imshow(od_image, aspect='equal')
-        od_canvas.figure.colorbar(ax.images[0], ax=ax) 
+            # plot the optical density image
+            ax = od_canvas.figure.subplots()
+            ax.imshow(camera_images.od_image, aspect='equal')
+            od_canvas.figure.colorbar(ax.images[0], ax=ax) 
 
         # plot the original images
-        for i in range(images.shape[0]):
+        for i in range(camera_images.images.shape[0]):
             canvas = FigureCanvas(Figure(figsize=(5, 3)))
             fig = canvas.figure
 
             # plot the new image
             ax = fig.subplots()
-            ax.imshow(images[i, :, :], aspect='equal')
+            ax.imshow(camera_images.images[i, :, :], aspect='equal')
             fig.colorbar(ax.images[0], ax=ax)
 
             # add a tab

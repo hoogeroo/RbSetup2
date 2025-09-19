@@ -29,7 +29,7 @@ try:
             self.variables = [
                 VariableTypeFloat("Time (ms)", "time", 0.0, 10000.0, 100.0),
                 VariableTypeInt("Samples", "samples", 1, 10000, 100),
-                VariableTypeBool("Digital", "digital"),
+                VariableTypeBool("Camera", "camera"),
                 VariableTypeFloat("Dipole Amplitude", "dipole_amplitude", 0.0, 3.0, 0.1),
                 VariableTypeFloat("MOT 2 coils current", "mot2_coils_current", 0.0, 100.0, 0.5, calibration=coil_current_calibration),
                 VariableTypeFloat("x Field", "x_field", 0.0, 5.0, 0.01, hidden=True),
@@ -57,8 +57,7 @@ try:
             ]
 
             self.setattr_device("core")
-            self.setattr_device("ttl5")
-            self.setattr_device("ttl6")
+            self.setattr_device("ttl4")
             self.setattr_device('fastino0')
             self.setattr_device("sampler0")
             self.setattr_device('urukul0_ch0')
@@ -90,7 +89,7 @@ try:
             self.urukul0_ch1.cpld.init()
             self.urukul0_ch1.init()
             self.urukul0_ch1.set_att(6.0 * dB)
-            self.urukul0_ch1.cfg_sw(True)
+            self.urukul0_ch1.cfg_sw(False) # allows for fast switching using ttl
             self.urukul0_ch2.cpld.init()
             self.urukul0_ch2.init()
             self.urukul0_ch2.cfg_sw(True)
@@ -98,7 +97,7 @@ try:
             self.urukul0_ch3.cpld.init()
             self.urukul0_ch3.init()
             self.urukul0_ch3.set_att(6.0 * dB)
-            self.urukul0_ch3.cfg_sw(True)
+            self.urukul0_ch3.cfg_sw(False) # allows for fast switching using ttl
             self.urukul1_ch0.cpld.init()
             self.urukul1_ch0.init()
             self.urukul1_ch0.cfg_sw(True)
@@ -124,11 +123,11 @@ try:
             # iterate through the stages and get their values
             s = flattened_stages
             for i in range(len(s.time)):
-                # update digital output
-                if s.digital[i]:
-                    self.ttl5.on()
+                # update camera trigger
+                if s.camera[i]:
+                    self.ttl4.on()
                 else:
-                    self.ttl5.off()
+                    self.ttl4.off()
 
                 # update analog outputs
                 dac = [0.0] * 32

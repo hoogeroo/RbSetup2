@@ -93,6 +93,12 @@ class FlattenedStages:
                         if value.is_ramp():
                             flattened_list.append(value.sample(sample, samples))
 
+        # set all the outputs back to the dc values at the end of the sequence
+        for variable in variables:
+            dc_value = getattr(stages.dc, variable.id)
+            flattened_list = getattr(self, variable.id)
+            flattened_list.append(dc_value.constant_value())
+
         # turn the lists into numpy arrays
         for variable in variables:
             flattened_list = getattr(self, variable.id)

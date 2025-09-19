@@ -73,23 +73,23 @@ class Gui(QMainWindow):
     def handle_device_events(self):
         # poll the pipe with no timeout (only read already queued values)
         if self.gui_pipe.poll():
-            # get the recieved value
-            recieved = self.gui_pipe.recv()
+            # get the received value
+            msg = self.gui_pipe.recv()
 
-            if isinstance(recieved, FluorescenceSample):
-                self.plots_gui.update_fluorescence(recieved.sample)
-            elif isinstance(recieved, CameraImages):
-                self.plots_gui.update_images(recieved.images)
-            elif isinstance(recieved, MultiGoProgress):
-                self.multigo_progress.update_progress(recieved)
-            elif isinstance(recieved, AiProgress):
-                self.ai_progress.update_progress(recieved)
-            elif isinstance(recieved, AiPlotData):
+            if isinstance(msg, FluorescenceSample):
+                self.plots_gui.update_fluorescence(msg)
+            elif isinstance(msg, CameraImages):
+                self.plots_gui.update_images(msg)
+            elif isinstance(msg, MultiGoProgress):
+                self.multigo_progress.update_progress(msg)
+            elif isinstance(msg, AiProgress):
+                self.ai_progress.update_progress(msg)
+            elif isinstance(msg, AiPlotData):
                 # Pass AI plot data to the AI progress dialog if it exists
                 if hasattr(self, 'ai_progress') and self.ai_progress:
-                    self.ai_progress.update_ai_plots(recieved)
+                    self.ai_progress.update_ai_plots(msg)
             else:
-                print("Received unknown message type from device:", type(recieved))
+                print("Received unknown message type from device:", type(msg))
 
     # send the current device settings to the device
     def update_device_settings(self):
