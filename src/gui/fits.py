@@ -43,6 +43,10 @@ def save_settings(path, variables, stages, images, multigo_settings=None, ai_set
     ids = [stage.id for stage in stages]
     stage_columns.append(fits.Column(name='id', format='A36', array=ids))
 
+    # add the tab column
+    tabs = [stage.tab for stage in stages]
+    stage_columns.append(fits.Column(name='tab', format='A20', array=tabs))
+
     # add columns for each variable in the gui
     for i, variable in enumerate(variables):
         col = variable.fits_column()
@@ -120,14 +124,17 @@ def load_settings(path, window):
     for i in reversed(range(len(window.stages_gui.stages))):
         window.stages_gui.delete_stage(i)
     window.stages_gui.stages.clear()
+    window.stages_tabs.clear()
 
     # create new stage widgets based on the loaded data
     for i, stage_row in enumerate(stages_data):
         # create new column of widgets for the stage
+        idx = len(window.stages_gui.stages)
         stage_name = stage_row['stage_name'].strip()
         enabled = stage_row['enabled']
         id = stage_row['id'].strip()
-        window.stages_gui.insert_stage(len(window.stages_gui.stages), name=stage_name, enabled=enabled, id=id)
+        tab = stage_row['tab'].strip()
+        window.stages_gui.insert_stage(idx, stage_name, enabled, id, tab)
 
         # fill the stage widgets with the values from the file
         for variable_id, widget in window.stages_gui.stages[i].widgets.items():

@@ -93,4 +93,6 @@
 - 18/09/25
   - Compiled artiq release 8
   - Flashed artiq with new build
-  - Updated device_db with ttl switches to match the new build 
+  - Updated device_db with ttl switches to match the new build
+- 22/09/25
+  - Add tabs for groups of stages in the gui

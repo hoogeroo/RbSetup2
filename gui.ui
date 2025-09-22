@@ -167,8 +167,39 @@
    <attribute name="dockWidgetArea">
     <number>1</number>
    </attribute>
-   <widget class="QWidget" name="settings_widget">
+   <widget class="QWidget" name="stages_widget">
     <layout class="QGridLayout" name="gridLayout">
+     <item row="2" column="6">
+      <layout class="QVBoxLayout" name="copied_container"/>
+     </item>
+     <item row="1" column="3">
+      <widget class="QLabel" name="dc_label">
+       <property name="minimumSize">
+        <size>
+         <width>128</width>
+         <height>16</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>128</width>
+         <height>16</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>DC Values</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignmentFlag::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="3">
+      <layout class="QVBoxLayout" name="dc_container"/>
+     </item>
+     <item row="2" column="4">
+      <layout class="QVBoxLayout" name="label_container"/>
+     </item>
      <item row="1" column="6">
       <widget class="QLabel" name="copied_label">
        <property name="enabled">
@@ -194,55 +225,6 @@
        </property>
       </widget>
      </item>
-     <item row="2" column="4">
-      <layout class="QVBoxLayout" name="label_container"/>
-     </item>
-     <item row="2" column="5">
-      <widget class="QScrollArea" name="stages_scroll">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="MinimumExpanding">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="frameShape">
-        <enum>QFrame::Shape::NoFrame</enum>
-       </property>
-       <property name="verticalScrollBarPolicy">
-        <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
-       </property>
-       <property name="widgetResizable">
-        <bool>true</bool>
-       </property>
-       <widget class="QWidget" name="stages_scroll_widget">
-        <property name="geometry">
-         <rect>
-          <x>0</x>
-          <y>0</y>
-          <width>201</width>
-          <height>72</height>
-         </rect>
-        </property>
-        <layout class="QHBoxLayout" name="stages_container">
-         <property name="leftMargin">
-          <number>0</number>
-         </property>
-         <property name="topMargin">
-          <number>0</number>
-         </property>
-         <property name="rightMargin">
-          <number>0</number>
-         </property>
-         <property name="bottomMargin">
-          <number>0</number>
-         </property>
-        </layout>
-       </widget>
-      </widget>
-     </item>
-     <item row="2" column="3">
-      <layout class="QVBoxLayout" name="dc_container"/>
-     </item>
      <item row="1" column="4">
       <widget class="QLabel" name="spacer">
        <property name="minimumSize">
@@ -262,52 +244,12 @@
        </property>
       </widget>
      </item>
-     <item row="1" column="3">
-      <widget class="QLabel" name="dc_label">
-       <property name="minimumSize">
-        <size>
-         <width>128</width>
-         <height>16</height>
-        </size>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>128</width>
-         <height>16</height>
-        </size>
-       </property>
-       <property name="text">
-        <string>DC Values</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignmentFlag::AlignCenter</set>
+     <item row="1" column="5" rowspan="2">
+      <widget class="QTabWidget" name="stages_tabs">
+       <property name="currentIndex">
+        <number>-1</number>
        </property>
       </widget>
-     </item>
-     <item row="1" column="5">
-      <widget class="QLabel" name="stages_label">
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>16</height>
-        </size>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>16777215</width>
-         <height>16</height>
-        </size>
-       </property>
-       <property name="text">
-        <string>Stages</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignmentFlag::AlignCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="6">
-      <layout class="QVBoxLayout" name="copied_container"/>
      </item>
     </layout>
    </widget>

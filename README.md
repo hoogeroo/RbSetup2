@@ -11,24 +11,27 @@ If pinging the core device works but communication with the core device doesn't 
 ## Running
 
 First make sure your shell's working directory is this one. Then enter the nix enviroment by running `nix shell`. This will take a while the first time. Then launch the gui:
+
 ```bash
 artiq_run main.py
 ```
+
 To run the gui without the artiq fpga handy (good for working on the gui):
+
 ```bash
 python3 main.py
 ```
+
 This also works outside the nix enviroment if the right dependencies are installed.
 
 ## Developmnet Notes
 
 * To edit the gui open [`gui.ui`](gui.ui) in [qt creator](https://snapcraft.io/qtcreator-ros) or qt designer
-* It seems you can't hop between host and device more than once, i.e device -> host -> device won't work. However some functions like `print` seem to be handled specially and do work
+* It seems you can't make more than 2 hops between host and device, i.e host -> device -> host works fine but host -> device -> host -> device won't work
 * 32 bit floats dont work
-* To run the gui without artiq you can run the `device.py` file: `python3 device.py`
+* To add a new tab of stages uncomment the line in the `__init__` function in `src/gui/gui.py` and set the name and index for the new tab
 
 ## Resources
 
-- <https://github.com/Hanros94/IonTrap-WIPM/blob/master/Manual%20for%20Developers(English%20Version).md>
-- <https://github.com/whichislovely/Hosten-group-Quantrol-Control-system>
-
+* <https://github.com/Hanros94/IonTrap-WIPM/blob/master/Manual%20for%20Developers(English%20Version).md>
+* <https://github.com/whichislovely/Hosten-group-Quantrol-Control-system>

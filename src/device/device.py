@@ -261,7 +261,11 @@ class AbstractDevice:
             images = images.append(od_image)
 
         return images
-    
+
+'''
+temporary functions to enable/disable pulsing
+'''
+
 def enable_pulsing():
     import socket
 

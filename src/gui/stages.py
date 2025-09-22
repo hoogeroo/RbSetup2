@@ -17,12 +17,13 @@ from src.variable_types import *
 
 # class to represent a stage in the gui. differs from Stage in that it can't be sent to the device
 class GuiStage:
-    def __init__(self, button, container, widgets, enabled=True, id=None):
+    def __init__(self, button, container, widgets, enabled, id, tab):
         self.id = id if id is not None else uuid4()
         self.button = button
         self.container = container
         self.widgets = widgets
         self.enabled = enabled
+        self.tab = tab
 
     def label(self):
         return self.button.text()
@@ -39,6 +40,7 @@ class StagesGui:
         self.dc_widgets = {}
         self.copy_widgets = {}
         self.stages = []
+        self.tabs = {}
 
         # add spacers to the dc, label, and copied containers
         spacers = []
@@ -119,7 +121,7 @@ class StagesGui:
     # extracts the values from the dc widgets and creates a Dc object
     def extract_dc(self) -> Stage:
         # uses setattr to dynamically create a Dc object with the values from the widgets
-        dc = Stage("DC Values", "dc", True)
+        dc = Stage("DC Values", "dc", True, "DC")
         for variable in self.variables:
             # get the widget for the variable based on its visibility
             if variable.hidden:
@@ -137,7 +139,7 @@ class StagesGui:
         stages = []
         for gui_stage in self.stages:
             name = gui_stage.button.text()
-            stage = Stage(name, gui_stage.id, gui_stage.enabled)
+            stage = Stage(name, gui_stage.id, gui_stage.enabled, gui_stage.tab)
             for variable in self.variables:
                 # get the widget for the variable based on its visibility
                 if variable.hidden:
@@ -201,9 +203,21 @@ class StagesGui:
         raise ValueError("Stage button not found")
 
     # adds a new stage to the gui
-    def insert_stage(self, idx: int, name=None, enabled=True, id=None):
+    def insert_stage(self, idx: int, name=None, enabled=True, id=None, tab="Main"):
+        # create a new tab if it doesn't exist
+        if tab not in self.tabs:
+            new_tab = QWidget()
+            new_tab_layout = QHBoxLayout()
+            new_tab.setLayout(new_tab_layout)
+            self.window.stages_tabs.addTab(new_tab, tab)
+            self.tabs[tab] = new_tab_layout
+
+        # get the layout of the tab
+        tab_layout = self.tabs[tab]
+
+        # create a vertical layout to hold the button and widgets and add it to the tab layout
         stage_container = QVBoxLayout()
-        self.window.stages_container.insertLayout(idx, stage_container)
+        tab_layout.insertLayout(idx, stage_container)
 
         # create a button at the top of the stage column
         button = QPushButton()
@@ -235,7 +249,7 @@ class StagesGui:
         # add a spacer to the stage container
         stage_container.addStretch()
 
-        self.stages.insert(idx, GuiStage(button, stage_container, widgets, enabled, id))
+        self.stages.insert(idx, GuiStage(button, stage_container, widgets, enabled, id, tab))
         if not enabled:
             for widget in widgets.values():
                 widget.setEnabled(False)
@@ -279,12 +293,12 @@ class StagesGui:
 
     # creates a new stage to the left
     def insert_stage_left(self, idx: int):
-        self.insert_stage(idx)
+        self.insert_stage(idx, tab=self.stages[idx].tab)
         self.paste_stage(idx)
 
     # creates a new stage to the right
     def insert_stage_right(self, idx: int):
-        self.insert_stage(idx + 1)
+        self.insert_stage(idx + 1, tab=self.stages[idx].tab)
         self.paste_stage(idx + 1)
 
     # deletes the stage at the right clicked container

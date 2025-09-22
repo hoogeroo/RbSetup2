@@ -11,10 +11,11 @@ from src.variable_types import VariableTypeFloat
 # this class will be filled with ids set in the variables array then 
 # sent to the device
 class Stage:
-    def __init__(self, name, id, enabled):
+    def __init__(self, name, id, enabled, tab):
         self.name = name
         self.id = id
         self.enabled = enabled
+        self.tab = tab
 
 # a collection of stages to be sent to the device
 class Stages:

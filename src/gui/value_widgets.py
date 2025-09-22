@@ -15,6 +15,7 @@ class BoolWidget(QWidget):
         super().__init__(*args, **kwargs)
 
         self.variable = variable
+        self.state = "constant"
 
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
         self.addAction("Hold", self.mode_hold)
@@ -38,19 +39,27 @@ class BoolWidget(QWidget):
 
         self.setLayout(layout)
 
-    def mode_hold(self):
+    def hide(self):
         self.checkbox.setVisible(False)
+        self.hold_label.setVisible(False)
+
+    def mode_hold(self):
+        self.state = "hold"
+        self.hide()
         self.hold_label.setVisible(True)
 
     def mode_constant(self):
+        self.state = "constant"
+        self.hide()
         self.checkbox.setVisible(True)
-        self.hold_label.setVisible(False)
 
     def get_value(self):
-        if self.hold_label.isVisible():
+        if self.state == "hold":
             return BoolValue.hold()
-        else:
+        elif self.state == "constant":
             return BoolValue.constant(self.checkbox.isChecked())
+        else:
+            raise ValueError(f"BoolWidget in invalid state {self.state}")
 
     def set_value(self, value):
         if value.is_hold():
@@ -67,6 +76,7 @@ class IntWidget(QWidget):
         super().__init__(*args, **kwargs)
 
         self.variable = variable
+        self.state = "constant"
 
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
         self.addAction("Hold", self.mode_hold)
@@ -93,19 +103,27 @@ class IntWidget(QWidget):
 
         self.setLayout(layout)
 
-    def mode_hold(self):
+    def hide(self):
         self.spinbox.setVisible(False)
+        self.hold_label.setVisible(False)
+
+    def mode_hold(self):
+        self.state = "hold"
+        self.hide()
         self.hold_label.setVisible(True)
 
     def mode_constant(self):
+        self.state = "constant"
+        self.hide()
         self.spinbox.setVisible(True)
-        self.hold_label.setVisible(False)
 
     def get_value(self):
-        if self.hold_label.isVisible():
+        if self.state == "hold":
             return IntValue.hold()
-        else:
+        elif self.state == "constant":
             return IntValue.constant(self.spinbox.value())
+        else:
+            raise ValueError(f"IntWidget in invalid state {self.state}")
 
     def set_value(self, value):
         if value.is_hold():
@@ -122,6 +140,7 @@ class FloatWidget(QWidget):
         super().__init__(*args, **kwargs)
 
         self.variable = variable
+        self.state = "constant"
 
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
         self.addAction("Hold", self.mode_hold)
@@ -168,33 +187,37 @@ class FloatWidget(QWidget):
 
         self.setLayout(layout)
 
-    def mode_hold(self):
+    def hide(self):
         self.spinbox.setVisible(False)
-        self.hold_label.setVisible(True)
+        self.hold_label.setVisible(False)
         self.ramp_spinbox1.setVisible(False)
         self.ramp_spinbox2.setVisible(False)
+
+    def mode_hold(self):
+        self.state = "hold"
+        self.hide()
+        self.hold_label.setVisible(True)
 
     def mode_constant(self):
+        self.state = "constant"
+        self.hide()
         self.spinbox.setVisible(True)
-        self.hold_label.setVisible(False)
-        self.ramp_spinbox1.setVisible(False)
-        self.ramp_spinbox2.setVisible(False)
 
     def mode_ramp(self):
-        self.spinbox.setVisible(False)
-        self.hold_label.setVisible(False)
+        self.state = "ramp"
+        self.hide()
         self.ramp_spinbox1.setVisible(True)
         self.ramp_spinbox2.setVisible(True)
 
     def get_value(self):
-        if self.hold_label.isVisible():
+        if self.state == "hold":
             return FloatValue.hold()
-        elif self.spinbox.isVisible():
+        elif self.state == "constant":
             return FloatValue.constant(self.spinbox.value())
-        elif self.ramp_spinbox1.isVisible() and self.ramp_spinbox2.isVisible():
+        elif self.state == "ramp":
             return FloatValue.ramp(self.ramp_spinbox1.value(), self.ramp_spinbox2.value())
         else:
-            raise ValueError("FloatWidget in invalid state")
+            raise ValueError(f"FloatWidget in invalid state {self.state}")
 
     def set_value(self, value):
         if value.is_hold():
