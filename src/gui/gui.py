@@ -59,7 +59,7 @@ class Gui(QMainWindow):
         load_settings('default.fits', self)
 
         # uncomment this to add new tabs then save a new 'default.fits' and comment it out again
-        # self.stages_gui.insert_stage(4, name="Stage 4", enabled=True, id="stage_4", tab="Other")
+        # self.stages_gui.insert_stage(4, name="Stage 4", tab="Other")
 
         # mark the UI as loaded
         self.ui_loaded = True

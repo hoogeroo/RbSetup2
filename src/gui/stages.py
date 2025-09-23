@@ -46,8 +46,8 @@ class StagesGui:
         spacers = []
         for _ in range(3):
             label = QLabel()
-            label.setMinimumSize(QSize(0, 24))
-            label.setMaximumSize(QSize(big, 24))
+            label.setMinimumSize(QSize(0, 42))
+            label.setMaximumSize(QSize(big, 42))
             spacers.append(label)
         self.window.dc_container.addWidget(spacers[0])
         self.window.label_container.addWidget(spacers[1])
