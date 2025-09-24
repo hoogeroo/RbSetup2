@@ -13,13 +13,14 @@ def low_pass(pictures: np.ndarray):
 
     return pictures
 
-def fringe_removal(FG: np.ndarray, backgrounds: np.ndarray,):
+def fringe_removal(FG: np.ndarray, backgrounds: list[np.ndarray]):
     # This version just does one fringeremove "On the fly"
     # It takes one foreground but any number of backgrounds and a background mask
     bgmask = prepare_bgmask()
     flat_ref = np.nonzero(bgmask.flatten())
     
     nk = np.size(flat_ref)
+    backgrounds = np.array(backgrounds)
     sx,sy,nimgs = backgrounds.shape
     all_backgrounds = backgrounds.reshape([sx*sy,nimgs]).astype(float)
 
@@ -28,7 +29,7 @@ def fringe_removal(FG: np.ndarray, backgrounds: np.ndarray,):
     Rk = all_backgrounds[flat_ref,:].reshape([nk,nimgs])
     b = np.dot(np.transpose(Rk),Rk)
 
-    Ak = FG_flat[k].reshape(nk)
+    Ak = FG_flat[flat_ref].reshape(nk)
     c = np.dot(np.transpose(Rk), Ak)
 
     try:

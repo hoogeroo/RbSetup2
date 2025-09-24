@@ -42,17 +42,6 @@ class StagesGui:
         self.stages = []
         self.tabs = {}
 
-        # add spacers to the dc, label, and copied containers
-        spacers = []
-        for _ in range(3):
-            label = QLabel()
-            label.setMinimumSize(QSize(0, 42))
-            label.setMaximumSize(QSize(big, 42))
-            spacers.append(label)
-        self.window.dc_container.addWidget(spacers[0])
-        self.window.label_container.addWidget(spacers[1])
-        self.window.copied_container.addWidget(spacers[2])
-
         # fill dc, label, and copied containers with widgets
         for variable in self.variables:
             # skip hidden variables for the stages GUI
@@ -215,9 +204,18 @@ class StagesGui:
         # get the layout of the tab
         tab_layout = self.tabs[tab]
 
+        # get the first stage in the tab
+        first_layout = tab_layout.itemAt(0)
+        first_in_tab_idx = idx
+        if first_layout is not None:
+            for i, stage in enumerate(self.stages):
+                if stage.container is first_layout:
+                    first_in_tab_idx = i
+                    break
+
         # create a vertical layout to hold the button and widgets and add it to the tab layout
         stage_container = QVBoxLayout()
-        tab_layout.insertLayout(idx, stage_container)
+        tab_layout.insertLayout(idx - first_in_tab_idx, stage_container)
 
         # create a button at the top of the stage column
         button = QPushButton()

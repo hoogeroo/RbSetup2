@@ -12,8 +12,10 @@ from PyQt6.QtWidgets import QTabWidget
 FLUORESCENCE_SAMPLES = 100
 
 class CameraImages:
-    def __init__(self, images: np.ndarray):
+    def __init__(self, images: np.ndarray = None, n_atoms: float = float('nan'), max_od: float = float('nan')):
         self.images = images
+        self.n_atoms = n_atoms
+        self.max_od = max_od
 
 class FluorescenceSample:
     def __init__(self, sample: float):
@@ -63,6 +65,7 @@ class PlotsGui:
         self.camera_tabs.clear()
 
         # plot the images
+        image_names = ["Foreground", "Background", "Absorption", "OD Image"]
         for i in range(camera_images.images.shape[0]):
             canvas = FigureCanvas(Figure(figsize=(5, 3)))
             fig = canvas.figure
@@ -73,4 +76,4 @@ class PlotsGui:
             fig.colorbar(ax.images[0], ax=ax)
 
             # add a tab for the images
-            self.camera_tabs.addTab(canvas, f"Picture {i}")
+            self.camera_tabs.addTab(canvas, f"{image_names[i]}")

@@ -52,11 +52,7 @@ class AbstractDevice:
         self.device_settings = DeviceSettings()
 
         # initialize background management for filtering
-        self.image_analysis = ImageAnalysis()
-        self.background_bank = np.zeros((512, 512, 100))
-        self.number_of_backgrounds = 0
-        self.n_atoms = []
-        self.max_od = []
+        self.image_analysis = ImageAnalysis(self)
 
     # spawns the gui in a separate process
     def run(self):
@@ -141,8 +137,8 @@ class AbstractDevice:
         self.run_experiment_device(flattened_stages)
 
     # handles the host side functions of running an experiment
-    def run_experiment(self, stages):
-        disable_pulsing()  
+    def run_experiment(self, stages) -> tuple[float, float, np.ndarray]:
+        disable_pulsing()
 
         # tell the camera server to acquire a frame
         camera = None
@@ -166,6 +162,8 @@ class AbstractDevice:
         enable_pulsing()
 
         # read back the camera images
+        n_atoms = float('nan')
+        max_od = float('nan')
         images = None
         if camera:
             try:
@@ -174,8 +172,9 @@ class AbstractDevice:
             except Exception as e:
                 print("Error occurred while reading camera images:", e)
         if images is not None:
-            # send the picture to the gui
-            self.device_pipe.send(CameraImages(self.filter_images(images)))
+            # filter the images and extract parameters
+            n_atoms, max_od, images = self.image_analysis.filter_images(images)
+            self.device_pipe.send(CameraImages(images, n_atoms, max_od))
 
         # save the results if requested
         if self.device_settings.save_runs:
@@ -194,6 +193,8 @@ class AbstractDevice:
                 images,
                 overwrite=False,
             )
+        
+        return (n_atoms, max_od, images)
 
     # dummy method to be overridden by the device
     def run_experiment_device(self, flattened_stages):
@@ -206,23 +207,6 @@ class AbstractDevice:
     # read fluorescence signal
     def read_fluorescence(self) -> float:
         return 100.0
-
-    def save_background(self, new_background: np.ndarray):
-        # Saves Bacground image to bank if unique
-        # Uses circular buffer to keep the 100 most recent backgrounds.
-        # Check if this background already exists
-        for i in range(self.background_bank.shape[2]):
-            if np.allclose(self.background_bank[:, :, i], new_background, atol=0):
-                return False 
-        
-        # Add new background at current BGindex position
-        self.background_bank[:, :, self.BGindex] = new_background
-        
-        # Increment BGindex and wrap around if bank is full using modulo
-        self.BGindex = (self.BGindex + 1) % self.background_bank.shape[2]
-        self.number_of_backgrounds += 1
-        
-        return True  # Background was added
     
     def update_device_settings(self, device_settings):
         self.device_settings = device_settings
@@ -232,35 +216,6 @@ class AbstractDevice:
             enable_pulsing()
         else:
             disable_pulsing()
-
-    def filter_images(self, images: np.ndarray) -> np.ndarray:
-        if images.shape[0] == 3:
-            # Process images
-            Foreground = images[0,:,:] - images[2,:,:]
-            Background = images[1,:,:] - images[2,:,:]
-            self.save_background(Background) # Saves new background if unique
-            od_image = -np.log((Foreground)/(Background))
-
-            self.n_atoms.append(self.image_analysis.get_atom_number(od_image = od_image))
-            self.max_od.append(self.image_analysis.get_max_od(od_image = od_image))
-
-            # apply filtering based on device settings
-            if self.device_settings.fringe_removal  and self.number_of_backgrounds > 5:
-                od_image, opref = filtering.fringe_removal(Foreground, self.background_bank[:,:,:self.number_of_backgrounds])
-
-            if self.device_settings.pca and self.number_of_backgrounds > 5:
-                od_image, opref = filtering.pca(Foreground, self.background_bank[:,:,:self.number_of_backgrounds])
-
-            if self.device_settings.low_pass:
-                od_image = filtering.low_pass(images)
-
-            if self.device_settings.fft_filter:
-                od_image = filtering.fft_filter(od_image)
-
-            # append the processed image to the original images
-            images = images.append(od_image)
-
-        return images
 
 '''
 temporary functions to enable/disable pulsing
