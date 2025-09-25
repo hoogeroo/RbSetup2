@@ -20,7 +20,7 @@ class HiddenGui:
 
             # create the widget for the variable
             widget = variable.widget()
-            widget.changed_signal().connect(self.update_hidden)
+            widget.changed_signal.connect(self.update_hidden)
             form_layout.addRow(variable.label, widget)
             self.widgets[variable.id] = widget
 

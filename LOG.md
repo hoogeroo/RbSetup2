@@ -103,3 +103,4 @@
 - 25/09/25
   - Dipole/sheet calibration
   - Refactor image processing
+  - Show what the hold values are currently held to

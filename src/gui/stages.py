@@ -52,7 +52,7 @@ class StagesGui:
             dc_widget = variable.widget()
             if variable.id == "time" or variable.id == "samples":
                 dc_widget.setEnabled(False)  # time and samples don't make sense for dc
-            dc_widget.changed_signal().connect(self.update_dc)
+            dc_widget.changed_signal.connect(self.update_dc)
             self.window.dc_container.addWidget(dc_widget)
             self.dc_widgets[variable.id] = dc_widget
 
@@ -151,6 +151,9 @@ class StagesGui:
         # send the extracted dc values to the device
         self.window.gui_pipe.send(self.extract_dc())
 
+        # update the hold labels with the new dc values
+        self.update_holds()
+
     # runs the experiment and using the data from the widgets
     def submit_experiment(self):
         # run the actual experiment
@@ -179,6 +182,40 @@ class StagesGui:
 
         self.window.ai_progress = AiProgressDialog(self.window)
         self.window.ai_progress.exec()
+
+    # updates the hold labels with the values they will hold to
+    def update_holds(self):
+        # ignore widget updates if the UI is not loaded yet
+        if not self.window.ui_loaded:
+            return
+
+        # update the hold labels with the current values
+        stages = self.extract_stages()
+        current_values = stages.dc
+        for stage in stages.stages:
+            for variable in self.variables:
+                # skip hidden variables
+                if variable.hidden:
+                    continue
+
+                # get the widget for the variable
+                widget = self.get_stage(stage.id).widgets[variable.id]
+                widget_value = widget.get_value()
+
+                # get the current value of the variable
+                current_value = getattr(current_values, variable.id)
+                if widget_value.is_hold() and stage.enabled:
+                    # if the widget is in hold mode, update the label
+                    widget.hold_label.setText(f"Hold ({current_value})")
+                elif stage.enabled:
+                    # update current values to the new value
+                    if isinstance(widget_value, FloatValue) and widget_value.is_ramp():
+                        _, end = widget_value.ramp_values()
+                        widget_value = FloatValue.constant(end)
+                    setattr(current_values, variable.id, widget_value)
+                else:
+                    # if the stage is disabled, don't change the current value
+                    widget.hold_label.setText(f"Hold")
 
     '''
     methods for renaming, copying, creating and deleting stages
@@ -241,6 +278,7 @@ class StagesGui:
 
             # add the widget for the variable
             widget = variable.widget()
+            widget.changed_signal.connect(self.update_holds)
             stage_container.addWidget(widget)
             widgets[variable.id] = widget
 
@@ -261,6 +299,9 @@ class StagesGui:
         # disable the stage
         for widget in self.stages[idx].widgets.values():
             widget.setEnabled(not enabled)
+        
+        # update the hold labels with the new values
+        self.update_holds()
 
     # renames the stage in the gui
     def rename_stage(self, idx: int):

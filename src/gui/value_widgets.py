@@ -2,7 +2,7 @@
 value_widgets.py: widgets for each of the value types
 '''
 
-from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtCore import pyqtSignal, QSize, Qt
 from PyQt6.QtWidgets import *
 
 from src.value_types import *
@@ -11,6 +11,8 @@ from src.value_types import *
 big = 16777215
 
 class BoolWidget(QWidget):
+    changed_signal = pyqtSignal()
+
     def __init__(self, variable, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -35,6 +37,7 @@ class BoolWidget(QWidget):
         self.checkbox.setMinimumSize(QSize(0, 24))
         self.checkbox.setMaximumSize(QSize(big, 24))
         self.checkbox.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
+        self.checkbox.stateChanged.connect(self.changed_signal.emit)
         layout.addWidget(self.checkbox)
 
         self.setLayout(layout)
@@ -47,11 +50,13 @@ class BoolWidget(QWidget):
         self.state = "hold"
         self.hide()
         self.hold_label.setVisible(True)
+        self.changed_signal.emit()
 
     def mode_constant(self):
         self.state = "constant"
         self.hide()
         self.checkbox.setVisible(True)
+        self.changed_signal.emit()
 
     def get_value(self):
         if self.state == "hold":
@@ -67,11 +72,11 @@ class BoolWidget(QWidget):
         if value.is_constant():
             self.mode_constant()
             self.checkbox.setChecked(bool(value.constant_value()))
-
-    def changed_signal(self):
-        return self.checkbox.stateChanged
+        self.changed_signal.emit()
 
 class IntWidget(QWidget):
+    changed_signal = pyqtSignal()
+
     def __init__(self, variable, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -99,6 +104,7 @@ class IntWidget(QWidget):
         self.spinbox.setMaximum(variable.maximum)
         self.spinbox.setSingleStep(variable.step)
         self.spinbox.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
+        self.spinbox.valueChanged.connect(self.changed_signal.emit)
         layout.addWidget(self.spinbox)
 
         self.setLayout(layout)
@@ -111,11 +117,13 @@ class IntWidget(QWidget):
         self.state = "hold"
         self.hide()
         self.hold_label.setVisible(True)
+        self.changed_signal.emit()
 
     def mode_constant(self):
         self.state = "constant"
         self.hide()
         self.spinbox.setVisible(True)
+        self.changed_signal.emit()
 
     def get_value(self):
         if self.state == "hold":
@@ -131,11 +139,11 @@ class IntWidget(QWidget):
         if value.is_constant():
             self.mode_constant()
             self.spinbox.setValue(value.constant_value())
-
-    def changed_signal(self):
-        return self.spinbox.valueChanged
+        self.changed_signal.emit()
 
 class FloatWidget(QWidget):
+    changed_signal = pyqtSignal()
+
     def __init__(self, variable, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -164,6 +172,7 @@ class FloatWidget(QWidget):
         self.spinbox.setMaximum(self.variable.maximum)
         self.spinbox.setSingleStep(self.variable.step)
         self.spinbox.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
+        self.spinbox.valueChanged.connect(self.changed_signal.emit)
         layout.addWidget(self.spinbox)
 
         self.ramp_spinbox1 = QDoubleSpinBox()
@@ -173,6 +182,7 @@ class FloatWidget(QWidget):
         self.ramp_spinbox1.setMaximum(self.variable.maximum)
         self.ramp_spinbox1.setSingleStep(self.variable.step)
         self.ramp_spinbox1.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
+        self.ramp_spinbox1.valueChanged.connect(self.changed_signal.emit)
         self.ramp_spinbox1.setVisible(False)
         layout.addWidget(self.ramp_spinbox1)
         self.ramp_spinbox2 = QDoubleSpinBox()
@@ -182,6 +192,7 @@ class FloatWidget(QWidget):
         self.ramp_spinbox2.setMaximum(self.variable.maximum)
         self.ramp_spinbox2.setSingleStep(self.variable.step)
         self.ramp_spinbox2.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
+        self.ramp_spinbox2.valueChanged.connect(self.changed_signal.emit)
         self.ramp_spinbox2.setVisible(False)
         layout.addWidget(self.ramp_spinbox2)
 
@@ -197,17 +208,20 @@ class FloatWidget(QWidget):
         self.state = "hold"
         self.hide()
         self.hold_label.setVisible(True)
+        self.changed_signal.emit()
 
     def mode_constant(self):
         self.state = "constant"
         self.hide()
         self.spinbox.setVisible(True)
+        self.changed_signal.emit()
 
     def mode_ramp(self):
         self.state = "ramp"
         self.hide()
         self.ramp_spinbox1.setVisible(True)
         self.ramp_spinbox2.setVisible(True)
+        self.changed_signal.emit()
 
     def get_value(self):
         if self.state == "hold":
@@ -230,6 +244,3 @@ class FloatWidget(QWidget):
             start, end = value.ramp_values()
             self.ramp_spinbox1.setValue(start)
             self.ramp_spinbox2.setValue(end)
-
-    def changed_signal(self):
-        return self.spinbox.valueChanged

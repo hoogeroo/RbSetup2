@@ -63,6 +63,7 @@ class Gui(QMainWindow):
 
         # mark the UI as loaded
         self.ui_loaded = True
+        self.stages_gui.update_holds()
 
         # Send device settings to device on startup
         self.update_device_settings()
