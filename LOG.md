@@ -96,3 +96,7 @@
   - Updated device_db with ttl switches to match the new build
 - 22/09/25
   - Add tabs for groups of stages in the gui
+- 24/09/25
+  - Clean up bens stuff
+  - Fix column insertion position with tabs
+  - Add atom count log

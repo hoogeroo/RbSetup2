@@ -124,6 +124,7 @@ def load_settings(path, window):
     for i in reversed(range(len(window.stages_gui.stages))):
         window.stages_gui.delete_stage(i)
     window.stages_gui.stages.clear()
+    window.stages_gui.tabs.clear()
     window.stages_tabs.clear()
 
     # create new stage widgets based on the loaded data

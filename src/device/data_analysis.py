@@ -100,14 +100,6 @@ class ImageAnalysis:
             Total atom number
         """
         # integrate optical density over the image and convert to atom number
-        atom_number = float(round((pixel_size**2) * np.sum(od_image) / crosssection, 2))
-        keys = ['K', 'M', 'B', 'T']
-        count = 0
-        for div in range(0, len(keys)):
-          atom_number = atom_number/1000
-          count += 1
-          if atom_number < 1000:
-            break
-        atom_number_rounded = str(round(atom_number, 2)) + keys[count - 1]
-        
-        return atom_number_rounded, atom_number
+        area_px = (2/3) * pixel_size**2  # Area of one pixel in m^2
+        atom_number = float(round((area_px) * np.sum(od_image) / crosssection, 2))
+        return atom_number

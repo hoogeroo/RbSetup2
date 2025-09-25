@@ -323,6 +323,21 @@
     <layout class="QGridLayout" name="camera_grid"/>
    </widget>
   </widget>
+  <widget class="QDockWidget" name="log_dock">
+   <property name="windowTitle">
+    <string>Log</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>8</number>
+   </attribute>
+   <widget class="QWidget" name="log_widget">
+    <layout class="QGridLayout" name="gridLayout_2">
+     <item row="0" column="0">
+      <widget class="QTextEdit" name="log"/>
+     </item>
+    </layout>
+   </widget>
+  </widget>
   <action name="action_save">
    <property name="icon">
     <iconset theme="document-save">
