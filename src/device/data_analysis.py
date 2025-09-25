@@ -9,6 +9,7 @@ from scipy import ndimage, optimize
 from scipy.stats import norm
 
 from src.device import filtering
+from src.gui.plots import CameraImages
 
 
 class ImageAnalysis:
@@ -36,42 +37,32 @@ class ImageAnalysis:
         # Background was added
         return True
 
-    def filter_images(self, images: np.ndarray) -> tuple[float, float, np.ndarray]:
-        n_atoms = float('nan')
-        max_od = float('nan')
+    def filter_images(self, images: CameraImages) -> CameraImages:
+        # process images
+        foreground = np.maximum(images.foreground - images.empty, 1)
+        background = np.maximum(images.background - images.empty, 1)
+        self.save_background(background)
+        od_image = -np.log(foreground / background)
 
-        if images.shape[0] == 3:
-            # process images
-            foreground = np.maximum(images[0,:,:] - images[2,:,:], 1)
-            background = np.maximum(images[1,:,:] - images[2,:,:], 1)
-            self.save_background(background)
-            od_image = -np.log(foreground / background)
+        # calculate physical parameters
+        images.n_atoms = self.get_atom_number(od_image)
+        images.max_od = self.get_max_od(od_image)
 
-            # calculate physical parameters
-            n_atoms = self.get_atom_number(od_image)
-            max_od = self.get_max_od(od_image)
+        # apply filtering based on device settings
+        if self.device.device_settings.fringe_removal  and self.device.number_of_backgrounds > 5:
+            od_image, opref = filtering.fringe_removal(foreground, self.background_bank)
 
-            # apply filtering based on device settings
-            if self.device.device_settings.fringe_removal  and self.device.number_of_backgrounds > 5:
-                od_image, opref = filtering.fringe_removal(foreground, self.background_bank)
+        if self.device.device_settings.pca and self.number_of_backgrounds > 5:
+            od_image, opref = filtering.pca(foreground, self.background_bank)
 
-            if self.device.device_settings.pca and self.number_of_backgrounds > 5:
-                od_image, opref = filtering.pca(foreground, self.background_bank)
+        if self.device.device_settings.low_pass:
+            od_image = filtering.low_pass(images)
 
-            if self.device.device_settings.low_pass:
-                od_image = filtering.low_pass(images)
+        if self.device.device_settings.fft_filter:
+            od_image = filtering.fft_filter(od_image)
 
-            if self.device.device_settings.fft_filter:
-                od_image = filtering.fft_filter(od_image)
-
-            # ensure od_image maintains proper 3D shape (add dimension if needed)
-            if od_image.ndim == 2:
-                od_image = od_image[np.newaxis, :, :]
-
-            # append the processed image to the original images
-            images = np.append(images, od_image, axis=0)
-
-        return (n_atoms, max_od, images)
+        images.od = od_image
+        return images
 
     def get_max_od(self, od_image: np.ndarray) -> float:
         """

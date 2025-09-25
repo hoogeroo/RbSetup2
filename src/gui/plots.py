@@ -12,8 +12,11 @@ from PyQt6.QtWidgets import QTabWidget
 FLUORESCENCE_SAMPLES = 100
 
 class CameraImages:
-    def __init__(self, images: np.ndarray = None, n_atoms: float = float('nan'), max_od: float = float('nan')):
-        self.images = images
+    def __init__(self, foreground: np.ndarray, background: np.ndarray, empty: np.ndarray, od: np.ndarray=None, n_atoms: float = float('nan'), max_od: float = float('nan')):
+        self.foreground = foreground
+        self.background = background
+        self.empty = empty
+        self.od = od
         self.n_atoms = n_atoms
         self.max_od = max_od
 
@@ -59,24 +62,7 @@ class PlotsGui:
     # update the camera images
     def update_images(self, camera_images: CameraImages):
         # store unfiltered images for saving later
-        self.images = camera_images.images
-
-        # clear existing tabs
-        self.camera_tabs.clear()
-
-        # plot the images
-        image_names = ["Foreground", "Background", "Empty Image", "OD Image"]
-        for i in range(camera_images.images.shape[0]):
-            canvas = FigureCanvas(Figure(figsize=(5, 3)))
-            fig = canvas.figure
-
-            # plot the new image
-            ax = fig.subplots()
-            ax.imshow(camera_images.images[i, :, :], aspect='equal', cmap='inferno')
-            fig.colorbar(ax.images[0], ax=ax)
-
-            # add a tab for the images
-            self.camera_tabs.addTab(canvas, f"{image_names[i]}")
+        self.images = camera_images
 
         # format the atom number nicely
         atom_number = camera_images.n_atoms
@@ -88,6 +74,25 @@ class PlotsGui:
           if atom_number < 1000:
             break
         atom_number_rounded = str(round(atom_number, 2)) + keys[count - 1]
+
+        # clear existing tabs
+        self.camera_tabs.clear()
+
+        # plot the images
+        image_names = [("OD Image", "od"), ("Foreground", "foreground"), ("Background", "background"), ("Empty Image", "empty")]
+        for (tab_name, image_name) in image_names:
+            canvas = FigureCanvas(Figure(figsize=(5, 3)))
+            fig = canvas.figure
+
+            # plot the new image
+            ax = fig.subplots()
+            image = getattr(camera_images, image_name)
+            ax.imshow(image, aspect='equal', cmap='inferno')
+            ax.set_title(f"{tab_name} - {atom_number_rounded} atoms")
+            fig.colorbar(ax.images[0], ax=ax)
+
+            # add a tab for the images
+            self.camera_tabs.addTab(canvas, tab_name)
 
         # print to the log
         text = self.window.log.document().toPlainText()

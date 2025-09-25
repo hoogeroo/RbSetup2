@@ -19,18 +19,24 @@ try:
 
             coil_current_calibration = lambda percentage: 5.0 * percentage / 100.0
 
-            # percentage = np.concatenate((np.arange(3, 10, 1), np.arange(10, 70, 10))) 
-            # dipole_powers = np.array([23.3E-3, 59E-3, 0.165, 0.377, 0.715, 1.18, 1.79, 2.51, 14.6, 31, 49.3, 65.4, 71.1]) # in milliWatts
-            # dipole_powers *= 100 / max(dipole_powers)
-            # dipole_volts = 3.4 * percentage / max(percentage) # in Volts
-            # dipole_calibration = np.polyfit(dipole_powers, dipole_volts, 5) # We want to put in a desired power and get back a voltage
+            percentage = np.concatenate((np.arange(3, 10, 1), np.arange(10, 70, 10))) 
+            dipole_powers = np.array([23.3E-3, 59E-3, 0.165, 0.377, 0.715, 1.18, 1.79, 2.51, 14.6, 31, 49.3, 65.4, 71.1]) # in milliWatts
+            dipole_powers *= 100 / max(dipole_powers)
+            dipole_volts = 3.4 * percentage / max(percentage) # in Volts
+            dipole_calibration = np.poly1d(np.polyfit(dipole_powers, dipole_volts, 5)) # We want to put in a desired power and get back a voltage
+
+            sheet_powers = np.array([0.75,0.96,1.62,2.65,3.95,5.43,6.99,8.49,9.81,10.83,11.57,11.97,12.01])
+            sheet_powers -= min(sheet_powers)
+            sheet_powers *= 100.0 / max(sheet_powers)
+            sheet_volts = np.linspace(0,0.6, len(sheet_powers))
+            sheet_calibration = np.poly1d(np.polyfit(sheet_powers, sheet_volts, 5))
 
             # initializes the variables for the device and gui
             self.variables = [
                 VariableTypeFloat("Time (ms)", "time", 0.0, 10000.0, 100.0),
                 VariableTypeInt("Samples", "samples", 1, 10000, 100),
                 VariableTypeBool("Camera", "camera"),
-                VariableTypeFloat("Dipole Amplitude", "dipole_amplitude", 0.0, 3.0, 0.1),
+                VariableTypeFloat("Dipole Amplitude", "dipole_amplitude", 0.0, 100.0, 0.5, calibration=dipole_calibration),
                 VariableTypeFloat("MOT 2 coils current", "mot2_coils_current", 0.0, 100.0, 0.5, calibration=coil_current_calibration),
                 VariableTypeFloat("x Field", "x_field", 0.0, 5.0, 0.01, hidden=True),
                 VariableTypeFloat("y Field", "y_field", 0.0, 5.0, 0.01),
@@ -47,7 +53,7 @@ try:
                 VariableTypeFloat("Shadow Frequency (MHz)", "shadow_frequency", 55.0, 120.0, 1.0),
                 VariableTypeFloat("Optical Pump Amplitude", "optical_pump_amplitude"),
                 VariableTypeFloat("Optical Pump Frequency (MHz)", "optical_pump_frequency", 55.0, 120.0, 1.0),
-                VariableTypeFloat("Sheet Amplitude", "sheet_amplitude", step=0.01),
+                VariableTypeFloat("Sheet Amplitude", "sheet_amplitude", 0.0, 100.0, 0.5, calibration=sheet_calibration),
                 VariableTypeFloat("Sheet Frequency (MHz)", "sheet_frequency", 55.0, 120.0, 1.0),
                 VariableTypeFloat("RF Amplitude", "rf_amplitude", hidden=True),
                 VariableTypeFloat("RF Frequency (MHz)", "rf_frequency", 0, 100.0, 1.0),

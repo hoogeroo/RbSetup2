@@ -100,3 +100,6 @@
   - Clean up bens stuff
   - Fix column insertion position with tabs
   - Add atom count log
+- 25/09/25
+  - Dipole/sheet calibration
+  - Refactor image processing

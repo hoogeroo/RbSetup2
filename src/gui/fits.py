@@ -26,6 +26,7 @@ def save_settings(path, variables, stages, images, multigo_settings=None, ai_set
     # save the camera images
     image_hdu = fits.ImageHDU()
     if images is not None:
+        images = np.array([images.foreground, images.background, images.empty, images.od * 10000.0])
         image_hdu.data = images.astype(np.uint16)
 
     # add the stages
@@ -100,7 +101,7 @@ def load_settings(path, window):
     # load the camera images
     images = images_hdu.data
     if images is not None:
-        window.plots_gui.update_images(CameraImages(images))
+        window.plots_gui.update_images(CameraImages(images[0], images[1], images[2], images[3].astype(np.float32) / 10000.0))
 
     # load the stages data
     stages_data = stages_hdu.data

@@ -143,15 +143,8 @@ class AbstractDevice:
         # tell the camera server to acquire a frame
         camera = None
         try:
-            # count the number of times the camera is triggered
-            n_triggers = 0
-            for stage in stages.stages:
-                if stage.camera.is_constant():
-                    n_triggers += stage.camera.constant_value()
-
-            if n_triggers > 0:
-                camera = CameraConnection()
-                camera.shoot(n_triggers)
+            camera = CameraConnection()
+            camera.shoot(3)
         except Exception as e:
             print("Error occurred while shooting:", e)
 
@@ -173,8 +166,8 @@ class AbstractDevice:
                 print("Error occurred while reading camera images:", e)
         if images is not None:
             # filter the images and extract parameters
-            n_atoms, max_od, images = self.image_analysis.filter_images(images)
-            self.device_pipe.send(CameraImages(images, n_atoms, max_od))
+            camera_images = CameraImages(images[0], images[1], images[2])
+            self.device_pipe.send(self.image_analysis.filter_images(camera_images))
 
         # save the results if requested
         if self.device_settings.save_runs:
