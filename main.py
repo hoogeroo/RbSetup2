@@ -184,6 +184,9 @@ try:
                 # wait for the duration of the stage
                 delay(s.time[i] * ms)
 
+            # make sure experiment is finished before returning
+            wait_until_mu(now_mu() + 1 * ms)
+
         @kernel
         def pulse_push_laser(self):
             # push the laser for a short time
