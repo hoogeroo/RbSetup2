@@ -188,7 +188,7 @@ try:
                 delay(s.time[i] * ms)
 
             # make sure experiment is finished before returning
-            wait_until_mu(now_mu() + 1 * ms)
+            self.core.wait_until_mu(now_mu() + 1 * ms)
 
         @kernel
         def pulse_push_laser(self):

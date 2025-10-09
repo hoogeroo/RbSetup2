@@ -7,6 +7,7 @@ from typing import Tuple, Optional, List
 import matplotlib.pyplot as plt
 from scipy import ndimage, optimize
 from scipy.stats import norm
+from scipy.optimize import curve_fit
 
 from src.device import filtering
 from src.gui.plots import CameraImages
@@ -19,6 +20,13 @@ class ImageAnalysis:
         self.device = device
         self.background_bank = []
         self.number_of_backgrounds = 0
+
+    def fit_2D_Gaussian(self, coords, sigma_x, sigma_y, A, x0, y0, offset):
+        """2D Gaussian function for fitting."""
+        x, y = coords
+        gaussian = offset + A * np.exp(-(((x - x0) ** 2) / (2 * sigma_x ** 2) + ((y - y0) ** 2) / (2 * sigma_y ** 2)))
+        return gaussian.ravel()
+
 
     def save_background(self, new_background: np.ndarray):
         # Saves Bacground image to bank if unique
@@ -93,7 +101,32 @@ class ImageAnalysis:
         Returns:
             Total atom number
         """
-        # integrate optical density over the image and convert to atom number
-        area_px = (2/3) * pixel_size**2  # Area of one pixel in m^2
-        atom_number = float(round((area_px) * np.sum(od_image) / crosssection, 2))
+        
+        area_px = ((2/3) * pixel_size ) **2  # Area of one pixel in m^2
+
+        ### Gaussian Fitting Guesses ###
+        amp = np.max(od_image)  # Amplitude guess
+        x0, y0 = np.unravel_index(np.argmax(od_image), od_image.shape)  # Center guess
+        sigma_x, sigma_y = self.guess_widths(od_image)
+        offset = np.mean(od_image[0:10, 0:10])  # Offset guess from corner
+        initial_guess = (sigma_x, sigma_y, amp, x0, y0, offset)
+
+        x, y = np.indices(od_image.shape)
+
+        Gaussian_2D = curve_fit(self.fit_2D_Gaussian, (x, y), od_image.ravel(), p0 = initial_guess)
+
+        sigma_x, sigma_y, amp, x0, y0, offset = Gaussian_2D[0]
+        atom_number = 2 * area_px * np.pi * sigma_x * sigma_y * amp / crosssection # Gaussian integral result
+        
+        # atom_number2 = float(round((area_px) * np.sum(od_image) / crosssection, 2))
         return atom_number
+
+    def guess_widths(self, data: np.ndarray):
+        total_x = data.sum(axis=0)
+        total_y = data.sum(axis=1)
+        x_coords = np.arange(data.shape[1])
+        y_coords = np.arange(data.shape[0])
+
+        sx = np.sqrt(np.sum(total_x * (x_coords - (total_x * x_coords).sum() / total_x.sum())**2) / total_x.sum())
+        sy = np.sqrt(np.sum(total_y * (y_coords - (total_y * y_coords).sum() / total_y.sum())**2) / total_y.sum())
+        return sx, sy
