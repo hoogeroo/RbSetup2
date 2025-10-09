@@ -12,6 +12,7 @@ from src.variable_types import *
 
 try:
     from artiq.experiment import *
+    from artiq.coredevice import sampler
 
     class Device(AbstractDevice, EnvExperiment):
         def build(self):
@@ -28,14 +29,15 @@ try:
             sheet_powers = np.array([0.75,0.96,1.62,2.65,3.95,5.43,6.99,8.49,9.81,10.83,11.57,11.97,12.01])
             sheet_powers -= min(sheet_powers)
             sheet_powers *= 100.0 / max(sheet_powers)
-            sheet_volts = np.linspace(0,0.6, len(sheet_powers))
+            sheet_volts = np.linspace(0, 1.3, len(sheet_powers))
             sheet_calibration = np.poly1d(np.polyfit(sheet_powers, sheet_volts, 5))
 
             # initializes the variables for the device and gui
             self.variables = [
-                VariableTypeFloat("Time (ms)", "time", 0.0, 10000.0, 100.0),
+                VariableTypeFloat("Time (ms)", "time", 0.0, 10000.0, 10.0),
                 VariableTypeInt("Samples", "samples", 1, 10000, 100),
                 VariableTypeBool("Camera", "camera"),
+                VariableTypeFloat("Analog", "analog", -10.0, 10.0, 0.1),
                 VariableTypeFloat("Dipole Amplitude", "dipole_amplitude", 0.0, 100.0, 0.5, calibration=dipole_calibration),
                 VariableTypeFloat("MOT 2 coils current", "mot2_coils_current", 0.0, 100.0, 0.5, calibration=coil_current_calibration),
                 VariableTypeFloat("x Field", "x_field", 0.0, 5.0, 0.01, hidden=True),
@@ -145,6 +147,7 @@ try:
                 dac[5] = s.z_field[i]
                 dac[6] = s.dipole_amplitude[i]
                 dac[7] = 5.0 if s.rf_disable[i] else 0.0
+                dac[8] = s.analog[i]
                 self.fastino0.set_group(0, dac)
 
                 # update rf output
@@ -206,7 +209,7 @@ try:
             self.core.break_realtime()
             sample = [0.0]*8
             self.sampler0.sample(sample)
-            return -1000.0 * sample[0]
+            return -1000.0 * sample[3]
 
 # if artiq isn't available run the gui without it
 except ImportError:

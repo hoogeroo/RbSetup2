@@ -3,6 +3,7 @@ value_widgets.py: widgets for each of the value types
 '''
 
 from PyQt6.QtCore import pyqtSignal, QSize, Qt
+from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import *
 
 from src.value_types import *
@@ -149,6 +150,7 @@ class FloatWidget(QWidget):
 
         self.variable = variable
         self.state = "constant"
+        self.changed_signal.connect(self.update_color)
 
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
         self.addAction("Hold", self.mode_hold)
@@ -244,3 +246,23 @@ class FloatWidget(QWidget):
             start, end = value.ramp_values()
             self.ramp_spinbox1.setValue(start)
             self.ramp_spinbox2.setValue(end)
+        self.changed_signal.emit()
+    
+    def update_color(self):
+        from matplotlib import cm
+
+        boxes = [self.spinbox, self.ramp_spinbox1, self.ramp_spinbox2]
+        for box in boxes:
+            value = box.value()
+            color = background_color(value, self.variable)
+            box.setStyleSheet(f"background-color: {color.name()}")
+
+def background_color(value, variable):
+    from matplotlib import cm
+
+    ratio = (value - variable.minimum) / (variable.maximum - variable.minimum)
+    ratio = ratio * 0.8 + 0.1
+    cmap = cm.get_cmap('berlin')
+    red, green, blue, _ = [int(255 * c) for c in cmap(ratio)]
+    color = QColor(red, green, blue)
+    return color

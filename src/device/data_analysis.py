@@ -18,6 +18,7 @@ class ImageAnalysis:
     def __init__(self, device):
         self.device = device
         self.background_bank = []
+        self.number_of_backgrounds = 0
 
     def save_background(self, new_background: np.ndarray):
         # Saves Bacground image to bank if unique
@@ -29,10 +30,12 @@ class ImageAnalysis:
 
         # Add new background at current BGindex position
         self.background_bank.append(new_background)
+        self.number_of_backgrounds += 1
 
         # Limit the bank size to 100
         if len(self.background_bank) > 100:
             self.background_bank.pop(0)
+            self.number_of_backgrounds = 100
 
         # Background was added
         return True
@@ -56,7 +59,7 @@ class ImageAnalysis:
             od_image, opref = filtering.pca(foreground, self.background_bank)
 
         if self.device.device_settings.low_pass:
-            od_image = filtering.low_pass(images)
+            od_image = filtering.low_pass(od_image)
 
         if self.device.device_settings.fft_filter:
             od_image = filtering.fft_filter(od_image)

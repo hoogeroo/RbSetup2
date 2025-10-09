@@ -12,7 +12,7 @@ from src.device.device_types import AiSubmission, DeviceSettings, MultiGoSubmiss
 from src.device.multigo import MultiGoSettings
 from src.gui.ai import AiDialog, AiProgressDialog
 from src.gui.multigo import MultiGoDialog, MultiGoProgressDialog
-from src.gui.value_widgets import big
+from src.gui.value_widgets import background_color, big
 from src.variable_types import *
 
 # class to represent a stage in the gui. differs from Stage in that it can't be sent to the device
@@ -207,6 +207,13 @@ class StagesGui:
                 if widget_value.is_hold() and stage.enabled:
                     # if the widget is in hold mode, update the label
                     widget.hold_label.setText(f"Hold ({current_value})")
+
+                    # update the background color of the hold label
+                    if isinstance(current_value, FloatValue) and current_value.is_constant():
+                        color = background_color(current_value.constant_value(), variable)
+                        widget.hold_label.setStyleSheet(f"color: {color.name()}")
+                    else:
+                        widget.hold_label.setStyleSheet("")
                 elif stage.enabled:
                     # update current values to the new value
                     if isinstance(widget_value, FloatValue) and widget_value.is_ramp():
@@ -216,6 +223,7 @@ class StagesGui:
                 else:
                     # if the stage is disabled, don't change the current value
                     widget.hold_label.setText(f"Hold")
+                    widget.hold_label.setStyleSheet("")
 
     '''
     methods for renaming, copying, creating and deleting stages

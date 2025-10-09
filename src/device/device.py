@@ -19,6 +19,7 @@ from src.host.camera import CameraConnection
 from src.variable_types import VariableTypeBool, VariableTypeInt, VariableTypeFloat
 from src.device import filtering
 from src.device.data_analysis import ImageAnalysis
+from src.value_types import BoolValue, IntValue, FloatValue
 
 SAVE_PATH = "runs"
 
@@ -89,6 +90,15 @@ class AbstractDevice:
                             break
                     if found:
                         continue
+                    self.push_amp = msg.push_amplitude.constant_value()
+                    self.mot1_amp = msg.mot1_amplitude.constant_value()
+                    self.push_freq = msg.push_frequency.constant_value()
+                    self.mot1_freq = msg.mot1_frequency.constant_value()
+
+                    dds_amp_update(3, self.push_amp) 
+                    dds_freq_update(3, self.push_freq)
+                    dds_amp_update(1, self.mot1_amp)
+                    dds_freq_update(1, self.mot1_freq)
 
                     # sets the outputs to the ones in a stage (for dc)
                     self.run_stage(msg)
@@ -139,6 +149,7 @@ class AbstractDevice:
     # handles the host side functions of running an experiment
     def run_experiment(self, stages) -> tuple[float, float, np.ndarray]:
         disable_pulsing()
+        time.sleep(0.2)
 
         # tell the camera server to acquire a frame
         camera = None
@@ -152,6 +163,7 @@ class AbstractDevice:
         flattened_stages = FlattenedStages(stages, self.variables)
         self.run_experiment_device(flattened_stages)
 
+        time.sleep(3.0) # wait for the experiment to finish
         enable_pulsing()
 
         # read back the camera images
@@ -217,21 +229,58 @@ temporary functions to enable/disable pulsing
 def enable_pulsing():
     import socket
 
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect((TCP_IP, TCP_PORT))
-    ml = 'PULSE,ON'
-    s.send(ml.encode())
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((TCP_IP, TCP_PORT))
+        ml = 'PULSE,ON'
+        s.send(ml.encode())
 
-    s.close()
-    time.sleep(0.1)
+        s.close()
+        time.sleep(0.1)
+    except:
+        pass
+
+
 
 def disable_pulsing():
     import socket
 
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect((TCP_IP, TCP_PORT))
-    ml = 'PULSE,OFF'
-    s.send(ml.encode())
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((TCP_IP, TCP_PORT))
+        ml = 'PULSE,OFF'
+        s.send(ml.encode())
 
-    s.close()
-    time.sleep(0.1)
+        s.close()
+        time.sleep(0.1)
+    except:
+        pass
+
+def dds_amp_update(id, amplitude):
+    import socket
+    
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(1)
+        s.connect((TCP_IP, TCP_PORT))
+        ml = 'AMPL,%d,%f' % (id, amplitude)
+        s.send(ml.encode())
+        s.recv(5)
+        s.close()
+    except:
+        pass
+ 
+
+def dds_freq_update(id, frequency):
+    import socket
+    
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(1)
+        s.connect((TCP_IP, TCP_PORT))
+        ml = 'FREQ,%d,%f' % (id, frequency)
+        s.send(ml.encode())
+        s.recv(5)
+        s.close()
+    except:
+        pass
