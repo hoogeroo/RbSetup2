@@ -163,7 +163,6 @@ class AbstractDevice:
         flattened_stages = FlattenedStages(stages, self.variables)
         self.run_experiment_device(flattened_stages)
 
-        time.sleep(3.0) # wait for the experiment to finish
         enable_pulsing()
 
         # read back the camera images
@@ -195,7 +194,7 @@ class AbstractDevice:
                 file_path,
                 self.variables,
                 stages,
-                images,
+                camera_images,
                 overwrite=False,
             )
         

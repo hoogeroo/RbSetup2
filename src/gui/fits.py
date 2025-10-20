@@ -26,8 +26,8 @@ def save_settings(path, variables, stages, images, multigo_settings=None, ai_set
     # save the camera images
     image_hdu = fits.ImageHDU()
     if images is not None:
-        images = np.array([images.foreground, images.background, images.empty, images.od * 10000.0])
-        image_hdu.data = images.astype(np.uint16)
+        images = np.array([images.foreground, images.background, images.empty, images.od])
+        image_hdu.data = images.astype(np.float32)
 
     # add the stages
     stage_columns = []

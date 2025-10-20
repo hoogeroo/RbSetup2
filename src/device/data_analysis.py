@@ -114,12 +114,15 @@ class ImageAnalysis:
         x, y = np.indices(od_image.shape)
 
         Gaussian_2D = curve_fit(self.fit_2D_Gaussian, (x, y), od_image.ravel(), p0 = initial_guess)
-
-        sigma_x, sigma_y, amp, x0, y0, offset = Gaussian_2D[0]
-        atom_number = 2 * area_px * np.pi * sigma_x * sigma_y * amp / crosssection # Gaussian integral result
-        
-        # atom_number2 = float(round((area_px) * np.sum(od_image) / crosssection, 2))
+        try:
+            sigma_x, sigma_y, amp, x0, y0, offset = Gaussian_2D[0]
+            atom_number = 2 * area_px * np.pi * sigma_x * sigma_y * amp / crosssection # Gaussian integral result
+        except RuntimeError:
+            # Fallback to simple sum if fitting fails
+            atom_number = float(round((area_px) * np.sum(od_image) / crosssection, 2))
+            
         return atom_number
+       
 
     def guess_widths(self, data: np.ndarray):
         total_x = data.sum(axis=0)
