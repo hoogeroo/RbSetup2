@@ -83,10 +83,15 @@ class RunVariableWidget(QWidget):
 
     # create a new run variable
     def new_run_variable(self, idx, variable):
-        current_value = self.stages.stages[idx].widgets[variable].get_value()
+        variable = self.stages.variables[variable]
+        if variable.hidden:
+            widget = self.stages.hidden_gui.widgets[variable.id]
+        else:
+            widget = self.stages.stages[idx].widgets[variable.id]
+        current_value = widget.get_value()
         run_variable = RunVariable(
             self.stages.stages[idx].id,
-            self.stages.variables[variable].id,
+            variable.id,
             current_value,
             current_value,
             0

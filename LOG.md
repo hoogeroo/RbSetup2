@@ -104,3 +104,5 @@
   - Dipole/sheet calibration
   - Refactor image processing
   - Show what the hold values are currently held to
+- 23/10/25
+  - Fix Multigo

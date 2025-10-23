@@ -10,7 +10,7 @@ class AiPlotData:
     """Message class for sending AI plot data from device to GUI"""
     def __init__(self, cost, cost_uncer, parameters, param_names, min_boundary, max_boundary):
         self.cost = cost
-        self.cost_uncer = cost_uncer  
+        self.cost_uncer = cost_uncer
         self.parameters = parameters
         self.param_names = param_names
         self.min_boundary = min_boundary
