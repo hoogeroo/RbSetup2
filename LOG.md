@@ -1,0 +1,108 @@
+# Work log
+
+- 14/07/25
+  - Tring to get artiq-zynq release-8 build working for stability (currently running master branch) build still hanging
+  - Figuring out how to structure UI using qt designer/creator and python conversion
+  - Figuring out how to communicate between host and device within the artiq framework
+- 15/07/25
+  - Tried working remote but couldn't connect to device so just worked on compilation
+- 16/07/25
+  - Got gui communicating with artiq device
+- 17/07/25
+  - Started work on re creating the experiment controller gui using `.ui` file
+  - Got dc values gui working
+  - Made basic experiment controller with fixed time step stages
+- 18/07/25
+  - Saving and loading ui state
+  - Got classes woking, refactoring to use classes instead of big numpy array for data transfer
+- 21/07/25
+  - Stage deletion, renaming and disabling
+- 22/07/25
+  - Make gui run without device so I can work on gui outside of lab
+  - Add hold value to gui
+- 23/07/25
+  - Save and load hold and constant state
+  - Save and load settings to a fits file
+- 24/07/25
+  - Refactor to remove multiple class value types
+- 28/07/25
+  - Work on setting up picam sdk on linux to simplify connecting to the camera
+- 29/07/25
+  - Connect to existing camera server and get images back from it
+- 30/07/25
+  - Add matplotlib window to the gui
+- 31/07/25
+  - Look into threading to stop the gui freezing and to load the MOT
+- 1/08/25
+  - Split gui into seperate python process to let device run independently
+- 4/08/25
+  - Figuring out how to break a loop from a pipe message cleanly
+- 5/08/25
+  - Add load mot button
+- 8/08/25
+  - Add linear ramp to gui and make it work with file saving and loading
+- 12/08/25
+  - Make linear ramp work on the device
+- 14/08/25
+  - Refactor to precompute all values before sending to device
+  - Add variable calibration (remaps variable outputs before sending to artiq device)
+- 15/08/25
+  - Read flourence from the device and send it to the gui
+  - Refactor to split up gui file (got too big)
+- 18/08/25
+  - Add widget selection for multigo
+  - Add multigo dialog
+- 21/08/25
+  - Finish multigo gui
+  - Store and load multigo state at runtime
+- 25/08/25
+  - Refactor to move imaging to appropriate file
+  - Refactor to move flattening from the gui to the device
+  - Implement working multigo
+- 26/08/25
+  - Multigo progress bar and cancellation
+  - Add a Multigo fluorescence threshold
+  - Show multiple pictures in camera plot
+- 27/08/25
+  - Move fits save/load to seperate file
+  - Save and load images from fits file
+  - Refactor fits saving to not need gui
+  - Add button to automatically save runs
+- 28/08/25
+  - Refactor codebase into folders for better organisation
+  - Add ai buttons and run variables gui
+  - Save/load run variables for ai and multigo
+- 4/09/25
+  - Start switch to artiq in the lab :D
+  - Combine update dc into run_experiment
+  - Refactor/fix file saving for above
+- 5/09/25
+  - Setup ai pipeline with settings and progress
+  - Add hidden variable tab
+  - Stop repeated dc updates clogging the device
+  - Start adding filters
+- 9/09/25
+  - Merge Bens changes
+- 12/09/25
+  - Add mloop to the artiq install
+  - Trying to speed up pulsing of the laser
+- 17/09/25
+  - Work on switching urukul channels using ttl to have fast switching
+  - Back to compiling artiq as the device_db.py file doesn't have the correct channels set up
+  - Fix removing/copy/paste stages
+- 18/09/25
+  - Compiled artiq release 8
+  - Flashed artiq with new build
+  - Updated device_db with ttl switches to match the new build
+- 22/09/25
+  - Add tabs for groups of stages in the gui
+- 24/09/25
+  - Clean up bens stuff
+  - Fix column insertion position with tabs
+  - Add atom count log
+- 25/09/25
+  - Dipole/sheet calibration
+  - Refactor image processing
+  - Show what the hold values are currently held to
+- 23/10/25
+  - Fix Multigo

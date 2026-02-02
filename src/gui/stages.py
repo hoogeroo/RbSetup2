@@ -1,0 +1,368 @@
+'''
+stages.py: this file has the code for managing the stages in the experiment along with the experiment control buttons and checkboxes
+'''
+
+from uuid import uuid4
+
+from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtWidgets import *
+
+from src.device.ai import AiSettings
+from src.device.device_types import AiSubmission, DeviceSettings, MultiGoSubmission, Stage, Stages
+from src.device.multigo import MultiGoSettings
+from src.gui.ai import AiDialog, AiProgressDialog
+from src.gui.multigo import MultiGoDialog, MultiGoProgressDialog
+from src.gui.value_widgets import background_color, big
+from src.variable_types import *
+
+# class to represent a stage in the gui. differs from Stage in that it can't be sent to the device
+class GuiStage:
+    def __init__(self, button, container, widgets, enabled, id, tab):
+        self.id = id if id is not None else uuid4()
+        self.button = button
+        self.container = container
+        self.widgets = widgets
+        self.enabled = enabled
+        self.tab = tab
+
+    def label(self):
+        return self.button.text()
+
+class StagesGui:
+    def __init__(self, window, variables, hidden_gui):
+        self.window = window
+        self.variables = variables
+        self.hidden_gui = hidden_gui
+        self.multigo_settings = MultiGoSettings([], 0.0)
+        self.ai_settings = AiSettings(0, 0, 'neural_net')
+
+        # store reference to all the widgets to get their values later
+        self.dc_widgets = {}
+        self.copy_widgets = {}
+        self.stages = []
+        self.tabs = {}
+
+        # fill dc, label, and copied containers with widgets
+        for variable in self.variables:
+            # skip hidden variables for the stages GUI
+            if variable.hidden:
+                variable.hidden = False
+
+
+            # add the widget to the dc container
+            dc_widget = variable.widget()
+            if variable.id == "time" or variable.id == "samples":
+                dc_widget.setEnabled(False)  # time and samples don't make sense for dc
+            dc_widget.changed_signal.connect(self.update_dc)
+            self.window.dc_container.addWidget(dc_widget)
+            self.dc_widgets[variable.id] = dc_widget
+
+            # add the widget to the copied container
+            copied_widget = variable.widget()
+            copied_widget.setEnabled(False)
+            self.window.copied_container.addWidget(copied_widget)
+            self.copy_widgets[variable.id] = copied_widget
+
+            # add the label to the label container
+            label = QLabel()
+            label.setText(variable.label)
+            label.setMinimumSize(QSize(0, 24))
+            label.setMaximumSize(QSize(big, 24))
+            self.window.label_container.addWidget(label)
+
+        # add stretch to containers
+        self.window.dc_container.addStretch()
+        self.window.label_container.addStretch()
+        self.window.copied_container.addStretch()
+
+        # connect the ai buttons
+        self.window.ai_options.clicked.connect(self.ai_dialog)
+        self.window.ai.clicked.connect(self.submit_ai)
+
+        # connect the multigo buttons
+        self.window.multigo_options.clicked.connect(self.multigo_dialog)
+        self.window.multigo.clicked.connect(self.submit_multigo)
+
+        # connect the run button to the submit_experiment method
+        self.window.run_experiment.clicked.connect(self.submit_experiment)
+
+        # connect the load mot and save runs checkbox to the update_device_settings method
+        self.window.load_mot.stateChanged.connect(self.window.update_device_settings)
+        self.window.save_runs.stateChanged.connect(self.window.update_device_settings)
+
+    # gets a stage using the stage id
+    def get_stage(self, stage_id):
+        #if stage_id == "dc":
+        #    stage=
+        for stage in self.stages:
+            if stage.id == stage_id:
+                return stage
+        raise ValueError(f"Stage with id {stage_id} not found")
+
+    # gets a variable using the variable id
+    def get_variable(self, variable_id):
+        for i, variable in enumerate(self.variables):
+            if variable.id == variable_id:
+                return i, variable
+        raise ValueError(f"Variable with id {variable_id} not found")
+
+    '''
+    methods to get the values from the widgets and update the device.
+    '''
+
+    # extracts the values from the dc widgets and creates a Dc object
+    def extract_dc(self) -> Stage:
+        # uses setattr to dynamically create a Dc object with the values from the widgets
+        dc = Stage("DC Values", "dc", True, "DC")
+        for variable in self.variables:
+            # get the widget for the variable based on its visibility
+            if variable.hidden:
+                widget = self.hidden_gui.widgets[variable.id]
+            else:
+                widget = self.dc_widgets[variable.id]
+
+            # set the value of the variable in the dc object
+            setattr(dc, variable.id, widget.get_value())
+        
+        return dc
+
+    # extracts the values from the stage widgets and creates a Stages object to send to the device
+    def extract_stages(self) -> Stages:
+        stages = []
+        dc = self.extract_dc()
+        for gui_stage in self.stages:
+            name = gui_stage.button.text()
+            stage = Stage(name, gui_stage.id, gui_stage.enabled, gui_stage.tab)
+            for variable in self.variables:
+                # get the widget for the variable based on its visibility
+                if variable.hidden:
+                    widget = self.hidden_gui.widgets[variable.id]
+                else:
+                    widget = gui_stage.widgets[variable.id]
+                    # set the value of the variable in the stage object
+                setattr(stage, variable.id, widget.get_value())
+            stages.append(stage)
+        #dc = self.extract_dc()
+        return Stages(dc, stages)
+
+    # updates the device with the values from the widgets
+    def update_dc(self):
+        # ignore widget updates if the UI is not loaded yet
+        if not self.window.ui_loaded:
+            return
+        if self.multigo_settings.running_multigo == True:
+            return
+
+        # send the extracted dc values to the device
+        self.window.gui_pipe.send(self.extract_dc())
+
+        # update the hold labels with the new dc values
+        self.update_holds()
+
+    # runs the experiment and using the data from the widgets
+    def submit_experiment(self):
+        # run the actual experiment
+        self.window.gui_pipe.send(self.extract_stages())
+
+    # open the multigo options popup
+    def multigo_dialog(self):
+        multigo = MultiGoDialog(self)
+        multigo.exec()
+    
+    # sends the multigo event down the pipe with the gui state
+    def submit_multigo(self):
+        self.window.gui_pipe.send(MultiGoSubmission(self.multigo_settings, self.extract_stages()))
+
+        # create and show the progress dialog non-modally so the main window stays interactive
+        self.window.multigo_progress = MultiGoProgressDialog(self.window)
+        self.window.multigo_progress.setModal(False)
+        self.window.multigo_progress.show()
+        self.window.multigo_progress.raise_()
+        self.window.multigo_progress.activateWindow()
+
+    # open the ai options popup
+    def ai_dialog(self):
+        ai = AiDialog(self)
+        ai.exec()
+
+    # submits the AI job to the device
+    def submit_ai(self):
+        self.window.gui_pipe.send(AiSubmission(self.multigo_settings, self.ai_settings, self.extract_stages()))
+
+        self.window.ai_progress = AiProgressDialog(self.window)
+        self.window.ai_progress.exec()
+
+    # updates the hold labels with the values they will hold to
+    def update_holds(self):
+        # ignore widget updates if the UI is not loaded yet
+        if not self.window.ui_loaded:
+            return
+
+        # update the hold labels with the current values
+        stages = self.extract_stages()
+        current_values = stages.dc
+        for stage in stages.stages:
+            for variable in self.variables:
+                # skip hidden variables
+                if variable.hidden:
+                    continue
+
+                # get the widget for the variable
+                widget = self.get_stage(stage.id).widgets[variable.id]
+                widget_value = widget.get_value()
+
+                # get the current value of the variable
+                current_value = getattr(current_values, variable.id)
+                if widget_value.is_hold() and stage.enabled:
+                    # if the widget is in hold mode, update the label
+                    widget.hold_label.setText(f"Hold ({current_value})")
+
+                    # update the background color of the hold label
+                    if isinstance(current_value, FloatValue) and current_value.is_constant():
+                        color = background_color(current_value.constant_value(), variable)
+                        widget.hold_label.setStyleSheet(f"color: {color.name()}")
+                    else:
+                        widget.hold_label.setStyleSheet("")
+                elif stage.enabled:
+                    # update current values to the new value
+                    if isinstance(widget_value, FloatValue) and widget_value.is_ramp():
+                        _, end = widget_value.ramp_values()
+                        widget_value = FloatValue.constant(end)
+                    setattr(current_values, variable.id, widget_value)
+                else:
+                    # if the stage is disabled, don't change the current value
+                    widget.hold_label.setText(f"Hold")
+                    widget.hold_label.setStyleSheet("")
+
+    '''
+    methods for renaming, copying, creating and deleting stages
+    '''
+
+    # we need to use the object reference since the index changes when we insert or delete stages
+    def get_stage_index(self, button) -> int:
+        for i, stage in enumerate(self.stages):
+            if stage.button is button:
+                return i
+        raise ValueError("Stage button not found")
+
+    # adds a new stage to the gui
+    def insert_stage(self, idx: int, name=None, enabled=True, id=None, tab="Main"):
+        # create a new tab if it doesn't exist
+        if tab not in self.tabs:
+            new_tab = QWidget()
+            new_tab_layout = QHBoxLayout()
+            new_tab.setLayout(new_tab_layout)
+            self.window.stages_tabs.addTab(new_tab, tab)
+            self.tabs[tab] = new_tab_layout
+
+        # get the layout of the tab
+        tab_layout = self.tabs[tab]
+
+        # get the first stage in the tab
+        first_layout = tab_layout.itemAt(0)
+        first_in_tab_idx = idx
+        if first_layout is not None:
+            for i, stage in enumerate(self.stages):
+                if stage.container is first_layout:
+                    first_in_tab_idx = i
+                    break
+
+        # create a vertical layout to hold the button and widgets and add it to the tab layout
+        stage_container = QVBoxLayout()
+        tab_layout.insertLayout(idx - first_in_tab_idx, stage_container)
+
+        # create a button at the top of the stage column
+        button = QPushButton()
+        button.setText(name if name else f"Stage {idx + 1}")
+        button.setMinimumSize(QSize(0, 24))
+        button.setMaximumSize(QSize(big, 24))
+        button.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
+        button.clicked.connect(lambda: self.disable_stage(self.get_stage_index(button)))
+        button.addAction("Rename", lambda: self.rename_stage(self.get_stage_index(button)))
+        button.addAction("Copy", lambda: self.copy_stage(self.get_stage_index(button)))
+        button.addAction("Paste", lambda: self.paste_stage(self.get_stage_index(button)))
+        button.addAction("Insert Stage Left", lambda: self.insert_stage_left(self.get_stage_index(button)))
+        button.addAction("Insert Stage Right", lambda: self.insert_stage_right(self.get_stage_index(button)))
+        button.addAction("Delete", lambda: self.delete_stage(self.get_stage_index(button)))
+        stage_container.addWidget(button)
+
+        # create widgets for each variable and add them to the layout
+        widgets = {}
+        for variable in self.variables:
+            # skip hidden variables for the stages GUI
+            if variable.hidden:
+                continue
+
+            # add the widget for the variable
+            widget = variable.widget()
+            widget.changed_signal.connect(self.update_holds)
+            stage_container.addWidget(widget)
+            widgets[variable.id] = widget
+
+        # add a spacer to the stage container
+        stage_container.addStretch()
+
+        self.stages.insert(idx, GuiStage(button, stage_container, widgets, enabled, id, tab))
+        if not enabled:
+            for widget in widgets.values():
+                widget.setEnabled(False)
+
+    # disable stage
+    def disable_stage(self, idx: int):
+        # check if the stage is enabled
+        enabled = self.stages[idx].enabled
+        self.stages[idx].enabled = not enabled
+
+        # disable the stage
+        for widget in self.stages[idx].widgets.values():
+            widget.setEnabled(not enabled)
+        
+        # update the hold labels with the new values
+        self.update_holds()
+
+    # renames the stage in the gui
+    def rename_stage(self, idx: int):
+        # get the current button text
+        button = self.stages[idx].button
+        current_text = button.text()
+
+        # create a dialog to get the new name
+        new_name, ok = QInputDialog.getText(self.window, "Rename Stage", "Enter new stage name:", text=current_text)
+
+        if ok and new_name:
+            # set the new name to the button
+            button.setText(new_name)
+
+    # copies the right clicked stage's values to the copied widgets
+    def copy_stage(self, idx: int):
+        for variable in self.variables:
+            if not variable.hidden:
+                value = self.stages[idx].widgets[variable.id].get_value()
+                self.copy_widgets[variable.id].set_value(value)
+
+    # pastes the copied values to the right clicked stage
+    def paste_stage(self, idx: int):
+        for variable in self.variables:
+            if not variable.hidden:
+                value = self.copy_widgets[variable.id].get_value()
+                self.stages[idx].widgets[variable.id].set_value(value)
+
+    # creates a new stage to the left
+    def insert_stage_left(self, idx: int):
+        self.insert_stage(idx, tab=self.stages[idx].tab)
+        self.paste_stage(idx)
+
+    # creates a new stage to the right
+    def insert_stage_right(self, idx: int):
+        self.insert_stage(idx + 1, tab=self.stages[idx].tab)
+        self.paste_stage(idx + 1)
+
+    # deletes the stage at the right clicked container
+    def delete_stage(self, idx: int):
+        stage = self.stages.pop(idx)
+        
+        # remove the button and widgets from the layout
+        for j in reversed(range(stage.container.count())):
+            widget = stage.container.itemAt(j).widget()
+            if widget is not None:
+                widget.deleteLater()

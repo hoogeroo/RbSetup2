@@ -1,0 +1,8 @@
+**/__pycache__
+**/*.mdb
+**/*.mdb-lock
+results
+zdrive
+runs
+M-LOOP_logs
+**/MLOOP_files
