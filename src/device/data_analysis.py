@@ -162,24 +162,13 @@ class ImageAnalysis:
 
 
     def guess_widths(self, data: np.ndarray):
-        total_x = data.sum(axis=0)
-        total_y = data.sum(axis=1)
-        x_coords = np.arange(data.shape[1])
-        y_coords = np.arange(data.shape[0])
+        x, y = np.indices(data.shape)
+        total = np.sum(data)
 
-        #sx = np.sqrt(np.sum(total_x * (x_coords - (total_x * x_coords).sum() / total_x.sum())**2) / total_x.sum())
-        #sy = np.sqrt(np.sum(total_y * (y_coords - (total_y * y_coords).sum() / total_y.sum())**2) / total_y.sum())
+        X0 = np.sum(x * data) / total if total != 0 else 0
+        Y0 = np.sum(y * data) / total if total != 0 else 0
 
-        # protect against empty sums
-        if total_x.sum() == 0 or total_y.sum() == 0:
-            return 1.0, 1.0
-
-        cx = (total_x * x_coords).sum() / total_x.sum()
-        cy = (total_y * y_coords).sum() / total_y.sum()
-        sx = np.sqrt(np.sum(total_x * (x_coords - cx) ** 2) / total_x.sum())
-        sy = np.sqrt(np.sum(total_y * (y_coords - cy) ** 2) / total_y.sum())
-        # guard minimum
-        sx = max(sx, 0.5)
-        sy = max(sy, 0.5)
+        sx = np.sqrt(np.sum(data * (x - X0) ** 2) / total)
+        sy = np.sqrt(np.sum(data * (y - Y0) ** 2) / total)
 
         return sx, sy
