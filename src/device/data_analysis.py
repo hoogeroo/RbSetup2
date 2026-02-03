@@ -91,7 +91,7 @@ class ImageAnalysis:
         # handle non-finite values safely
         if not np.any(np.isfinite(od_image)):
             return 0.0
-        od_max = round(float(np.nanmax(np.nan_to_num(od_image, nan=0.0, posinf=1e3, neginf=0.0))), 2)
+        od_max = round(float(np.nanmax(np.nan_to_num(od_image, nan=0.0, posinf=0.0, neginf=0.0))), 2)
         return od_max
 
     
@@ -132,7 +132,7 @@ class ImageAnalysis:
         area_px = (pixel_size) ** 2
 
         # sanitize image and short-circuit empty frames
-        od_image = np.nan_to_num(od_image, nan=0.0, posinf=1e3, neginf=0.0)
+        od_image = np.nan_to_num(od_image, nan=0.0, posinf=0.0, neginf=0.0)
         od_max = np.max(od_image)
         if not np.isfinite(od_max) or od_max <= 0:
             return 0.0
