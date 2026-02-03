@@ -9,7 +9,8 @@ import numpy as np
 
 from astropy.io import fits
 
-TCPIP = '10.103.154.4'
+#TCPIP = '10.103.154.4'
+TCPIP= '130.216.51.122'
 PORT = 54321
 TMPFITS = '/home/lab/Documents/zdrive/kuroTemp/temp.fit'
 

@@ -46,7 +46,8 @@ class StagesGui:
         for variable in self.variables:
             # skip hidden variables for the stages GUI
             if variable.hidden:
-                continue
+                variable.hidden = False
+
 
             # add the widget to the dc container
             dc_widget = variable.widget()
@@ -91,6 +92,8 @@ class StagesGui:
 
     # gets a stage using the stage id
     def get_stage(self, stage_id):
+        #if stage_id == "dc":
+        #    stage=
         for stage in self.stages:
             if stage.id == stage_id:
                 return stage
@@ -120,12 +123,13 @@ class StagesGui:
 
             # set the value of the variable in the dc object
             setattr(dc, variable.id, widget.get_value())
-
+        
         return dc
 
     # extracts the values from the stage widgets and creates a Stages object to send to the device
     def extract_stages(self) -> Stages:
         stages = []
+        dc = self.extract_dc()
         for gui_stage in self.stages:
             name = gui_stage.button.text()
             stage = Stage(name, gui_stage.id, gui_stage.enabled, gui_stage.tab)
@@ -135,17 +139,18 @@ class StagesGui:
                     widget = self.hidden_gui.widgets[variable.id]
                 else:
                     widget = gui_stage.widgets[variable.id]
-
-                # set the value of the variable in the stage object
+                    # set the value of the variable in the stage object
                 setattr(stage, variable.id, widget.get_value())
             stages.append(stage)
-        dc = self.extract_dc()
+        #dc = self.extract_dc()
         return Stages(dc, stages)
 
     # updates the device with the values from the widgets
     def update_dc(self):
         # ignore widget updates if the UI is not loaded yet
         if not self.window.ui_loaded:
+            return
+        if self.multigo_settings.running_multigo == True:
             return
 
         # send the extracted dc values to the device
@@ -168,8 +173,12 @@ class StagesGui:
     def submit_multigo(self):
         self.window.gui_pipe.send(MultiGoSubmission(self.multigo_settings, self.extract_stages()))
 
+        # create and show the progress dialog non-modally so the main window stays interactive
         self.window.multigo_progress = MultiGoProgressDialog(self.window)
-        self.window.multigo_progress.exec()
+        self.window.multigo_progress.setModal(False)
+        self.window.multigo_progress.show()
+        self.window.multigo_progress.raise_()
+        self.window.multigo_progress.activateWindow()
 
     # open the ai options popup
     def ai_dialog(self):

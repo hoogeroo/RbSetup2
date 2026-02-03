@@ -147,7 +147,7 @@ class AbstractDevice:
         self.run_experiment_device(flattened_stages)
 
     # handles the host side functions of running an experiment
-    def run_experiment(self, stages) -> tuple[float, float, np.ndarray]:
+    def run_experiment(self, stages, multigo_settings=None) -> tuple[float, float, np.ndarray]:
         disable_pulsing()
         time.sleep(0.2)
 
@@ -169,6 +169,7 @@ class AbstractDevice:
         n_atoms = float('nan')
         max_od = float('nan')
         images = None
+        camera_images = None
         if camera:
             try:
                 # read the image from the camera server
@@ -180,16 +181,34 @@ class AbstractDevice:
             camera_images = CameraImages(images[0], images[1], images[2])
             self.device_pipe.send(self.image_analysis.filter_images(camera_images))
 
-        # save the results if requested
-        if self.device_settings.save_runs:
+        # save the results if requested (only save when we actually have camera_images)
+        if self.device_settings.save_runs and camera_images is not None:
             # create path using SAVE_PATH and date/time
             timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            file_path = os.path.join(SAVE_PATH, f"{timestamp}.fits")
 
-            # create the save directory if it doesn't exist
-            os.makedirs(SAVE_PATH, exist_ok=True)
+            # determine base save directory; for multigo, put runs in a subfolder
+            save_dir = SAVE_PATH
+            if multigo_settings is not None:
+                # Create/reuse a per-multigo folder so all fits for the same multigo go to the same place
+                # Use an explicit session key if provided, otherwise fall back to the multigo_settings object's id
+                mg_key = getattr(multigo_settings, "_multigo_session_id", None) or id(multigo_settings)
 
-            # save the settings to the file
+                # if this is a new multigo session (or first time seeing it), compute and store the folder
+                if not hasattr(self, "_current_multigo_key") or self._current_multigo_key != mg_key:
+                    save_dir = os.path.join(SAVE_PATH, f"multigo_{timestamp}")
+
+                    # persist for subsequent runs within the same multigo session
+                    self._current_multigo_key = mg_key
+                    self._current_multigo_dir = save_dir
+                else:
+                    # reuse previously determined directory for this multigo session
+                    save_dir = getattr(self, "_current_multigo_dir", SAVE_PATH)
+
+            # create directory if it doesn't exist
+            os.makedirs(save_dir, exist_ok=True)            
+
+            # build file path and save
+            file_path = os.path.join(save_dir, f"{timestamp}.fits")
             save_settings(
                 file_path,
                 self.variables,

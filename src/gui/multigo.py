@@ -3,6 +3,7 @@ multigo.py: this file contains the gui dialogs for running multigo experiments
 '''
 
 from PyQt6.QtWidgets import *
+from PyQt6.QtCore import Qt
 
 from src.device.multigo import MultiGoCancel, MultiGoProgress, MultiGoSettings
 from src.gui.run_variables import RunVariableWidget
@@ -29,6 +30,8 @@ class MultiGoDialog(QDialog):
         # add fluorescence threshold
         form_layout = QFormLayout()
         self.fluorescence_threshold = QDoubleSpinBox()
+        self.fluorescence_threshold.setRange(0.0, 10000.0)
+        self.fluorescence_threshold.setSingleStep(100.0)
         form_layout.addRow(QLabel("Fluorescence Threshold"), self.fluorescence_threshold)
         layout.addLayout(form_layout)
 
@@ -60,13 +63,19 @@ class MultiGoDialog(QDialog):
 # for showing progress of a multigo submission
 class MultiGoProgressDialog(QDialog):
     def __init__(self, window):
-        super().__init__()
+        super().__init__(None)
 
         self.window = window
 
         self.setWindowTitle("MultiGo Progress")
-        self.setModal(True)
+        self.setModal(False)
+        self.setWindowModality(Qt.WindowModality.NonModal)
 
+        self.setWindowFlag(Qt.WindowType.Tool, True)
+        self.setWindowFlag(Qt.WindowType.WindowTitleHint, True)
+        self.setWindowFlag(Qt.WindowType.WindowCloseButtonHint, True)
+
+        # set the layout
         layout = QVBoxLayout()
         self.setLayout(layout)
 
@@ -87,7 +96,7 @@ class MultiGoProgressDialog(QDialog):
         self.window.gui_pipe.send(MultiGoCancel())
 
     def update_progress(self, received: MultiGoProgress):
-        self.progress_label.setText(f"Running step {received.current_step} of {received.total_steps}")
+        self.progress_label.setText(f"Completed step {received.current_step} of {received.total_steps}")
         self.progress_bar.setValue(int(received.current_step / received.total_steps * 100))
 
         if received.current_step == received.total_steps:

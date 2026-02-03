@@ -9,6 +9,7 @@ class MultiGoSettings:
     def __init__(self, run_variables, fluorescence_threshold):
         self.run_variables = run_variables
         self.fluorescence_threshold = fluorescence_threshold
+        self.running_multigo = False
 
 # class for sending multigo progress updates from device to gui
 class MultiGoProgress:
@@ -20,7 +21,7 @@ class MultiGoProgress:
 class MultiGoCancel:
     pass
 
-# runs a multigo experiment 
+'''# runs a multigo experiment 
 def run_multigo_experiment(device, multigo_settings: MultiGoSettings, stages: Stages):
     run_variables = multigo_settings.run_variables
     fluorescence_threshold = multigo_settings.fluorescence_threshold
@@ -51,7 +52,10 @@ def run_multigo_experiment(device, multigo_settings: MultiGoSettings, stages: St
         for i, index in enumerate(indices):
             stage_id = run_variables[i].stage_id
             variable_id = run_variables[i].variable_id
-            stage = stages.get_stage(stage_id)
+            if stage_id == 'dc':
+                stage = stages.dc
+            else:
+                stage = stages.get_stage(stage_id)
             setattr(stage, variable_id, values[i][index])
 
         # wait for fluorescence
@@ -92,4 +96,62 @@ def run_multigo_experiment(device, multigo_settings: MultiGoSettings, stages: St
             break
 
     # send final progress update
+    device.device_pipe.send(MultiGoProgress(total_runs, total_runs))'''
+def run_multigo_experiment(device, multigo_settings: MultiGoSettings, stages: Stages):
+    multigo_settings.running_multigo = True
+    run_variables = multigo_settings.run_variables
+    fluorescence_threshold = multigo_settings.fluorescence_threshold
+
+    if not run_variables:
+        return
+
+    # use the number of steps from the first run variable
+    n_steps = max(1, int(run_variables[0].steps))
+
+    # create arrays for each variable, sampled with n_steps
+    values = []
+    for var in run_variables:
+        # use the first variable's step count for all variables
+        array = var.start.interpolate(var.end, n_steps)
+        values.append(array)
+
+    total_runs = n_steps
+
+    # loop over the shared index range
+    for current in range(total_runs):
+        progress = MultiGoProgress(current, total_runs)
+        device.device_pipe.send(progress)
+
+        # update stages for this index
+        for i, var in enumerate(run_variables):
+            stage_id = var.stage_id
+            variable_id = var.variable_id
+            if stage_id == 'dc':
+                stage = stages.dc
+            else:
+                stage = stages.get_stage(stage_id)
+            setattr(stage, variable_id, values[i][current])
+
+        # wait for fluorescence or cancellation
+        canceled = False
+        while True:
+            if device.device_pipe.poll(0.1):
+                msg = device.device_pipe.recv()
+                if not isinstance(msg, MultiGoCancel):
+                    print(f"Received weird message during multigo: {type(msg)}")
+                canceled = True
+                break
+
+            fluorescence = device.read_fluorescence()
+            device.device_pipe.send(FluorescenceSample(fluorescence))
+            if fluorescence >= fluorescence_threshold:
+                break
+        if canceled:
+            break
+
+        # run the experiment once for this combined set of values
+        device.run_experiment(stages)
+
+    # send final progress update
     device.device_pipe.send(MultiGoProgress(total_runs, total_runs))
+    multigo_settingsrunning_multigo = False

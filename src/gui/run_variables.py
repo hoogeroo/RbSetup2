@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import *
 class RunVariable:
     def __init__(self, stage_id, variable_id, start, end, steps):
         self.stage_id = stage_id
+        print(stage_id)
         self.variable_id = variable_id
         self.start = start
         self.end = end
@@ -36,6 +37,7 @@ class RunVariableWidget(QWidget):
 
         # stage selection
         stage_dropdown = QComboBox()
+        stage_dropdown.addItem('DC Value')
         for stage in self.stages.stages:
             stage_dropdown.addItem(stage.label())
         self.grid.addWidget(stage_dropdown, 1, 0)
@@ -86,26 +88,53 @@ class RunVariableWidget(QWidget):
         variable = self.stages.variables[variable]
         if variable.hidden:
             widget = self.stages.hidden_gui.widgets[variable.id]
+            current_value = widget.get_value()
+            run_variable = RunVariable(
+                #self.stages.hidden_gui.widgets[variable.id],
+                'dc',
+                variable.id,
+                current_value,
+                current_value,
+                0
+            )
         else:
-            widget = self.stages.stages[idx].widgets[variable.id]
-        current_value = widget.get_value()
-        run_variable = RunVariable(
-            self.stages.stages[idx].id,
-            variable.id,
-            current_value,
-            current_value,
-            0
-        )
+            if idx==0:
+                widget = self.stages.dc_widgets[variable.id]
+                current_value = widget.get_value()
+                run_variable = RunVariable(
+                    #self.stages.dc_widgets[variable.id],
+                    'dc',
+                    variable.id,
+                    current_value,
+                    current_value,
+                    0
+                )
+            else:
+                #print(variable.id)
+                widget = self.stages.stages[idx-1].widgets[variable.id]
+                current_value = widget.get_value()
+                run_variable = RunVariable(
+                    self.stages.stages[idx-1].id,
+                    variable.id,
+                    current_value,
+                    current_value,
+                    0
+                )
         self.add_run_variable(run_variable)
 
     # add a run variable to the dialog
     def add_run_variable(self, run_variable):
-        stage = self.stages.get_stage(run_variable.stage_id)
+        row = self.grid.rowCount()
+        try:
+            stage = self.stages.get_stage(run_variable.stage_id)
+            self.grid.addWidget(QLabel(stage.label()), row, 0)
+        except Exception as e:
+            self.grid.addWidget(QLabel('DC Value'),row,0)
         variable_idx, variable = self.stages.get_variable(run_variable.variable_id)
 
         # add labels
-        row = self.grid.rowCount()
-        self.grid.addWidget(QLabel(stage.label()), row, 0)
+        #row = self.grid.rowCount()
+        
         self.grid.addWidget(QLabel(variable.label), row, 1)
 
         # add start and end
