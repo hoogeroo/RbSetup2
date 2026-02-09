@@ -7,12 +7,7 @@ ESP_url = "http://192.168.4.1"
 
 
 def fetch_temperatures(url: str, timeout: float = 5.0) -> Optional[Dict[str, Any]]:
-    """Synchronously fetch temperatures from the given URL and return a normalized dict.
-
-    Returns a dict with keys 'upper_coil', 'lower_coil' and 'ambient_temp' when successful,
-    or None on failure. This function deliberately does not spawn threads — call it from
-    your GUI main loop or a QTimer callback.
-    """
+    """Synchronously fetch temperatures from the given URL and return a normalized dict."""
     try:
         if not url:
             return None
