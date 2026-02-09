@@ -100,5 +100,16 @@ class PlotsGui:
         self.window.log.setPlainText(text)
         self.window.log.verticalScrollBar().setValue(self.window.log.verticalScrollBar().maximum())
 
-        # Print tempereatures
-def update_temperatures(self, temperatures: dict):
+    # update the temperature displays
+    def update_temperatures(self, temperatures: dict):
+        # update upper coil temperature
+        if 'upper_coil' in temperatures and temperatures['upper_coil'] is not None:
+            self.window.lblcoilup.setText(f"{temperatures['upper_coil']:.1f} °C")
+        
+        # update lower coil temperature
+        if 'lower_coil' in temperatures and temperatures['lower_coil'] is not None:
+            self.window.lblcoillow.setText(f"{temperatures['lower_coil']:.1f} °C")
+        
+        # update ambient temperature
+        if 'ambient_temp' in temperatures and temperatures['ambient_temp'] is not None:
+            self.window.lblambient.setText(f"{temperatures['ambient_temp']:.1f} °C")

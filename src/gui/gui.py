@@ -14,6 +14,7 @@ from src.gui.fits import load_settings, save_settings
 from src.gui.hidden import HiddenGui
 from src.gui.plots import CameraImages, FluorescenceSample, PlotsGui
 from src.gui.stages import StagesGui
+from src.gui.temperatures import fetch_temperatures, ESP_url
 
 def run_gui(variables, gui_pipe):
     app = QApplication([])
@@ -72,6 +73,12 @@ class Gui(QMainWindow):
         self.event_timer = QTimer()
         self.event_timer.timeout.connect(self.handle_device_events)
         self.event_timer.start(100)
+
+        # temperature polling timer
+        self.temp_timer = QTimer()
+        self.temp_timer.timeout.connect(self._poll_temperatures)
+        if ESP_url:
+            self.temp_timer.start(1000)  # poll every 1000 ms
 
     # polls the gui pipe for messages from the device
     def handle_device_events(self):
@@ -145,3 +152,9 @@ class Gui(QMainWindow):
 
         if file_name:
             load_settings(file_name, self)
+    
+    # poll the ESP8266 server for temperature data and update the GUI
+    def _poll_temperatures(self):
+        vals = fetch_temperatures(ESP_url)
+        if vals:
+            self.plots_gui.update_temperatures(vals)
