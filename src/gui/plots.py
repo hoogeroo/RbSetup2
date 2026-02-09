@@ -99,3 +99,6 @@ class PlotsGui:
         text += f"Num Atoms: {atom_number_rounded}\nMax OD: {camera_images.max_od:.2f}\n\n"
         self.window.log.setPlainText(text)
         self.window.log.verticalScrollBar().setValue(self.window.log.verticalScrollBar().maximum())
+
+        # Print tempereatures
+def update_temperatures(self, temperatures: dict):
