@@ -77,8 +77,7 @@ class Gui(QMainWindow):
         # temperature polling timer
         self.temp_timer = QTimer()
         self.temp_timer.timeout.connect(self._poll_temperatures)
-        if ESP_url:
-            self.temp_timer.start(1000)  # poll every 1000 ms
+        self.temp_timer.start(1000)  # poll every 1000 ms
 
     # polls the gui pipe for messages from the device
     def handle_device_events(self):
