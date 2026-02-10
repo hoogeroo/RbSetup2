@@ -15,10 +15,11 @@ import numpy as np
 
 # settings for the AI experiment
 class AiSettings:
-    def __init__(self, pre_training_steps, training_steps, learner, load_file_path=None):
+    def __init__(self, pre_training_steps, training_steps, pre_training_model, training_model, load_file_path=None):
         self.pre_training_steps = pre_training_steps
         self.training_steps = training_steps
-        self.learner = learner 
+        self.pre_training_model = pre_training_model
+        self.training_model = training_model
         self.load_file_path = load_file_path  # Path to load existing model, if any
 
 # message to indicate AI progress to the gui
@@ -41,8 +42,9 @@ class AiExecuter:
         self.total_steps = ai_settings.pre_training_steps + ai_settings.training_steps
         self.training_steps = ai_settings.training_steps
         self.pre_training_steps = ai_settings.pre_training_steps
+        self.pre_training_model = ai_settings.pre_training_model
+        self.training_model = ai_settings.training_model
         self.run_variables = multigo_settings.run_variables
-        self.learner = ai_settings.learner
         self.load_file_path = ai_settings.load_file_path
         self.current_step = 0
         self.optimiser = None
@@ -83,15 +85,15 @@ class AiExecuter:
     def run_mloop_optimization(self):
         """Run MLOOP optimization"""
         try:
-            print(f'MLOOP controller starting optimization, current learner is {self.learner}')
+            print(f'MLOOP controller starting optimization, current learner is {self.training_model}')
             if self.pre_training_steps > 0:
                 print(f'Running {self.pre_training_steps} training runs for cost exploration')
 
                 controller_dict = {
                     'interface': self.optimiser,
                     'max_num_runs': self.total_steps,
-                    'controller_type': self.learner,
-                    'training_type': 'differential_evolution',
+                    'controller_type': self.training_model,
+                    'training_type': self.pre_training_model,
                     'num_training_runs': self.pre_training_steps,
                     'max_boundary': self.optimiser.max_boundary,
                     'min_boundary': self.optimiser.min_boundary,
@@ -108,7 +110,7 @@ class AiExecuter:
                 controller_dict = {
                     'interface': self.optimiser,
                     'max_num_runs': self.total_steps,
-                    'controller_type': self.learner,
+                    'controller_type': self.training_model,
                     'max_boundary': self.optimiser.max_boundary,
                     'min_boundary': self.optimiser.min_boundary,
                     'num_params': self.optimiser.num_params,

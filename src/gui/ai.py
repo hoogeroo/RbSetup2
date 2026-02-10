@@ -33,10 +33,26 @@ class AiDialog(QDialog):
         form_layout = QFormLayout()
         self.pre_training_steps = QSpinBox()
         self.training_steps = QSpinBox()
+
+        # Steps rows
         form_layout.addRow("Pre-Training Steps:", self.pre_training_steps)
         form_layout.addRow("Training Steps:", self.training_steps)
-        layout.addLayout(form_layout)
 
+        # Group box titled "Learner" containing the two model dropdowns
+        learner_group = QGroupBox("Learner")
+        learner_layout = QFormLayout()
+        self.pre_training_model = QComboBox()
+        self.pre_training_model.addItems(['differential_evolution', 'nelder_mead'])
+
+        self.training_model = QComboBox()
+        self.training_model.addItems(['neural_net', 'gaussian_process'])
+        learner_layout.addRow("Pre-Training Model:", self.pre_training_model)
+        learner_layout.addRow("Training Model:", self.training_model)
+
+        learner_group.setLayout(learner_layout)
+
+        layout.addLayout(form_layout)
+        layout.addWidget(learner_group)
         # add buttons
         self.button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
         self.button_box.accepted.connect(self.save_ai_settings)
@@ -45,7 +61,10 @@ class AiDialog(QDialog):
         # load the current settings
         ai_settings = self.stages.ai_settings
         self.pre_training_steps.setValue(ai_settings.pre_training_steps)
+        self.pre_training_model.setCurrentText(ai_settings.pre_training_model)
+
         self.training_steps.setValue(ai_settings.training_steps)
+        self.training_model.setCurrentText(ai_settings.training_model)
 
     # saves the settings currently in the gui into the `StagesGui`'s ai_settings
     def save_ai_settings(self):

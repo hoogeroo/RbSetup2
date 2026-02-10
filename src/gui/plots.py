@@ -41,6 +41,8 @@ class PlotsGui:
         self.fluorescence_ax.set_ylabel('Fluorescence (a.u.)')
         self.fluorescence_points, = self.fluorescence_ax.plot(self.fluorescence_data)
         self.window.fluorescence_grid.addWidget(self.fluorescence_canvas)
+        self.multigo_y=[]
+        self.multigo_x=[]
 
     # update the fluorescence plot with a new sample
     def update_fluorescence(self, sample: FluorescenceSample):
@@ -79,18 +81,25 @@ class PlotsGui:
         self.camera_tabs.clear()
 
         # plot the images
-        image_names = [("OD Image", "od"), ("Foreground", "foreground"), ("Background", "background"), ("Empty Image", "empty")]
+        image_names = [("OD Image", "od"), ("Foreground", "foreground"), ("Background", "background"), ("Empty Image", "empty"),("Multigo", "multigo")] 
         for (tab_name, image_name) in image_names:
             canvas = FigureCanvas(Figure(figsize=(5, 3)))
             fig = canvas.figure
 
             # plot the new image
             ax = fig.subplots()
-            image = getattr(camera_images, image_name)
-            ax.imshow(image, aspect='equal', cmap='inferno')
-            ax.set_title(f"{tab_name} - {atom_number_rounded} atoms")
-            fig.colorbar(ax.images[0], ax=ax)
-
+            if image_name != "multigo":
+                image = getattr(camera_images, image_name)
+                ax.imshow(image, aspect='equal', cmap='inferno')
+                ax.set_title(f"{tab_name} - {atom_number_rounded} atoms")
+                fig.colorbar(ax.images[0], ax=ax)
+            else:
+                self.multigo_y.append(camera_images.n_atoms)
+                self.multigo_x.append(len(self.multigo_y))
+                ax.plot(self.multigo_x, self.multigo_y, marker='o')
+                ax.set_title(f"{tab_name} - {atom_number_rounded} atoms")
+                ax.set_xlabel("Multigo Iteration")
+                ax.set_ylabel("Number of Atoms")
             # add a tab for the images
             self.camera_tabs.addTab(canvas, tab_name)
 
