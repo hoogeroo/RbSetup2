@@ -25,6 +25,7 @@
           numpy
           scipy
           matplotlib
+          requests
           h5py
         ];
         
@@ -56,6 +57,8 @@
             ps.matplotlib
             ps.astropy
             ps.scikit-learn
+            ps.requests
+            ps.tensorflow
             mloop
           ]))
           pkgs.qt6.qtwayland

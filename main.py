@@ -62,10 +62,14 @@ try:
                 VariableTypeBool("Shutter", "shutter"),
                 VariableTypeBool("Grey Molasses Shutter", "grey_molasses_shutter"),
                 VariableTypeBool("RF Disable", "rf_disable"),
+                VariableTypeBool("Flip Mirror", "flip_mirror"),
+                VariableTypeBool("Camera Shutter", "camera_shutter"),
             ]
 
             self.setattr_device("core")
             self.setattr_device("ttl4")
+            self.setattr_device("ttl5")
+            self.setattr_device("ttl6")
             self.setattr_device('fastino0')
             self.setattr_device("sampler0")
             self.setattr_device('urukul0_ch0')
@@ -136,6 +140,16 @@ try:
                     self.ttl4.on()
                 else:
                     self.ttl4.off()
+
+                # update flip mirror and camera shutter
+                if s.flip_mirror[i]:
+                    self.ttl5.on()
+                else:
+                    self.ttl5.off()
+                if s.camera_shutter[i]:
+                    self.ttl6.on()
+                else:
+                    self.ttl6.off()
 
                 # update analog outputs
                 dac = [0.0] * 32

@@ -34,7 +34,7 @@ class StagesGui:
         self.variables = variables
         self.hidden_gui = hidden_gui
         self.multigo_settings = MultiGoSettings([], 0.0)
-        self.ai_settings = AiSettings(0, 0, 'neural_net')
+        self.ai_settings = AiSettings(0, 0, None, None)
 
         # store reference to all the widgets to get their values later
         self.dc_widgets = {}

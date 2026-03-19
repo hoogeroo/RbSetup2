@@ -20,12 +20,14 @@ from src.variable_types import VariableTypeBool, VariableTypeInt, VariableTypeFl
 from src.device import filtering
 from src.device.data_analysis import ImageAnalysis
 from src.value_types import BoolValue, IntValue, FloatValue
+from src.gui.temperatures import fetch_temperatures, ESP_url
 
 SAVE_PATH = "runs"
 
 # TCP settings for pulse control
 TCP_IP = "130.216.51.242"
 TCP_PORT = 8833
+temp_threshold = 75.0
 
 '''
 Abstraction over the device to run the gui without artiq
@@ -148,76 +150,83 @@ class AbstractDevice:
 
     # handles the host side functions of running an experiment
     def run_experiment(self, stages, multigo_settings=None) -> tuple[float, float, np.ndarray]:
-        disable_pulsing()
-        time.sleep(0.2)
+        temps = fetch_temperatures(ESP_url)
+        if temps['upper_coil'] and temps['lower_coil'] < temp_threshold:
+            disable_pulsing()
+            time.sleep(0.2)
 
-        # tell the camera server to acquire a frame
-        camera = None
-        try:
-            camera = CameraConnection()
-            camera.shoot(3)
-        except Exception as e:
-            print("Error occurred while shooting:", e)
-
-        # run the experiment on the artiq device
-        flattened_stages = FlattenedStages(stages, self.variables)
-        self.run_experiment_device(flattened_stages)
-
-        enable_pulsing()
-
-        # read back the camera images
-        n_atoms = float('nan')
-        max_od = float('nan')
-        images = None
-        camera_images = None
-        if camera:
+            # tell the camera server to acquire a frame
+            camera = None
             try:
-                # read the image from the camera server
-                images = camera.read(timeout=1)
+                camera = CameraConnection()
+                camera.shoot(3)
             except Exception as e:
-                print("Error occurred while reading camera images:", e)
-        if images is not None:
-            # filter the images and extract parameters
-            camera_images = CameraImages(images[0], images[1], images[2])
-            self.device_pipe.send(self.image_analysis.filter_images(camera_images))
+                print("Error occurred while shooting:", e)
 
-        # save the results if requested (only save when we actually have camera_images)
-        if self.device_settings.save_runs and camera_images is not None:
-            # create path using SAVE_PATH and date/time
-            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            # run the experiment on the artiq device
+            flattened_stages = FlattenedStages(stages, self.variables)
+            self.run_experiment_device(flattened_stages)
 
-            # determine base save directory; for multigo, put runs in a subfolder
-            save_dir = SAVE_PATH
-            if multigo_settings is not None:
-                # Create/reuse a per-multigo folder so all fits for the same multigo go to the same place
-                # Use an explicit session key if provided, otherwise fall back to the multigo_settings object's id
-                mg_key = getattr(multigo_settings, "_multigo_session_id", None) or id(multigo_settings)
+            enable_pulsing()
 
-                # if this is a new multigo session (or first time seeing it), compute and store the folder
-                if not hasattr(self, "_current_multigo_key") or self._current_multigo_key != mg_key:
-                    save_dir = os.path.join(SAVE_PATH, f"multigo_{timestamp}")
+            # read back the camera images
+            n_atoms = float('nan')
+            max_od = float('nan')
+            images = None
+            camera_images = None
+            if camera:
+                try:
+                    # read the image from the camera server
+                    images = camera.read(timeout=1)
+                except Exception as e:
+                    print("Error occurred while reading camera images:", e)
+            if images is not None:
+                # filter the images and extract parameters
+                camera_images = CameraImages(images[0], images[1], images[2])
+                self.device_pipe.send(self.image_analysis.filter_images(camera_images))
 
-                    # persist for subsequent runs within the same multigo session
-                    self._current_multigo_key = mg_key
-                    self._current_multigo_dir = save_dir
-                else:
-                    # reuse previously determined directory for this multigo session
-                    save_dir = getattr(self, "_current_multigo_dir", SAVE_PATH)
+            # save the results if requested (only save when we actually have camera_images)
+            if self.device_settings.save_runs and camera_images is not None:
+                # create path using SAVE_PATH and date/time
+                timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-            # create directory if it doesn't exist
-            os.makedirs(save_dir, exist_ok=True)            
+                # determine base save directory; for multigo, put runs in a subfolder
+                save_dir = SAVE_PATH
+                if multigo_settings is not None:
+                    # Create/reuse a per-multigo folder so all fits for the same multigo go to the same place
+                    # Use an explicit session key if provided, otherwise fall back to the multigo_settings object's id
+                    mg_key = getattr(multigo_settings, "_multigo_session_id", None) or id(multigo_settings)
 
-            # build file path and save
-            file_path = os.path.join(save_dir, f"{timestamp}.fits")
-            save_settings(
-                file_path,
-                self.variables,
-                stages,
-                camera_images,
-                overwrite=False,
-            )
+                    # if this is a new multigo session (or first time seeing it), compute and store the folder
+                    if not hasattr(self, "_current_multigo_key") or self._current_multigo_key != mg_key:
+                        save_dir = os.path.join(SAVE_PATH, f"multigo_{timestamp}")
+
+                        # persist for subsequent runs within the same multigo session
+                        self._current_multigo_key = mg_key
+                        self._current_multigo_dir = save_dir
+                    else:
+                        # reuse previously determined directory for this multigo session
+                        save_dir = getattr(self, "_current_multigo_dir", SAVE_PATH)
+
+                # create directory if it doesn't exist
+                os.makedirs(save_dir, exist_ok=True)            
+
+                # build file path and save
+                file_path = os.path.join(save_dir, f"{timestamp}.fits")
+                save_settings(
+                    file_path,
+                    self.variables,
+                    stages,
+                    camera_images,
+                    overwrite=False,
+                )
+            
+            return (n_atoms, max_od, images)
         
-        return (n_atoms, max_od, images)
+        else:
+            print("Temperature too high, skipping experiment and pulsing")
+            enable_pulsing()
+            return (float('nan'), float('nan'), None)
 
     # dummy method to be overridden by the device
     def run_experiment_device(self, flattened_stages):
