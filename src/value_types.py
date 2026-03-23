@@ -142,6 +142,9 @@ class FloatValue:
             return f"{self.constant_value()}"
         elif self.is_ramp():
             start, end = self.ramp_values()
+            mode = self.ramp_mode()
+            if mode == 'exponential':
+                return f"({start} -> {end} [exp])"
             return f"({start} -> {end})"
         else:
             raise ValueError("unreachable")
@@ -154,8 +157,9 @@ class FloatValue:
             raise ValueError("Array must have shape (3,)")
         if not np.issubdtype(array.dtype, np.floating):
             raise ValueError("Array must be of floating point type")
-        if array[0] not in (0.0, 1.0, 2.0):
-            raise ValueError("First element of array must be 0.0 (hold), 1.0 (constant) or 2.0 (ramp)")
+        # accept linear (2.0) and exponential (3.0) ramp codes
+        if array[0] not in (0.0, 1.0, 2.0, 3.0):
+            raise ValueError("First element of array must be 0.0 (hold), 1.0 (constant), 2.0 (ramp linear) or 3.0 (ramp exponential)")
         value = FloatValue()
         value.array = array
         return value
@@ -168,8 +172,10 @@ class FloatValue:
         self.array[0] = 1.0
         self.array[1] = value
 
-    def set_ramp(self, start, end):
-        self.array[0] = 2.0
+    def set_ramp(self, start, end, mode='linear'):
+        # mode: 'linear' or 'exponential'
+        code = 2.0 if mode == 'linear' else 3.0
+        self.array[0] = code
         self.array[1] = start
         self.array[2] = end
 
@@ -183,9 +189,9 @@ class FloatValue:
         float_value.set_constant(value)
         return float_value
 
-    def ramp(start, end):
+    def ramp(start, end, mode='linear'):
         float_value = FloatValue()
-        float_value.set_ramp(start, end)
+        float_value.set_ramp(start, end, mode=mode)
         return float_value
 
     def is_hold(self):
@@ -195,7 +201,12 @@ class FloatValue:
         return self.array[0] == 1.0
 
     def is_ramp(self):
-        return self.array[0] == 2.0
+        return self.array[0] in (2.0, 3.0)
+
+    def ramp_mode(self):
+        if not self.is_ramp():
+            raise ValueError("Value is not a ramp")
+        return 'linear' if self.array[0] == 2.0 else 'exponential'
 
     def constant_value(self):
         if not self.is_constant():
@@ -217,7 +228,11 @@ class FloatValue:
             start, end = self.array[1], self.array[2]
             if samples <= 1:
                 return start
-            return start + (end - start) * step / (samples - 1)
+            t = step / (samples - 1)
+            if self.ramp_mode() == 'linear':
+                return start + (end - start) * t
+            # exponential (assume positive start/end): geometric interpolation
+            return start * (end / start) ** t
         else:
             raise ValueError("unreachable")
 
@@ -228,8 +243,8 @@ class FloatValue:
             raise ValueError("Can't interpolate to a hold value")
         if self.is_constant() and end.is_constant():
             start = self.constant_value()
-            end = end.constant_value()
-            values = np.linspace(start, end, steps)
+            endv = end.constant_value()
+            values = np.linspace(start, endv, steps)
             output = []
             for value in values:
                 output.append(FloatValue.constant(value))
@@ -240,8 +255,9 @@ class FloatValue:
             values1 = np.linspace(start1, end1, steps)
             values2 = np.linspace(start2, end2, steps)
             output = []
+            mode = self.ramp_mode()
             for i in range(steps):
-                output.append(FloatValue.ramp(values1[i], values2[i]))
+                output.append(FloatValue.ramp(values1[i], values2[i], mode=mode))
             return output
 
 # used for storing any type of value

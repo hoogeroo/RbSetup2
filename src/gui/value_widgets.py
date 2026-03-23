@@ -155,7 +155,9 @@ class FloatWidget(QWidget):
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
         self.addAction("Hold", self.mode_hold)
         self.addAction("Constant", self.mode_constant)
-        self.addAction("Ramp", self.mode_ramp)
+        self.ramp_mode_sel = 'linear'
+        self.addAction("Ramp (linear)", lambda: self.mode_ramp('linear'))
+        self.addAction("Ramp (exponential)", lambda: self.mode_ramp('exponential'))
 
         layout = QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
@@ -218,8 +220,9 @@ class FloatWidget(QWidget):
         self.spinbox.setVisible(True)
         self.changed_signal.emit()
 
-    def mode_ramp(self):
+    def mode_ramp(self, mode='linear'):
         self.state = "ramp"
+        self.ramp_mode_sel = mode
         self.hide()
         self.ramp_spinbox1.setVisible(True)
         self.ramp_spinbox2.setVisible(True)
@@ -231,7 +234,7 @@ class FloatWidget(QWidget):
         elif self.state == "constant":
             return FloatValue.constant(self.spinbox.value())
         elif self.state == "ramp":
-            return FloatValue.ramp(self.ramp_spinbox1.value(), self.ramp_spinbox2.value())
+            return FloatValue.ramp(self.ramp_spinbox1.value(), self.ramp_spinbox2.value(), mode=self.ramp_mode_sel)
         else:
             raise ValueError(f"FloatWidget in invalid state {self.state}")
 
@@ -242,7 +245,8 @@ class FloatWidget(QWidget):
             self.mode_constant()
             self.spinbox.setValue(value.constant_value())
         if value.is_ramp():
-            self.mode_ramp()
+            mode = value.ramp_mode()
+            self.mode_ramp(mode)
             start, end = value.ramp_values()
             self.ramp_spinbox1.setValue(start)
             self.ramp_spinbox2.setValue(end)
