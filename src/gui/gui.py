@@ -2,7 +2,7 @@
 gui.py: creates the main gui and sends commands to main.py to interface with the device
 '''
 
-from PyQt6.QtCore import QTimer
+from PyQt6.QtCore import QTimer, QThreadPool, QRunnable, pyqtSignal, QObject
 from PyQt6.QtWidgets import QApplication, QFileDialog, QMainWindow
 from PyQt6.uic import loadUi
 
@@ -14,13 +14,28 @@ from src.gui.fits import load_settings, save_settings
 from src.gui.hidden import HiddenGui
 from src.gui.plots import CameraImages, FluorescenceSample, PlotsGui
 from src.gui.stages import StagesGui
-from src.gui.temperatures import fetch_temperatures, ESP_url
+from src.gui.temperatures import ESP_url
 
 def run_gui(variables, gui_pipe):
     app = QApplication([])
     gui = Gui(variables, gui_pipe)
     gui.show()
     app.exec()
+
+class TemperatureWorkerSignals(QObject):
+    result = pyqtSignal(dict)
+
+class TemperatureWorker(QRunnable):
+    def __init__(self, url):
+        super().__init__()
+        self.url = url
+        self.signals = TemperatureWorkerSignals()
+
+    def run(self):
+        from src.gui.temperatures import fetch_temperatures
+        vals = fetch_temperatures(self.url)
+        if vals:
+            self.signals.result.emit(vals)
 
 class Gui(QMainWindow):
     '''
@@ -75,6 +90,7 @@ class Gui(QMainWindow):
         self.event_timer.start(100)
 
         # temperature polling timer
+        self.threadpool = QThreadPool()
         self.temp_timer = QTimer()
         self.temp_timer.timeout.connect(self._poll_temperatures)
         self.temp_timer.start(1000)  # poll every 1000 ms
@@ -154,6 +170,9 @@ class Gui(QMainWindow):
     
     # poll the ESP8266 server for temperature data and update the GUI
     def _poll_temperatures(self):
-        vals = fetch_temperatures(ESP_url)
-        if vals:
-            self.plots_gui.update_temperatures(vals)
+        worker = TemperatureWorker(ESP_url)
+        worker.signals.result.connect(self._update_temperatures)
+        self.threadpool.start(worker)
+
+    def _update_temperatures(self, vals):
+        self.plots_gui.update_temperatures(vals)
