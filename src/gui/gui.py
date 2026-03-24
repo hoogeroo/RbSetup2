@@ -15,6 +15,7 @@ from src.gui.hidden import HiddenGui
 from src.gui.plots import CameraImages, FluorescenceSample, PlotsGui
 from src.gui.stages import StagesGui
 from src.gui.temperatures import ESP_url
+from src.gui.SLM_gui import SLMGui
 
 def run_gui(variables, gui_pipe):
     app = QApplication([])
@@ -70,6 +71,9 @@ class Gui(QMainWindow):
 
         # create the plots GUI
         self.plots_gui = PlotsGui(self)
+
+        #Create SLM GUI
+        self.slm_gui = SLMGui(self)
 
         # load the default values (creates the needed stage widgets)
         load_settings('default.fits', self)
