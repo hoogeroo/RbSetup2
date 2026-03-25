@@ -307,6 +307,9 @@ class StagesGui:
             for widget in widgets.values():
                 widget.setEnabled(False)
 
+        # keep the SLM insertion dropdown in sync
+        self._notify_slm_stages_changed()
+
     # disable stage
     def disable_stage(self, idx: int):
         # check if the stage is enabled
@@ -332,6 +335,9 @@ class StagesGui:
         if ok and new_name:
             # set the new name to the button
             button.setText(new_name)
+
+            # keep the SLM insertion dropdown in sync
+            self._notify_slm_stages_changed()
 
     # copies the right clicked stage's values to the copied widgets
     def copy_stage(self, idx: int):
@@ -366,3 +372,11 @@ class StagesGui:
             widget = stage.container.itemAt(j).widget()
             if widget is not None:
                 widget.deleteLater()
+
+        # keep the SLM insertion dropdown in sync
+        self._notify_slm_stages_changed()
+
+    # notifies the SLM GUI that the stage list has changed
+    def _notify_slm_stages_changed(self):
+        if hasattr(self.window, 'slm_gui') and self.window.slm_gui is not None:
+            self.window.slm_gui.refresh_stages()

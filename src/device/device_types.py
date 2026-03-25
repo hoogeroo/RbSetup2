@@ -52,6 +52,16 @@ class DeviceSettings:
         self.low_pass = low_pass
         self.fft_filter = fft_filter
 
+# SLM server address
+SLM_SERVER_URL = "http://130.216.51.133:5000"
+
+# SLM experiment settings sent from GUI to device
+class SLMSettings:
+    def __init__(self, enabled=False, insertion_stage_id=None, hold_times=None):
+        self.enabled = enabled
+        self.insertion_stage_id = insertion_stage_id  # UUID of stage after which SLM phase runs, None = after all
+        self.hold_times = hold_times or []  # list of hold times in ms, one per image
+
 # pre processed class to send to artiq - ramps and calibration are pre calculated
 class FlattenedStages:
     def __init__(self, stages: Stages, variables):

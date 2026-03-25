@@ -507,7 +507,7 @@
    </attribute>
    <widget class="QWidget" name="SLM_widget">
     <layout class="QGridLayout" name="gridLayout_4">
-     <item row="0" column="0">
+     <item row="0" column="1">
       <widget class="QTabWidget" name="tabWidget">
        <property name="currentIndex">
         <number>0</number>
@@ -517,72 +517,13 @@
          <string>Control</string>
         </attribute>
         <layout class="QGridLayout" name="gridLayout_5">
-         <item row="8" column="2">
-          <widget class="QSpinBox" name="slm_pixel_up_spin">
-           <property name="minimum">
-            <number>-1000</number>
-           </property>
-           <property name="maximum">
-            <number>1000</number>
-           </property>
-          </widget>
+         <item row="6" column="2" colspan="2">
+          <widget class="QComboBox" name="slm_exp_insertion"/>
          </item>
-         <item row="3" column="0" colspan="2">
-          <widget class="QPushButton" name="slm_upload_btn">
+         <item row="6" column="0" colspan="2">
+          <widget class="QLabel" name="label">
            <property name="text">
-            <string>Upload</string>
-           </property>
-          </widget>
-         </item>
-         <item row="8" column="1">
-          <widget class="QPushButton" name="slm_shift_right_btn">
-           <property name="text">
-            <string>Shift Right</string>
-           </property>
-          </widget>
-         </item>
-         <item row="4" column="2" colspan="2">
-          <widget class="QPushButton" name="slm_lock_btn">
-           <property name="text">
-            <string>Lock</string>
-           </property>
-          </widget>
-         </item>
-         <item row="9" column="0">
-          <widget class="QSpinBox" name="slm_angle_rot_spin">
-           <property name="maximum">
-            <number>359</number>
-           </property>
-           <property name="singleStep">
-            <number>0</number>
-           </property>
-          </widget>
-         </item>
-         <item row="9" column="1">
-          <widget class="QPushButton" name="slm_angle_rot_btn">
-           <property name="text">
-            <string>Rotate</string>
-           </property>
-          </widget>
-         </item>
-         <item row="4" column="0" colspan="2">
-          <widget class="QPushButton" name="slm_refresh_btn">
-           <property name="text">
-            <string>Refresh</string>
-           </property>
-          </widget>
-         </item>
-         <item row="3" column="2" colspan="2">
-          <widget class="QPushButton" name="slm_next_btn">
-           <property name="text">
-            <string>Next</string>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="0" colspan="4">
-          <widget class="QLabel" name="slm_num_label">
-           <property name="text">
-            <string>slm_num_label</string>
+            <string>Insert SLM Phase</string>
            </property>
           </widget>
          </item>
@@ -602,20 +543,11 @@
            </property>
           </widget>
          </item>
-         <item row="8" column="3">
-          <widget class="QPushButton" name="slm_shift_up_btn">
+
+         <item row="4" column="0" colspan="2">
+          <widget class="QPushButton" name="slm_refresh_btn">
            <property name="text">
-            <string>Shift Up</string>
-           </property>
-          </widget>
-         </item>
-         <item row="8" column="0">
-          <widget class="QSpinBox" name="slm_pixel_right_spin">
-           <property name="minimum">
-            <number>-1000</number>
-           </property>
-           <property name="maximum">
-            <number>1000</number>
+            <string>Refresh</string>
            </property>
           </widget>
          </item>
@@ -626,6 +558,144 @@
            </property>
           </widget>
          </item>
+
+         <item row="3" column="2" colspan="2">
+          <widget class="QPushButton" name="slm_next_btn">
+           <property name="text">
+            <string>Next</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="0" colspan="2">
+          <widget class="QPushButton" name="slm_upload_btn">
+           <property name="text">
+            <string>Upload</string>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="2" colspan="2">
+          <widget class="QPushButton" name="slm_lock_btn">
+           <property name="text">
+            <string>Lock</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0" colspan="4">
+          <widget class="QLabel" name="slm_num_label">
+           <property name="text">
+            <string>slm_num_label</string>
+           </property>
+          </widget>
+         </item>
+
+         <item row="5" column="0" colspan="2">
+          <widget class="QCheckBox" name="slm_exp_enable">
+           <property name="text">
+            <string>Enable</string>
+           </property>
+          </widget>
+         </item>
+         <item row="7" column="0">
+          <widget class="QLabel" name="label_shift_right">
+           <property name="text">
+            <string>→ px</string>
+           </property>
+          </widget>
+         </item>
+         <item row="7" column="1">
+          <widget class="QSpinBox" name="slm_pixel_right_spin">
+           <property name="minimum">
+            <number>-5000</number>
+           </property>
+           <property name="maximum">
+            <number>5000</number>
+           </property>
+           <property name="value">
+            <number>10</number>
+           </property>
+          </widget>
+         </item>
+         <item row="7" column="2">
+          <widget class="QPushButton" name="slm_shift_right_btn">
+           <property name="text">
+            <string>Shift →</string>
+           </property>
+          </widget>
+         </item>
+         <item row="8" column="0">
+          <widget class="QLabel" name="label_shift_up">
+           <property name="text">
+            <string>↑ px</string>
+           </property>
+          </widget>
+         </item>
+         <item row="8" column="1">
+          <widget class="QSpinBox" name="slm_pixel_up_spin">
+           <property name="minimum">
+            <number>-5000</number>
+           </property>
+           <property name="maximum">
+            <number>5000</number>
+           </property>
+           <property name="value">
+            <number>10</number>
+           </property>
+          </widget>
+         </item>
+         <item row="8" column="2">
+          <widget class="QPushButton" name="slm_shift_up_btn">
+           <property name="text">
+            <string>Shift ↑</string>
+           </property>
+          </widget>
+         </item>
+         <item row="9" column="0">
+          <widget class="QLabel" name="label_rotate">
+           <property name="text">
+            <string>⟳ deg</string>
+           </property>
+          </widget>
+         </item>
+         <item row="9" column="1">
+          <widget class="QSpinBox" name="slm_angle_rot_spin">
+           <property name="minimum">
+            <number>0</number>
+           </property>
+           <property name="maximum">
+            <number>359</number>
+           </property>
+           <property name="value">
+            <number>10</number>
+           </property>
+          </widget>
+         </item>
+         <item row="9" column="2">
+          <widget class="QPushButton" name="slm_angle_rot_btn">
+           <property name="text">
+            <string>Rotate</string>
+           </property>
+          </widget>
+         </item>
+         <item row="10" column="0">
+          <widget class="QLabel" name="label_hold">
+           <property name="text">
+            <string>Hold (ms)</string>
+           </property>
+          </widget>
+         </item>
+         <item row="10" column="1" colspan="2">
+          <widget class="QDoubleSpinBox" name="slm_image_hold">
+           <property name="minimum">
+            <double>0.000000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>100000.000000000000000</double>
+           </property>
+           <property name="value">
+            <double>100.000000000000000</double>
+           </property>
+          </widget>
+         </item>
         </layout>
        </widget>
        <widget class="QWidget" name="imagelist">
@@ -633,10 +703,10 @@
          <string>Image List</string>
         </attribute>
         <layout class="QGridLayout" name="gridLayout_6">
-         <item row="1" column="0">
-          <widget class="QPushButton" name="slm_image_up_btn">
+         <item row="1" column="1">
+          <widget class="QPushButton" name="slm_image_down_btn">
            <property name="text">
-            <string>Move Up</string>
+            <string>Move Down</string>
            </property>
           </widget>
          </item>
@@ -647,10 +717,17 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="1">
-          <widget class="QPushButton" name="slm_image_down_btn">
+         <item row="3" column="1">
+          <widget class="QPushButton" name="slm_image_save_btn">
            <property name="text">
-            <string>Move Down</string>
+            <string>Save</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QPushButton" name="slm_image_up_btn">
+           <property name="text">
+            <string>Move Up</string>
            </property>
           </widget>
          </item>
@@ -658,13 +735,6 @@
           <widget class="QListWidget" name="slm_list_widget">
            <property name="itemAlignment">
             <set>Qt::AlignmentFlag::AlignBottom|Qt::AlignmentFlag::AlignHCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item row="3" column="1">
-          <widget class="QPushButton" name="slm_image_save_btn">
-           <property name="text">
-            <string>Save</string>
            </property>
           </widget>
          </item>

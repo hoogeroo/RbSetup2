@@ -6,11 +6,12 @@ from datetime import datetime
 from multiprocessing import Pipe, Process
 import numpy as np
 import os
+import requests
 from scipy.interpolate import CubicSpline
 import time
 
 from src.device.ai import AiCancel, AiExecuter
-from src.device.device_types import AiSubmission, DeviceSettings, FlattenedStages, MultiGoSubmission, Stage, Stages
+from src.device.device_types import AiSubmission, DeviceSettings, FlattenedStages, MultiGoSubmission, SLMSettings, SLM_SERVER_URL, Stage, Stages
 from src.device.multigo import MultiGoCancel, run_multigo_experiment
 from src.gui.fits import save_settings
 from src.gui.gui import run_gui
@@ -53,6 +54,9 @@ class AbstractDevice:
 
         # initialize the device settings
         self.device_settings = DeviceSettings()
+
+        # initialize SLM settings
+        self.slm_settings = SLMSettings()
 
         # initialize background management for filtering
         self.image_analysis = ImageAnalysis(self)
@@ -117,6 +121,9 @@ class AbstractDevice:
                 elif isinstance(msg, DeviceSettings):
                     # update the device settings
                     self.update_device_settings(msg)
+                elif isinstance(msg, SLMSettings):
+                    # update the SLM settings
+                    self.slm_settings = msg
                 elif isinstance(msg, MultiGoCancel):
                     print("Can't cancel multigo - not running")
                 elif isinstance(msg, AiCancel):
@@ -146,7 +153,7 @@ class AbstractDevice:
     # sets the current output values to the ones in a stage
     def run_stage(self, stage):
         flattened_stages = FlattenedStages(Stages(stage, []), self.variables)
-        self.run_experiment_device(flattened_stages)
+        self.run_experiment_device(flattened_stages, [], -1)
 
     # handles the host side functions of running an experiment
     def run_experiment(self, stages, multigo_settings=None) -> tuple[float, float, np.ndarray]:
@@ -163,9 +170,46 @@ class AbstractDevice:
             except Exception as e:
                 print("Error occurred while shooting:", e)
 
+            # prepare SLM if enabled
+            slm_hold_times = []
+            slm_insertion_index = -1
+            if self.slm_settings.enabled and self.slm_settings.hold_times:
+                try:
+                    # reset Pi to first frame
+                    requests.post(f"{SLM_SERVER_URL}/reset", timeout=2)
+                    slm_hold_times = self.slm_settings.hold_times
+                    print(f"[SLM] Ready: {len(slm_hold_times)} frames, hold times={slm_hold_times}")
+                except Exception as e:
+                    print(f"[SLM] Error preparing SLM: {e}")
+                    slm_hold_times = []
+
+                # compute insertion index in the flattened stages array
+                if self.slm_settings.insertion_stage_id is not None:
+                    # count flattened samples up to and including the target stage
+                    idx = 1  # start after the DC entry (index 0)
+                    found = False
+                    for stage in stages.stages:
+                        if not stage.enabled:
+                            continue
+                        n_samples = max(int(stage.samples.constant_value()), 1)
+                        idx += n_samples
+                        if str(stage.id) == str(self.slm_settings.insertion_stage_id):
+                            found = True
+                            break
+                    slm_insertion_index = idx if found else -1
+                else:
+                    idx = 1
+                    for stage in stages.stages:
+                        if not stage.enabled:
+                            continue
+                        n_samples = max(int(stage.samples.constant_value()), 1)
+                        idx += n_samples
+                    slm_insertion_index = idx
+                print(f"[SLM] Insertion index: {slm_insertion_index}")
+
             # run the experiment on the artiq device
             flattened_stages = FlattenedStages(stages, self.variables)
-            self.run_experiment_device(flattened_stages)
+            self.run_experiment_device(flattened_stages, slm_hold_times, slm_insertion_index)
 
             enable_pulsing()
 
@@ -229,8 +273,10 @@ class AbstractDevice:
             return (float('nan'), float('nan'), None)
 
     # dummy method to be overridden by the device
-    def run_experiment_device(self, flattened_stages):
+    def run_experiment_device(self, flattened_stages, slm_hold_times=None, slm_insertion_index=-1):
         print("Experiment run with stages:", flattened_stages)
+        if slm_hold_times:
+            print(f"[SLM] Phase: {len(slm_hold_times)} frames, hold times={slm_hold_times}, insertion_index={slm_insertion_index}")
 
     # pulse push laser
     def pulse_push_laser(self):

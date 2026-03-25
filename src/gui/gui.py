@@ -72,7 +72,7 @@ class Gui(QMainWindow):
         # create the plots GUI
         self.plots_gui = PlotsGui(self)
 
-        #Create SLM GUI
+        # create the SLM GUI
         self.slm_gui = SLMGui(self)
 
         # load the default values (creates the needed stage widgets)
@@ -87,6 +87,9 @@ class Gui(QMainWindow):
 
         # Send device settings to device on startup
         self.update_device_settings()
+
+        # Send initial SLM settings to device
+        self.slm_gui.send_slm_settings()
 
         # event timer
         self.event_timer = QTimer()

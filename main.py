@@ -67,9 +67,11 @@ try:
             ]
 
             self.setattr_device("core")
+            self.setattr_device("ttl0")   # SLM sync input 
             self.setattr_device("ttl4")
             self.setattr_device("ttl5")
             self.setattr_device("ttl6")
+            self.setattr_device("ttl7")   # SLM frame-advance trigger
             self.setattr_device('fastino0')
             self.setattr_device("sampler0")
             self.setattr_device('urukul0_ch0')
@@ -91,6 +93,7 @@ try:
         @kernel
         def init_device(self):
             self.core.reset()
+            self.ttl0.input()  # configure TTL0 as SLM sync input
             self.fastino0.init()
             self.sampler0.init()
             self.sampler0.set_gain_mu(0, 0)
@@ -128,13 +131,50 @@ try:
             self.urukul1_ch3.set_att(6.0 * dB)
 
         @kernel
-        def run_experiment_device(self, flattened_stages):
+        def _run_slm_phase(self, slm_hold_times, n_slm_frames):
+            """
+            Waits for a single sync pulse on TTL0 at the start to confirm
+            the SLM is ready on the first frame, then runs through all
+            frames using fixed hold durations and TTL7 advance pulses.
+            """
+
+            gate_end_mu = self.ttl0.gate_rising(50.0 * ms)
+            sync_ts = self.ttl0.timestamp_mu(gate_end_mu)
+
+            if sync_ts >= 0:
+                at_mu(sync_ts)
+                delay(10.0 * us)  # small margin after the edge
+            else:
+                # No sync pulse — SLM is not responding, abort the phase
+                return
+
+            # run through each frame
+            for frame in range(n_slm_frames):
+                # Hold for this frame's configured duration
+                delay(slm_hold_times[frame] * ms)
+
+                # Pulse TTL7 to advance the SLM to the next frame
+                if frame < n_slm_frames - 1:
+                    self.ttl7.pulse(1.0 * ms)
+                    delay(1.0 * ms)  # settling time
+
+        @kernel
+        def run_experiment_device(self, flattened_stages, slm_hold_times, slm_insertion_index):
             # reset the cores timer for the new experiment
             self.core.break_realtime()
+
+            self.ttl7.off()
+
+            # determine whether an SLM phase is active
+            n_slm_frames = len(slm_hold_times)
+            has_slm = n_slm_frames > 0 and slm_insertion_index >= 0
 
             # iterate through the stages and get their values
             s = flattened_stages
             for i in range(len(s.time)):
+                if has_slm and i == slm_insertion_index:
+                    self._run_slm_phase(slm_hold_times, n_slm_frames)
+
                 # update camera trigger
                 if s.camera[i]:
                     self.ttl4.on()
@@ -200,6 +240,10 @@ try:
 
                 # wait for the duration of the stage
                 delay(s.time[i] * ms)
+
+            # SLM phase after all stages
+            if has_slm and slm_insertion_index >= len(s.time):
+                self._run_slm_phase(slm_hold_times, n_slm_frames)
 
             # make sure experiment is finished before returning
             self.core.wait_until_mu(now_mu() + 1 * ms)
