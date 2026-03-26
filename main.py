@@ -159,7 +159,7 @@ try:
                     delay(1.0 * ms)  # settling time
 
         @kernel
-        def run_experiment_device(self, flattened_stages, slm_hold_times, slm_insertion_index):
+        def run_experiment_device(self, flattened_stages, slm_hold_times, slm_insertion_index, slm_enabled):
             # reset the cores timer for the new experiment
             self.core.break_realtime()
 
@@ -167,7 +167,7 @@ try:
 
             # determine whether an SLM phase is active
             n_slm_frames = len(slm_hold_times)
-            has_slm = n_slm_frames > 0 and slm_insertion_index >= 0
+            has_slm = slm_enabled and n_slm_frames > 0
 
             # iterate through the stages and get their values
             s = flattened_stages
