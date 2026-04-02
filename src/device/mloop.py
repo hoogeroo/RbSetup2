@@ -5,9 +5,7 @@ import mloop.interfaces as mli
 import matplotlib.pyplot as plt
 import matplotlib.colors
 import numpy as np
-import time
 import threading
-import pickle
 import os
 from datetime import datetime
 from PyQt6.QtWidgets import *
@@ -15,6 +13,7 @@ from PyQt6.QtCore import QObject, pyqtSignal
 import re
 from src.device.device_types import Stages
 from src.device import device
+from src.value_types import FloatValue, IntValue, BoolValue
 
 def is_number(s):
     try:
@@ -24,7 +23,6 @@ def is_number(s):
         return False
 
 # Default path for MLOOP files
-# Use local paths that work on both macOS and Linux
 import os
 current_dir = os.path.dirname(os.path.abspath(__file__))
 mloop_default_path = os.path.join(current_dir, 'MLOOP_files')
@@ -32,10 +30,6 @@ mloop_run_parameter_path = os.path.join(current_dir, 'mloop_config.txt')
 
 # Ensure MLOOP directory exists
 os.makedirs(mloop_default_path, exist_ok=True)
-
-class AiCancel:
-    pass
-
 
 #Declare your custom class that inherits from the Interface class
 class MLOOPInterface(mli.Interface):
@@ -119,7 +113,6 @@ class MLOOPInterface(mli.Interface):
             for i in range(num_experiments):
                 print(f'Beginning experiment iteration {i+1}/{num_experiments}')
                 
-                # THIRD HALT CHECK: Before each experiment iteration
                 self.check_stop()
                     
                 if self.continue_mloop.is_set():
@@ -146,6 +139,7 @@ class MLOOPInterface(mli.Interface):
                         break
                     else:
                         # Experiment still running, continue waiting
+                        self.check_stop()
                         print(f"Fluorescence: {self.fluorescence}, waiting for threshold: {self.fluorescence_threshold}")
                         experiment_completed = False  # Not successful yet
 
@@ -161,7 +155,6 @@ class MLOOPInterface(mli.Interface):
                 if experiment_completed:
                     try:
                         # Get experiment results from the princeton camera interface
-                        # Note: blackfly/bfcam is no longer in use
                         n_atoms = self.device.n_atoms[-1]
                         od_peak = self.device.od_peak[-1]
                         n_atoms_list.append(n_atoms)
@@ -208,7 +201,6 @@ class MLOOPInterface(mli.Interface):
                                            avg_od_peak if 'avg_od_peak' in locals() else 0, uncer])
                 self.plotcost()
 
-            # FINAL HALT CHECK: Before returning results
             self.check_stop()
 
             #The cost, uncertainty and bad boolean must all be returned as a dictionary
@@ -266,12 +258,14 @@ class MLOOPInterface(mli.Interface):
     def check_stop(self):
         """Called when MLOOP is stopped"""
         print('Stopping MLOOP optimization...')
-        self.continue_mloop.set()
         if self.device.device_pipe.poll():
             msg = self.device.device_pipe.recv()
             if not isinstance(msg, AiCancel):
                 print(f"Non AI cancel message received while running: {type(msg)}")
+            elif isinstance(msg, AiCancel):
+                print("AI cancel message received, stopping MLOOP optimization")
             raise AiCancel
+
 
     def MLOOP_parameters_to_pyqtgui_parameters(self, mloop_parameters):
         for i, param in enumerate(self.params):
@@ -282,7 +276,15 @@ class MLOOPInterface(mli.Interface):
                 stage_id = param.stage_id
                 variable_id = param.variable_id
                 stage = self.stages.get_stage(stage_id)
-                
+
+                # Asign correct value type to parameter
+                if isinstance(getattr(stage, variable_id), FloatValue):
+                    value = FloatValue.constant(value)
+                if isinstance(getattr(stage, variable_id), IntValue):
+                    value = IntValue.constant(value)
+                if isinstance(getattr(stage, variable_id), BoolValue):
+                    value = BoolValue.constant(value)
+
                 # Apply the MLOOP parameter value to the stage
                 setattr(stage, variable_id, value)
                 

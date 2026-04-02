@@ -190,7 +190,10 @@ class StagesGui:
         self.window.gui_pipe.send(AiSubmission(self.multigo_settings, self.ai_settings, self.extract_stages()))
 
         self.window.ai_progress = AiProgressDialog(self.window)
-        self.window.ai_progress.exec()
+        self.window.ai_progress.setModal(False)
+        self.window.ai_progress.show()
+        self.window.ai_progress.raise_()
+        self.window.ai_progress.activateWindow()
 
     # updates the hold labels with the values they will hold to
     def update_holds(self):

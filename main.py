@@ -63,14 +63,12 @@ try:
                 VariableTypeBool("Grey Molasses Shutter", "grey_molasses_shutter"),
                 VariableTypeBool("RF Disable", "rf_disable"),
                 VariableTypeBool("Flip Mirror", "flip_mirror"),
-                VariableTypeBool("Camera Shutter", "camera_shutter"),
             ]
 
             self.setattr_device("core")
             self.setattr_device("ttl0")   # SLM sync input 
             self.setattr_device("ttl4")
             self.setattr_device("ttl5")
-            self.setattr_device("ttl6")
             self.setattr_device("ttl7")   # SLM frame-advance trigger
             self.setattr_device('fastino0')
             self.setattr_device("sampler0")
@@ -186,10 +184,6 @@ try:
                     self.ttl5.on()
                 else:
                     self.ttl5.off()
-                if s.camera_shutter[i]:
-                    self.ttl6.on()
-                else:
-                    self.ttl6.off()
 
                 # update analog outputs
                 dac = [0.0] * 32
@@ -226,12 +220,12 @@ try:
                     amplitude=s.shadow_amplitude[i] * 0.6
                 )
                 self.urukul1_ch1.set(
-                    s.sheet_frequency[i] * MHz,
-                    amplitude=s.sheet_amplitude[i] * 0.6
-                )
-                self.urukul1_ch2.set(
                     s.optical_pump_frequency[i] * MHz,
                     amplitude=s.optical_pump_amplitude[i] * 0.6
+                )
+                self.urukul1_ch2.set(
+                    s.sheet_frequency[i] * MHz,
+                    amplitude=s.sheet_amplitude[i] * 0.6
                 )
                 self.urukul1_ch3.set(
                     s.rf_frequency[i] * MHz,

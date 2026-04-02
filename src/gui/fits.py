@@ -101,7 +101,7 @@ def load_settings(path, window):
     # load the camera images
     images = images_hdu.data
     if images is not None:
-        window.plots_gui.update_images(CameraImages(images[0], images[1], images[2], images[3].astype(np.float32) / 10000.0))
+        window.plots_gui.update_images(CameraImages(images[0].astype(np.float32), images[1].astype(np.float32), images[2].astype(np.float32), images[3].astype(np.float32) / 10000.0))
 
     # load the stages data
     stages_data = stages_hdu.data

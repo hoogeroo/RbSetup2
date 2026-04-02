@@ -92,6 +92,10 @@ class MultiGoProgressDialog(QDialog):
         self.button_box.rejected.connect(self.cancel_multigo)
         layout.addWidget(self.button_box)
 
+        # reset multigo plot
+        self.window.plots_gui.multigo_x.clear()
+        self.window.plots_gui.multigo_y.clear()
+
     def cancel_multigo(self):
         self.window.gui_pipe.send(MultiGoCancel())
 

@@ -29,7 +29,7 @@ class AiProgress:
         self.total_steps = total_steps
 
 # message to cancel the AI experiment
-class AiCancel(Exception):
+class AiCancel:
     pass
 
 class AiExecuter:

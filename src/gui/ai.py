@@ -2,9 +2,27 @@ import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvas
 from matplotlib.figure import Figure
 from PyQt6.QtWidgets import *
+from PyQt6.QtCore import Qt
 
 from src.device.ai import AiProgress, AiSettings, AiCancel
 from src.gui.run_variables import RunVariableWidget
+
+# class _SLMWorkerSignals(QObject):
+#     finished = pyqtSignal(object)
+#     error = pyqtSignal(str)
+
+# class _SLMWorker(QRunnable):
+#     def __init__(self, task):
+#         super().__init__()
+#         self.task = task
+#         self.signals = _SLMWorkerSignals()
+
+#     def run(self):
+#         try:
+#             result = self.task()
+#             self.signals.finished.emit(result)
+#         except Exception as e:
+#             self.signals.error.emit(str(e))
 
 class AiPlotData:
     """Message class for sending AI plot data from device to GUI"""
@@ -70,9 +88,11 @@ class AiDialog(QDialog):
     def save_ai_settings(self):
         pre_training_steps = self.pre_training_steps.value()
         training_steps = self.training_steps.value()
+        training_model = self.training_model.currentText()
+        pre_training_model = self.pre_training_model.currentText()
 
         # update the AI settings with the new run variables
-        self.stages.ai_settings = AiSettings(pre_training_steps, training_steps, 'neural_net')
+        self.stages.ai_settings = AiSettings(pre_training_steps, training_steps, pre_training_model, training_model)
 
         # close the dialog
         self.accept()
@@ -189,7 +209,7 @@ class AiProgressDialog(QDialog):
                 ax.relim()
                 ax.autoscale_view()
             
-            self.ai_canvas.draw()
+            self.ai_canvas.draw_idle()
             print('AI plots updated in progress dialog')
             
         except Exception as e:

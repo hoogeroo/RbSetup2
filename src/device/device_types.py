@@ -90,7 +90,7 @@ class FlattenedStages:
 
                     # special case for time variable
                     if variable.id == "time":
-                        flattened_list.append(value.constant_value() / samples)
+                        flattened_list.append(value.is_constant() / samples)
                         continue
 
                     # if hold repeat the last value

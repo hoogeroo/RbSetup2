@@ -108,7 +108,7 @@ class ImageAnalysis:
             Total atom number
         """
         """
-        area_px = ((2/3) * pixel_size ) **2  # Area of one pixel in m^2
+        area_px = ((1/2.6) * pixel_size ) **2  # Area of one pixel in m^2
         try:
             ### Gaussian Fitting Guesses ###
             amp = np.max(od_image)  # Amplitude guess
@@ -129,7 +129,7 @@ class ImageAnalysis:
         return atom_number
         """
         # area per pixel (m^2)
-        area_px = (pixel_size) ** 2
+        area_px = ((1 / 2.6) * pixel_size) ** 2
 
         # sanitize image and short-circuit empty frames
         od_image = np.nan_to_num(od_image, nan=0.0, posinf=0.0, neginf=0.0)

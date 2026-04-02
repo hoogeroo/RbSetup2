@@ -1,0 +1,27 @@
+mloop_version='3.3.2'
+archive_type='differential_evolution'
+num_params=7
+min_boundary=array([ 2.5, 20. ,  0.5, 67. ,  0.2,  0.2, 20. ])
+max_boundary=array([ 5., 80.,  1., 73.,  1.,  1., 80.])
+start_datetime='2026-04-02_14-43'
+param_names=['', '', '', '', '', '', '']
+evolution_strategy='best1'
+mutation_scale=(0.5, 1)
+cross_over_probability=0.7
+population_size=15
+num_population_members=105
+restart_tolerance=0.01
+first_params=nan
+has_trust_region=False
+trust_region=nan
+all_params=array([], dtype=float64)
+all_costs=array([], dtype=float64)
+all_uncers=array([], dtype=float64)
+bad_run_indexs=[]
+params_generations=[]
+costs_generations=[]
+population=[]
+population_costs=[]
+init_std=0
+curr_std=0
+generation_count=0
