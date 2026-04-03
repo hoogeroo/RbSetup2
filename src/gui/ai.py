@@ -7,23 +7,6 @@ from PyQt6.QtCore import Qt
 from src.device.ai import AiProgress, AiSettings, AiCancel
 from src.gui.run_variables import RunVariableWidget
 
-# class _SLMWorkerSignals(QObject):
-#     finished = pyqtSignal(object)
-#     error = pyqtSignal(str)
-
-# class _SLMWorker(QRunnable):
-#     def __init__(self, task):
-#         super().__init__()
-#         self.task = task
-#         self.signals = _SLMWorkerSignals()
-
-#     def run(self):
-#         try:
-#             result = self.task()
-#             self.signals.finished.emit(result)
-#         except Exception as e:
-#             self.signals.error.emit(str(e))
-
 class AiPlotData:
     """Message class for sending AI plot data from device to GUI"""
     def __init__(self, cost, cost_uncer, parameters, param_names, min_boundary, max_boundary):
@@ -50,7 +33,9 @@ class AiDialog(QDialog):
         # add settings
         form_layout = QFormLayout()
         self.pre_training_steps = QSpinBox()
+        self.pre_training_steps.setRange(0, 10000)
         self.training_steps = QSpinBox()
+        self.training_steps.setRange(0, 10000)
 
         # Steps rows
         form_layout.addRow("Pre-Training Steps:", self.pre_training_steps)
@@ -121,6 +106,7 @@ class AiProgressDialog(QDialog):
         # Initialize plotting data
         self.cost_history = []
         self.parameter_history = []
+        self.legend_added = set()  # track which parameter names have legend entries
         
         # Create matplotlib figure for AI plots
         self.ai_canvas = FigureCanvas(Figure(figsize=(12, 8)))
@@ -191,20 +177,25 @@ class AiProgressDialog(QDialog):
             
             # Parameter vs Run Number  
             for i, param_value in enumerate(normed_params):
+                name = plot_data.param_names[i] if i < len(plot_data.param_names) else f"p{i}"
+                label = name if name not in self.legend_added else None
                 self.ax_param_vs_run.plot(
                     experiment_num, param_value, 'o', 
-                    color=self.colors[i % 10]
+                    color=self.colors[i % 10],
+                    label=label,
                 )
+                self.legend_added.add(name)
             
             # Cost vs Parameter
             for i, param_value in enumerate(normed_params):
                 self.ax_cost_vs_param.errorbar(
                     param_value, plot_data.cost, plot_data.cost_uncer,
                     fmt='o', capsize=5, markersize=4, elinewidth=2,
-                    color=self.colors[i % 10]
+                    color=self.colors[i % 10],
                 )
             
-            # Update plot limits and redraw
+            # Update legends and plot limits, then redraw
+            self.ax_param_vs_run.legend(fontsize='small', loc='best')
             for ax in [self.ax_cost_vs_run, self.ax_param_vs_run, self.ax_cost_vs_param]:
                 ax.relim()
                 ax.autoscale_view()
@@ -221,5 +212,6 @@ class AiProgressDialog(QDialog):
     def clear_plots(self):
         self.cost_history = []
         self.parameter_history = []
+        self.legend_added = set()
         self.setup_plots()
         self.ai_canvas.draw()
