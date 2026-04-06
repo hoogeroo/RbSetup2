@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import *
 class RunVariable:
     def __init__(self, stage_id, variable_id, start, end, steps):
         self.stage_id = stage_id
+        print(stage_id)
         self.variable_id = variable_id
         self.start = start
         self.end = end

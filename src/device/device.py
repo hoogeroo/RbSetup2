@@ -158,7 +158,7 @@ class AbstractDevice:
     # handles the host side functions of running an experiment
     def run_experiment(self, stages, multigo_settings=None) -> tuple[float, float, np.ndarray]:
         temps = fetch_temperatures(ESP_url)
-        if temps and temps.get('upper_coil') and temps.get('lower_coil', 999) < temp_threshold:
+        if temps['upper_coil'] and temps['lower_coil'] < temp_threshold:
             disable_pulsing()
             time.sleep(0.2)
 
@@ -307,7 +307,6 @@ def enable_pulsing():
 
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(2)
         s.connect((TCP_IP, TCP_PORT))
         ml = 'PULSE,ON'
         s.send(ml.encode())
@@ -324,7 +323,6 @@ def disable_pulsing():
 
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(2)
         s.connect((TCP_IP, TCP_PORT))
         ml = 'PULSE,OFF'
         s.send(ml.encode())

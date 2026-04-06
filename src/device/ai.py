@@ -2,6 +2,17 @@
 from src.device.device_types import Stages
 from src.device.multigo import MultiGoSettings
 
+import src.device.mloop as ML
+
+# PyQt6 imports
+from PyQt6.QtWidgets import QMessageBox
+from PyQt6.QtCore import QTimer
+
+# Other imports
+import os
+import time
+import numpy as np
+
 # settings for the AI experiment
 class AiSettings:
     def __init__(self, pre_training_steps, training_steps, pre_training_model, training_model, load_file_path=None):
@@ -18,7 +29,7 @@ class AiProgress:
         self.total_steps = total_steps
 
 # message to cancel the AI experiment
-class AiCancel(Exception):
+class AiCancel:
     pass
 
 class AiExecuter:
@@ -50,8 +61,7 @@ class AiExecuter:
 
             self.run_mloop_optimization()  # Starts MLOOP Controller
         except AiCancel:
-            print("AI experiment cancelled or failed")
-            self.device.device_pipe.send(AiProgress(self.total_steps, self.total_steps))
+            self.device.device_pipe.send(AiProgress(self.current_step, self.total_steps))
 
     def start_mloop_controller(self, controller_dict):
         """Start the MLOOP controller"""
@@ -67,49 +77,63 @@ class AiExecuter:
             self.mloop_controller = mlc.create_controller(**controller_dict)
             print("MLOOP controller created successfully using mlc.create_controller")
 
-        except AiCancel:
-            raise
         except Exception as e:
             print(f'Error starting MLOOP controller: {e}')
             import traceback
             traceback.print_exc()
-            raise AiCancel
 
     def run_mloop_optimization(self):
         """Run MLOOP optimization"""
         try:
             print(f'MLOOP controller starting optimization, current learner is {self.training_model}')
-
-            # Start with config file parameters as the base, then override with explicit settings
-            controller_dict = dict(self.optimiser.mloop_parameter_dict)
-            controller_dict.update({
-                'interface': self.optimiser,
-                'max_num_runs': self.total_steps,
-                'controller_type': self.training_model,
-                'max_boundary': self.optimiser.max_boundary,
-                'min_boundary': self.optimiser.min_boundary,
-                'num_params': self.optimiser.num_params,
-                'controller_archive_file_type': 'txt',
-            })
-
-            # Only set archive filename if a load path was explicitly provided
-            if self.load_file_path:
-                controller_dict['controller_archive_filename'] = self.load_file_path
-
             if self.pre_training_steps > 0:
                 print(f'Running {self.pre_training_steps} training runs for cost exploration')
-                controller_dict['training_type'] = self.pre_training_model
-                controller_dict['num_training_runs'] = self.pre_training_steps
 
-            self.start_mloop_controller(controller_dict)
-            self.mloop_controller.optimize()
-            print('MLOOP optimization completed')
+                controller_dict = {
+                    'interface': self.optimiser,
+                    'max_num_runs': self.total_steps,
+                    'controller_type': self.training_model,
+                    'training_type': self.pre_training_model,
+                    'num_training_runs': self.pre_training_steps,
+                    'max_boundary': self.optimiser.max_boundary,
+                    'min_boundary': self.optimiser.min_boundary,
+                    'num_params': self.optimiser.num_params,
+                    'controller_archive_filename': self.load_file_path,  
+                    'controller_archive_file_type': 'txt',
+                }
+
+                self.start_mloop_controller(controller_dict)
+                self.mloop_controller.optimize()
+                print('MLOOP optimization completed')
+
+            elif self.pre_training_steps == 0:
+                controller_dict = {
+                    'interface': self.optimiser,
+                    'max_num_runs': self.total_steps,
+                    'controller_type': self.training_model,
+                    'max_boundary': self.optimiser.max_boundary,
+                    'min_boundary': self.optimiser.min_boundary,
+                    'num_params': self.optimiser.num_params,
+                    'controller_archive_filename': self.load_file_path,
+                    'controller_archive_file_type': 'txt',
+                }
+                
+                self.start_mloop_controller(controller_dict)
+                self.mloop_controller.optimize()  # This blocks until complete
+                print('MLOOP optimization completed successfully')
             
             # Send completion notification to GUI
             self.device.device_pipe.send(AiProgress(self.total_steps, self.total_steps))
             
-        except AiCancel:
-            raise
+            # Show visualizations if available
+            try:
+                # defer import for faster startup
+                import mloop.visualizations as mlv
+
+                mlv.show_all_default_visualizations(self.mloop_controller)
+            except Exception as viz_error:
+                print(f"Could not show visualizations: {viz_error}")
+            
         except Exception as e:
             print(f'Error during MLOOP optimization: {e}')
             import traceback
@@ -120,8 +144,8 @@ class AiExecuter:
     def create_mloop_interface_for_optimization(self):
         """Create MLOOP interface specifically for optimization run"""
         try:
-            import src.device.mloop as ML
-
+            if self.load_file_path:
+                self.load_parameters_from_mloop_file(self.load_file_path)
             print(f"Creating MLOOP interface with {len(self.run_variables)} parameters")
             self.optimiser = ML.MLOOPInterface(
                 params = self.run_variables,
@@ -138,4 +162,3 @@ class AiExecuter:
             print(f"Error creating MLOOP interface: {e}")
             import traceback
             traceback.print_exc()
-            raise AiCancel
