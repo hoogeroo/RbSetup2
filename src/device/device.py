@@ -228,7 +228,10 @@ class AbstractDevice:
             if images is not None:
                 # filter the images and extract parameters
                 camera_images = CameraImages(images[0], images[1], images[2])
-                self.device_pipe.send(self.image_analysis.filter_images(camera_images))
+                filtered_images = self.image_analysis.filter_images(camera_images)
+                self.device_pipe.send(filtered_images)
+                n_atoms = filtered_images.n_atoms
+                max_od = filtered_images.max_od
 
             # save the results if requested (only save when we actually have camera_images)
             if self.device_settings.save_runs and camera_images is not None:

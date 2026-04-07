@@ -9,6 +9,7 @@ from datetime import datetime
 from src.device.device_types import Stages
 from src.device.ai import AiCancel, AiProgress
 from src.value_types import FloatValue, IntValue, BoolValue
+from src.gui.plots import FluorescenceSample
 
 
 def is_number(s):
@@ -75,12 +76,7 @@ class MLOOPInterface(mli.Interface):
 
             self.MLOOP_parameters_to_pyqtgui_parameters(mloop_params)
 
-            experiment_ok = self.wait_for_fluorescence_and_run()
-
-            if experiment_ok:
-                n_atoms, od_peak = self.read_experiment_results()
-            else:
-                n_atoms, od_peak = 0.0, 0.0
+            n_atoms, od_peak = self.wait_for_fluorescence_and_run()
 
             cost, uncer, bad = self.cost_function(n_atoms, od_peak)
             self.record_history(cost, n_atoms, od_peak, uncer, bad)
@@ -105,16 +101,16 @@ class MLOOPInterface(mli.Interface):
 
     # ── Experiment execution ─────────────────────────────────────────────
 
-    def wait_for_fluorescence_and_run(self) -> bool:
+    def wait_for_fluorescence_and_run(self) -> tuple[float, float]:
         """Block until fluorescence threshold is reached, then run the experiment.
-        
-        Returns True if the experiment ran successfully, False on timeout.
+
+        Returns (n_atoms, od_peak) if successful, (0.0, 0.0) on timeout.
         """
         if self.continue_mloop.is_set():
             self.continue_mloop.clear()
 
         timeout_duration = 120.0
-        check_interval = 0.5
+        check_interval = 0.1
         elapsed = 0.0
 
         while elapsed < timeout_duration:
@@ -122,28 +118,19 @@ class MLOOPInterface(mli.Interface):
             elapsed += check_interval
 
             self.fluorescence = self.device.read_fluorescence()
+            self.device.device_pipe.send(FluorescenceSample(self.fluorescence))
 
             if self.fluorescence >= self.fluorescence_threshold:
                 print(f"Fluorescence threshold reached: {self.fluorescence} >= {self.fluorescence_threshold}")
-                self.device.run_experiment(self.stages)
+                n_atoms, od_peak, _ = self.device.run_experiment(self.stages)
+                print(f"Experiment completed: n_atoms={n_atoms:.2e}, od_peak={od_peak:.3f}")
                 self.continue_mloop.clear()
-                return True
+                return n_atoms, od_peak
 
             self.check_stop()
 
         print("Experiment timeout — no fluorescence within 120s")
-        return False
-
-    def read_experiment_results(self) -> tuple[float, float]:
-        """Read n_atoms and od_peak from the most recent experiment."""
-        try:
-            n_atoms = self.device.n_atoms[-1]
-            od_peak = self.device.od_peak[-1]
-            print(f"MLOOP: Acquired data — n_atoms: {n_atoms:.2e}, od_peak: {od_peak:.3f}")
-            return n_atoms, od_peak
-        except (IndexError, AttributeError) as e:
-            print(f"Error reading experiment data: {e}")
-            return 0.0, 0.0
+        return 0.0, 0.0
 
     # ── Cost function ────────────────────────────────────────────────────
 
@@ -154,7 +141,7 @@ class MLOOPInterface(mli.Interface):
         """
         maximum_cost = 1e6
 
-        if N <= 0 or od_peak <= 0:
+        if N <= 0 or od_peak <= 0 or not np.isfinite(N) or not np.isfinite(od_peak):
             return maximum_cost, 0.0, True
 
         alpha = 1

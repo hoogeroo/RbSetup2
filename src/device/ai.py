@@ -1,4 +1,7 @@
 # AI experiment execution code
+import os
+import shutil
+
 from src.device.device_types import Stages
 from src.device.multigo import MultiGoSettings
 
@@ -94,7 +97,15 @@ class AiExecuter:
 
             # Only set archive filename if a load path was explicitly provided
             if self.load_file_path:
-                controller_dict['controller_archive_filename'] = self.load_file_path
+                dst_base = controller_dict.get('controller_archive_filename', '')
+                if dst_base:
+                    dst = dst_base if dst_base.endswith('.txt') else dst_base + '.txt'
+                    if os.path.isfile(self.load_file_path):
+                        os.makedirs(os.path.dirname(dst) or '.', exist_ok=True)
+                        shutil.copy2(self.load_file_path, dst)
+                        print(f"Seeded new run with existing data from {self.load_file_path} to {dst}")
+                    else:
+                        print(f"Archive seed not found at {self.load_file_path}")
 
             if self.pre_training_steps > 0:
                 print(f'Running {self.pre_training_steps} training runs for cost exploration')

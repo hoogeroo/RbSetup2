@@ -3,9 +3,11 @@ from matplotlib.backends.backend_qtagg import FigureCanvas
 from matplotlib.figure import Figure
 from PyQt6.QtWidgets import *
 from PyQt6.QtCore import Qt
+import os
 
 from src.device.ai import AiProgress, AiSettings, AiCancel
 from src.gui.run_variables import RunVariableWidget
+from src.device.mloop import mloop_default_path
 
 class AiPlotData:
     """Message class for sending AI plot data from device to GUI"""
@@ -56,6 +58,29 @@ class AiDialog(QDialog):
 
         layout.addLayout(form_layout)
         layout.addWidget(learner_group)
+
+        # Seed from previous runs
+        resume_group = QGroupBox("Resume/Seed")
+        resume_layout = QFormLayout()
+
+        self.resume_checkbox = QCheckBox("Resume")
+        self.resume_path = QLineEdit()
+        self.resume_path.setPlaceholderText("Path to previous run data")
+        self.resume_path.setPlaceholderText("Archive path")
+        self.resume_browse_btn = QPushButton("Browse")
+        self.resume_browse_btn.clicked.connect(self.browse_resume_archive)
+
+        resume_path_row = QHBoxLayout()
+        resume_path_row.addWidget(self.resume_path)
+        resume_path_row.addWidget(self.resume_browse_btn)
+
+        resume_layout.addRow(self.resume_checkbox)
+        resume_layout.addRow("Archive file:", resume_path_row)
+        resume_group.setLayout(resume_layout)
+        layout.addWidget(resume_group)
+
+        self.resume_checkbox.toggled.connect(self.set_resume_enabled)
+
         # add buttons
         self.button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
         self.button_box.accepted.connect(self.save_ai_settings)
@@ -69,6 +94,19 @@ class AiDialog(QDialog):
         self.training_steps.setValue(ai_settings.training_steps)
         self.training_model.setCurrentText(ai_settings.training_model)
 
+    def set_resume_enabled(self, enabled: bool):
+        self.resume_path.setEnabled(enabled)
+        self.resume_browse_btn.setEnabled(enabled)
+
+    def browse_resume_archive(self):
+        # Defaults to current archive directory
+        default_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'device', 'MLOOP_files')
+
+        fname, _ = QFileDialog.getOpenFileName(self, "Select Archive File", default_dir, "M-LOOP controller archives (*_controller*)")
+        if fname:
+            self.resume_path.setText(fname)
+            self.resume_checkbox.setChecked(True)
+
     # saves the settings currently in the gui into the `StagesGui`'s ai_settings
     def save_ai_settings(self):
         pre_training_steps = self.pre_training_steps.value()
@@ -76,8 +114,12 @@ class AiDialog(QDialog):
         training_model = self.training_model.currentText()
         pre_training_model = self.pre_training_model.currentText()
 
+        load_file_path = None
+        if self.resume_checkbox.isChecked():
+            load_file_path = self.resume_path.text().strip()
+            
         # update the AI settings with the new run variables
-        self.stages.ai_settings = AiSettings(pre_training_steps, training_steps, pre_training_model, training_model)
+        self.stages.ai_settings = AiSettings(pre_training_steps, training_steps, pre_training_model, training_model, load_file_path = load_file_path)
 
         # close the dialog
         self.accept()
