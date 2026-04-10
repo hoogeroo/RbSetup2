@@ -7,12 +7,13 @@ from src.device.multigo import MultiGoSettings
 
 # settings for the AI experiment
 class AiSettings:
-    def __init__(self, pre_training_steps, training_steps, pre_training_model, training_model, load_file_path=None):
+    def __init__(self, pre_training_steps, training_steps, pre_training_model, training_model, load_file_path=None, num_runs_per_parameter_set=1):
         self.pre_training_steps = pre_training_steps
         self.training_steps = training_steps
         self.pre_training_model = pre_training_model
         self.training_model = training_model
         self.load_file_path = load_file_path  # Path to load existing model, if any
+        self.num_runs_per_parameter_set = num_runs_per_parameter_set
 
 # message to indicate AI progress to the gui
 class AiProgress:
@@ -40,6 +41,7 @@ class AiExecuter:
         self.load_file_path = ai_settings.load_file_path
         self.current_step = 0
         self.optimiser = None
+        self.num_runs_per_parameter_set = ai_settings.num_runs_per_parameter_set
 
     def run_ai_experiment(self): 
         print("Starting AI experiment...")
@@ -93,6 +95,7 @@ class AiExecuter:
                 'min_boundary': self.optimiser.min_boundary,
                 'num_params': self.optimiser.num_params,
                 'controller_archive_file_type': 'txt',
+                'cost_has_noise': True,
             })
 
             # Only set archive filename if a load path was explicitly provided
@@ -138,9 +141,10 @@ class AiExecuter:
                 params = self.run_variables,
                 device = self.device,
                 stages = self.stages,
-                trainingsteps=self.total_steps,
                 pre_training_steps=self.pre_training_steps,
                 fluorescence_threshold=self.fluorescence_threshold,
+                trainingsteps=self.total_steps,
+                num_runs_per_parameter_set=self.num_runs_per_parameter_set
             )
 
             print(f"Created fresh MLOOP interface: {type(self.optimiser)}")

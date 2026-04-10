@@ -24,6 +24,8 @@ from src.value_types import BoolValue, IntValue, FloatValue
 from src.gui.temperatures import fetch_temperatures, ESP_url
 
 SAVE_PATH = "runs"
+if not os.path.exists(SAVE_PATH):
+    os.makedirs(SAVE_PATH, exist_ok=True)
 
 # TCP settings for pulse control
 TCP_IP = "130.216.51.242"
@@ -159,9 +161,10 @@ class AbstractDevice:
     def run_experiment(self, stages, multigo_settings=None) -> tuple[float, float, np.ndarray]:
         temps = fetch_temperatures(ESP_url)
         if temps and temps.get('upper_coil') and temps.get('lower_coil', 999) < temp_threshold:
-            disable_pulsing()
-            time.sleep(0.2)
+            # disable_pulsing()
+            dds_amp_update(3, 0.0)
 
+            time.sleep(0.2)
             # tell the camera server to acquire a frame
             camera = None
             try:
@@ -212,7 +215,8 @@ class AbstractDevice:
             flattened_stages = FlattenedStages(stages, self.variables)
             self.run_experiment_device(flattened_stages, slm_hold_times, slm_insertion_index, slm.enabled)
 
-            enable_pulsing()
+            # enable_pulsing()
+            dds_amp_update(3, 1.0)
 
             # read back the camera images
             n_atoms = float('nan')
@@ -242,16 +246,17 @@ class AbstractDevice:
                 save_dir = SAVE_PATH
                 if multigo_settings is not None:
                     # Create/reuse a per-multigo folder so all fits for the same multigo go to the same place
-                    # Use an explicit session key if provided, otherwise fall back to the multigo_settings object's id
                     mg_key = getattr(multigo_settings, "_multigo_session_id", None) or id(multigo_settings)
 
                     # if this is a new multigo session (or first time seeing it), compute and store the folder
                     if not hasattr(self, "_current_multigo_key") or self._current_multigo_key != mg_key:
-                        save_dir = os.path.join(SAVE_PATH, f"multigo_{timestamp}")
+                        session_timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                        save_dir = os.path.join(SAVE_PATH, f"multigo_{session_timestamp}")
 
                         # persist for subsequent runs within the same multigo session
                         self._current_multigo_key = mg_key
                         self._current_multigo_dir = save_dir
+                        self._current_multi_go_session_timestamp = session_timestamp
                     else:
                         # reuse previously determined directory for this multigo session
                         save_dir = getattr(self, "_current_multigo_dir", SAVE_PATH)

@@ -38,10 +38,13 @@ class AiDialog(QDialog):
         self.pre_training_steps.setRange(0, 10000)
         self.training_steps = QSpinBox()
         self.training_steps.setRange(0, 10000)
+        self.num_runs_per_parameter_set = QSpinBox()
+        self.num_runs_per_parameter_set.setRange(1, 100)
 
         # Steps rows
         form_layout.addRow("Pre-Training Steps:", self.pre_training_steps)
         form_layout.addRow("Training Steps:", self.training_steps)
+        form_layout.addRow("Number of Runs per Parameter Set:", self.num_runs_per_parameter_set)
 
         # Group box titled "Learner" containing the two model dropdowns
         learner_group = QGroupBox("Learner")
@@ -94,6 +97,8 @@ class AiDialog(QDialog):
         self.training_steps.setValue(ai_settings.training_steps)
         self.training_model.setCurrentText(ai_settings.training_model)
 
+
+
     def set_resume_enabled(self, enabled: bool):
         self.resume_path.setEnabled(enabled)
         self.resume_browse_btn.setEnabled(enabled)
@@ -113,13 +118,14 @@ class AiDialog(QDialog):
         training_steps = self.training_steps.value()
         training_model = self.training_model.currentText()
         pre_training_model = self.pre_training_model.currentText()
+        num_runs_per_parameter_set = self.num_runs_per_parameter_set.value()
 
         load_file_path = None
         if self.resume_checkbox.isChecked():
             load_file_path = self.resume_path.text().strip()
-            
+
         # update the AI settings with the new run variables
-        self.stages.ai_settings = AiSettings(pre_training_steps, training_steps, pre_training_model, training_model, load_file_path = load_file_path)
+        self.stages.ai_settings = AiSettings(pre_training_steps, training_steps, pre_training_model, training_model, load_file_path = load_file_path, num_runs_per_parameter_set=num_runs_per_parameter_set)
 
         # close the dialog
         self.accept()

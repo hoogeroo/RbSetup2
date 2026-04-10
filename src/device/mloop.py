@@ -32,7 +32,7 @@ class MLOOPInterface(mli.Interface):
     """
 
     def __init__(self, params, device, stages: Stages, pre_training_steps,
-                 fluorescence_threshold, trainingsteps=100, filename=None, folder=None):
+                 fluorescence_threshold, trainingsteps=100, num_runs_per_parameter_set=1, filename=None, folder=None):
         mli.Interface.__init__(self)
 
         self.device = device
@@ -47,6 +47,7 @@ class MLOOPInterface(mli.Interface):
 
         self.trainingsteps = trainingsteps
         self.pre_training_steps = pre_training_steps
+        self.num_runs_per_parameter_set = num_runs_per_parameter_set
         self.params = params
         self.run_num = 0
         self.cost_list = []
@@ -63,10 +64,21 @@ class MLOOPInterface(mli.Interface):
             self.figure_location = folder
         else:
             self.create_folders(filename=self.param_fname)
+    
+    def get_noise_floor(self, num = 10):
+        """Estimate standard deviation of cost function for a fixed parameter set."""
+        noise_costs = []
+        for _ in range(num):
+            n_atoms, od_peak = self.wait_for_fluorescence_and_run()
+            cost, uncer, bad = self.cost_function(n_atoms, od_peak)
+            if not bad:
+                noise_costs.append(cost)
+
+        
 
     # ── MLOOP interface methods ──────────────────────────────────────────
 
-    def get_next_cost_dict(self, params_dict):
+    def get_next_cost_dict(self, params_dict, num_runs = 1):
         """Called by MLOOP on each iteration. Runs one experiment and returns cost."""
         try:
             self.check_stop()
@@ -75,10 +87,22 @@ class MLOOPInterface(mli.Interface):
             print(f"MLOOP Run {self.run_num + 1}: Testing parameters {mloop_params}")
 
             self.MLOOP_parameters_to_pyqtgui_parameters(mloop_params)
+            if num_runs != 1:
+                cost_temp = []
+                for n in range(num_runs):
+                    n_atoms, od_peak = self.wait_for_fluorescence_and_run()
+                    cost, bad = self.cost_function(n_atoms, od_peak)
+                    cost_temp.append(cost)
+                cost = np.mean(cost_temp)
+                if num_runs > 2:
+                    uncer = np.std(cost_temp)
+                else:
+                    uncer = 2 * (max(cost_temp) - min(cost_temp))
+            
+            else:
+                cost, bad = self.cost_function(n_atoms, od_peak)
+                uncer = 1.0 
 
-            n_atoms, od_peak = self.wait_for_fluorescence_and_run()
-
-            cost, uncer, bad = self.cost_function(n_atoms, od_peak)
             self.record_history(cost, n_atoms, od_peak, uncer, bad)
 
             self.check_stop()
@@ -134,7 +158,7 @@ class MLOOPInterface(mli.Interface):
 
     # ── Cost function ────────────────────────────────────────────────────
 
-    def cost_function(self, N, od_peak):
+    def cost_function(self, N, od_peak, multiple_runs = False):
         """Compute cost from atom number and OD peak.
         
         See: https://arxiv.org/abs/2205.08057
@@ -149,13 +173,8 @@ class MLOOPInterface(mli.Interface):
 
         cost = -normaliser_lowN * (od_peak ** 3) * N ** (alpha - 1.8) * 1e6
         self.cost_list.append(cost)
-
-        if self.run_num > self.pre_training_steps:
-            uncertainty = np.std(self.cost_list)
-        else:
-            uncertainty = 0.0
-
-        return cost, uncertainty, False
+        
+        return cost, False
 
     # ── Cancel handling ──────────────────────────────────────────────────
 
