@@ -2,8 +2,11 @@
 multigo.py: has the code for running multigo experiments
 '''
 
+import numpy as np
+
 from src.device.device_types import Stages
 from src.gui.plots import FluorescenceSample
+from src.value_types import FloatValue
 
 class MultiGoSettings:
     def __init__(self, run_variables, fluorescence_threshold):
@@ -111,8 +114,15 @@ def run_multigo_experiment(device, multigo_settings: MultiGoSettings, stages: St
     # create arrays for each variable, sampled with n_steps
     values = []
     for var in run_variables:
-        # use the first variable's step count for all variables
-        array = var.start.interpolate(var.end, n_steps)
+        if getattr(var, 'is_ramp', False):
+            # ramp: interpolate start and end of the ramp independently
+            starts = np.linspace(var.ramp_start_start, var.ramp_start_end, n_steps)
+            ends = np.linspace(var.ramp_end_start, var.ramp_end_end, n_steps)
+            array = [FloatValue.ramp(starts[j], ends[j], mode=var.ramp_mode)
+                     for j in range(n_steps)]
+        else:
+            # constant: use existing value-type interpolation
+            array = var.start.interpolate(var.end, n_steps)
         values.append(array)
 
     total_runs = n_steps

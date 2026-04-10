@@ -191,25 +191,46 @@ class MLOOPInterface(mli.Interface):
     # ── Parameter handling ───────────────────────────────────────────────
 
     def MLOOP_parameters_to_pyqtgui_parameters(self, mloop_parameters):
-        """Write MLOOP parameter values into the experiment stages."""
-        for i, param in enumerate(self.params):
-            if i >= len(mloop_parameters):
+        """Write MLOOP parameter values into the experiment stages.
+            param map handles ramp variables, each ramp variable occupies two 
+            MLOOP parameters
+        """
+        # collect ramp parts: run_var_idx → {'ramp_start': val, 'ramp_end': val}
+        ramp_parts = {}
+
+        for mloop_idx, (rv_idx, component) in enumerate(self.param_map):
+            if mloop_idx >= len(mloop_parameters):
                 break
+            val = mloop_parameters[mloop_idx]
+            param = self.params[rv_idx]
 
-            value = mloop_parameters[i]
+            if component == 'constant':
+                stage = self.stages.get_stage(param.stage_id)
+                current = getattr(stage, param.variable_id)
+                if isinstance(current, FloatValue):
+                    new_val = FloatValue.constant(val)
+                elif isinstance(current, IntValue):
+                    new_val = IntValue.constant(val)
+                elif isinstance(current, BoolValue):
+                    new_val = BoolValue.constant(val)
+                else:
+                    new_val = val
+                setattr(stage, param.variable_id, new_val)
+                param.current_value = val
+                print(f"  {param.stage_id}.{param.variable_id} = {val}")
+            else:
+                ramp_parts.setdefault(rv_idx, {})[component] = val
+
+        # write reconstructed ramp values
+        for rv_idx, parts in ramp_parts.items():
+            param = self.params[rv_idx]
+            rs = parts.get('ramp_start', 0.0)
+            re = parts.get('ramp_end', 0.0)
+            mode = getattr(param, 'ramp_mode', 'linear')
             stage = self.stages.get_stage(param.stage_id)
-            current = getattr(stage, param.variable_id)
-
-            if isinstance(current, FloatValue):
-                value = FloatValue.constant(value)
-            elif isinstance(current, IntValue):
-                value = IntValue.constant(value)
-            elif isinstance(current, BoolValue):
-                value = BoolValue.constant(value)
-
-            setattr(stage, param.variable_id, value)
-            param.current_value = mloop_parameters[i]
-            print(f"  {param.stage_id}.{param.variable_id} = {mloop_parameters[i]}")
+            setattr(stage, param.variable_id, FloatValue.ramp(rs, re, mode=mode))
+            param.current_value = (rs, re)
+            print(f"  {param.stage_id}.{param.variable_id} = ramp({rs}, {re}, {mode})")
 
     def iterate_start(self):
         """Called before the MLOOP controller starts. Populates parameter boundaries."""
@@ -223,9 +244,13 @@ class MLOOPInterface(mli.Interface):
         """Record parameter values and send plot data to GUI if the result was good."""
         histvec = []
         for p in self.params:
-            val = p.current_value if p.current_value is not None else 0.0
-            histvec.append(val)
-            p.history.append(val)
+            cv = p.current_value if p.current_value is not None else 0.0
+            if isinstance(cv, tuple):
+                # ramp variable → two entries matching MLOOP parameter order
+                histvec.extend(cv)
+            else:
+                histvec.append(cv)
+            p.history.append(cv)
 
         if not bad:
             self.history['trials'].append(histvec)
@@ -257,24 +282,46 @@ class MLOOPInterface(mli.Interface):
         self.min_boundary = []
         self.num_params = 0
         self.param_names = []
+        # maps each MLOOP param index → (run_variable_index, 'constant'|'ramp_start'|'ramp_end')
+        self.param_map = []
         for p in self.params:
             if not hasattr(p, 'history'):
                 p.history = []
         self.history = {'trials': [], 'cost': []}
 
     def Populate_MLOOP_parameters(self):
-        """Build the parameter dict that MLOOP needs (boundaries, names, config)."""
+        """Build the parameter dict that MLOOP needs (boundaries, names, config).
+        """
         self.mloop_parameter_dict = {}
 
         for i, param in enumerate(self.params):
-            rangemin = min(param.start.constant_value(), param.end.constant_value())
-            rangemax = max(param.start.constant_value(), param.end.constant_value())
-            param_name = f"{param.stage_id}_{param.variable_id}"
+            base_name = f"{param.stage_id}_{param.variable_id}"
 
-            self.param_names.append(param_name)
-            self.max_boundary.append(rangemax)
-            self.min_boundary.append(rangemin)
-            self.num_params = i + 1
+            if getattr(param, 'is_ramp', False):
+                # ramp → two MLOOP parameters
+                rs_min = min(param.ramp_start_start, param.ramp_start_end)
+                rs_max = max(param.ramp_start_start, param.ramp_start_end)
+                self.param_names.append(f"{base_name}_ramp_start")
+                self.min_boundary.append(rs_min)
+                self.max_boundary.append(rs_max)
+                self.param_map.append((i, 'ramp_start'))
+
+                re_min = min(param.ramp_end_start, param.ramp_end_end)
+                re_max = max(param.ramp_end_start, param.ramp_end_end)
+                self.param_names.append(f"{base_name}_ramp_end")
+                self.min_boundary.append(re_min)
+                self.max_boundary.append(re_max)
+                self.param_map.append((i, 'ramp_end'))
+            else:
+                # constant → one MLOOP parameter
+                rangemin = min(param.start.constant_value(), param.end.constant_value())
+                rangemax = max(param.start.constant_value(), param.end.constant_value())
+                self.param_names.append(base_name)
+                self.min_boundary.append(rangemin)
+                self.max_boundary.append(rangemax)
+                self.param_map.append((i, 'constant'))
+
+        self.num_params = len(self.param_names)
 
         self.mloop_parameter_dict['max_boundary'] = self.max_boundary
         self.mloop_parameter_dict['min_boundary'] = self.min_boundary
