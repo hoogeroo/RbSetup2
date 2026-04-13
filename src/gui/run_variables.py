@@ -24,6 +24,13 @@ class RunVariable:
         self.ramp_end_end = ramp_end_end
         self.ramp_mode = ramp_mode
 
+    # Used to exclude qt references from pickling when saving run variables 
+    def __getstate__(self):
+        return {k: v for k, v in self.__dict__.items() if not k.startswith('_')}
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+
 # custom widget for adding run_variables
 class RunVariableWidget(QWidget):
     def __init__(self, stages, steps=True):
@@ -97,7 +104,7 @@ class RunVariableWidget(QWidget):
     
     @staticmethod
     def _ramp_to_constant(value):
-        if hasattr(value, 'is_ramp') and value.is_ramp:
+        if hasattr(value, 'is_ramp') and value.is_ramp():
             _, end = value.ramp_values()
             return value.__class__.constant(end)
         return value

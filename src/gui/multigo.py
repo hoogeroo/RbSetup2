@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import *
 from PyQt6.QtCore import Qt
 
 from src.device.multigo import MultiGoCancel, MultiGoProgress, MultiGoSettings
-from src.gui.run_variables import RunVariableWidget, RunVariable
+from src.gui.run_variables import RunVariableWidget
 
 # dialog for chaning multigo settings
 class MultiGoDialog(QDialog):
@@ -45,11 +45,7 @@ class MultiGoDialog(QDialog):
         self.fluorescence_threshold.setValue(multigo_settings.fluorescence_threshold)
 
         for rv in multigo_settings.run_variables:
-            rv_copy = RunVariable(rv.stage_id, rv.variable_id, rv.start, rv.end,
-                                  rv.steps, rv.is_ramp, rv.ramp_start_start, rv.ramp_start_end,
-                                    rv.ramp_end_start, rv.ramp_end_end, rv.ramp_mode,
-                                    )
-            self.run_variable_widget.add_run_variable(rv_copy)
+            self.run_variable_widget.add_run_variable(rv)
 
     # saves the settings currently in the gui into the `StagesGui`'s multigo_settings
     def save_multigo_settings(self):
