@@ -75,27 +75,39 @@ class RunVariableWidget(QWidget):
         for rv in self.run_variables:
             # read current widget values into the RunVariable
             if hasattr(rv, '_ramp_cb') and rv._ramp_cb.isChecked():
-                rv.is_ramp = True
-                rv.ramp_start_start = rv._ramp_start_from.value()
-                rv.ramp_start_end = rv._ramp_start_to.value()
-                rv.ramp_end_start = rv._ramp_end_from.value()
-                rv.ramp_end_end = rv._ramp_end_to.value()
-                rv.ramp_mode = rv._ramp_mode_combo.currentText()
+                run_variables.append(RunVariable(
+                    rv.stage_id, rv.variable_id, 
+                    rv._start_w.get_value(), rv._end_w.get_value(),
+                    rv._steps_w.value() if self.steps else rv.steps,
+                    is_ramp = True,
+                    ramp_start_start = rv._ramp_start_from.value(),
+                    ramp_start_end = rv._ramp_start_to.value(),
+                    ramp_end_start = rv._ramp_end_from.value(),
+                    ramp_end_end = rv._ramp_end_to.value(),
+                    ramp_mode = rv._ramp_mode_combo.currentText(),
+                ))
             else:
-                rv.is_ramp = False
-                rv.start = rv._start_w.get_value()
-                rv.end = rv._end_w.get_value()
-            if self.steps:
-                rv.steps = rv._steps_w.value()
-            run_variables.append(rv)
+                run_variables.append(RunVariable(
+                    rv.stage_id, rv.variable_id,
+                    rv._start_w.get_value(), rv._end_w.get_value(),
+                    rv._steps_w.value() if self.steps else rv.steps,
+                    is_ramp = False
+                ))
         return run_variables
+    
+    @staticmethod
+    def _ramp_to_constant(value):
+        if hasattr(value, 'is_ramp') and value.is_ramp:
+            _, end = value.ramp_values()
+            return value.__class__.constant(end)
+        return value
 
     # create a new run variable
     def new_run_variable(self, idx, variable):
         variable = self.stages.variables[variable]
         if variable.hidden:
             widget = self.stages.hidden_gui.widgets[variable.id]
-            current_value = widget.get_value()
+            current_value = self._ramp_to_constant(widget.get_value())
             run_variable = RunVariable(
                 #self.stages.hidden_gui.widgets[variable.id],
                 'dc',
@@ -107,7 +119,7 @@ class RunVariableWidget(QWidget):
         else:
             if idx==0:
                 widget = self.stages.dc_widgets[variable.id]
-                current_value = widget.get_value()
+                current_value = self._ramp_to_constant(widget.get_value())
                 run_variable = RunVariable(
                     #self.stages.dc_widgets[variable.id],
                     'dc',
@@ -119,7 +131,7 @@ class RunVariableWidget(QWidget):
             else:
                 #print(variable.id)
                 widget = self.stages.stages[idx-1].widgets[variable.id]
-                current_value = widget.get_value()
+                current_value = self._ramp_to_constant(widget.get_value())
                 run_variable = RunVariable(
                     self.stages.stages[idx-1].id,
                     variable.id,

@@ -100,6 +100,7 @@ class MLOOPInterface(mli.Interface):
                     uncer = 2 * (max(cost_temp) - min(cost_temp))
             
             else:
+                n_atoms, od_peak = self.wait_for_fluorescence_and_run()
                 cost, bad = self.cost_function(n_atoms, od_peak)
                 uncer = 1.0 
 
@@ -166,7 +167,7 @@ class MLOOPInterface(mli.Interface):
         maximum_cost = 1e6
 
         if N <= 0 or od_peak <= 0 or not np.isfinite(N) or not np.isfinite(od_peak):
-            return maximum_cost, 0.0, True
+            return maximum_cost, True
 
         alpha = 1
         normaliser_lowN = 2 / (1 + np.exp(1e3 / N))

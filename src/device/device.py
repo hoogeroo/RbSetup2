@@ -278,7 +278,7 @@ class AbstractDevice:
         
         else:
             print("Temperature too high, skipping experiment and pulsing")
-            enable_pulsing()
+            dds_amp_update(3, 1.0)
             return (float('nan'), float('nan'), None)
 
     # dummy method to be overridden by the device
