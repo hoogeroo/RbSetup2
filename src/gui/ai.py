@@ -107,7 +107,7 @@ class AiDialog(QDialog):
         # Defaults to current archive directory
         default_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'device', 'MLOOP_files')
 
-        fname, _ = QFileDialog.getOpenFileName(self, "Select Archive File", default_dir, "M-LOOP controller archives (*_controller*)")
+        fname, _ = QFileDialog.getOpenFileName(self, "Select Archive File", default_dir, "M-LOOP learner archives (*learner*)")
         if fname:
             self.resume_path.setText(fname)
             self.resume_checkbox.setChecked(True)

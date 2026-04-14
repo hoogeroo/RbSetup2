@@ -181,20 +181,50 @@ def run_variable_list_to_hdu(run_variables):
         fits.Column(name='variable_id', format='A36', array=[var.variable_id for var in run_variables]),
         fits.Column(name='start_value', format='4D', dim='(4)', array=[AnyValue(var.start).to_array() for var in run_variables]),
         fits.Column(name='end_value', format='4D', dim='(4)', array=[AnyValue(var.end).to_array() for var in run_variables]),
-        fits.Column(name='steps', format='K', array=[var.steps for var in run_variables])
+        fits.Column(name='steps', format='K', array=[var.steps for var in run_variables]),
+        fits.Column(name='is_ramp', format='L', array=[var.is_ramp for var in run_variables]),
+        fits.Column(name='ramp_start_start', format='D', array=[getattr(var, 'ramp_start_start', 0.0) for var in run_variables]),
+        fits.Column(name='ramp_start_end', format='D', array=[getattr(var, 'ramp_start_end', 0.0) for var in run_variables]),
+        fits.Column(name='ramp_end_start', format='D', array=[getattr(var, 'ramp_end_start', 0.0) for var in run_variables]),
+        fits.Column(name='ramp_end_end', format='D', array=[getattr(var, 'ramp_end_end', 0.0) for var in run_variables]),
+        fits.Column(name='ramp_mode', format='A12', array=[getattr(var, 'ramp_mode', 'linear') for var in run_variables]),
     ]
     return fits.BinTableHDU.from_columns(columns)
 
 # loads run variables from a fits table hdu
 def run_variable_hdu_to_list(hdu):
+    def _names():
+        try:
+            return set(hdu.columns.names)
+        except Exception as e:
+            print(f"Error getting column names: {e}")
+            return set()
+    def _decode(x):
+        if isinstance(x, (bytes, np.bytes_)):
+            x = x.decode(errors.ignore)
+        return str(x).strip()
+    
+    def _get(row, col, default):
+        return row[col] if col in col_names else default
+    
+    if hdu.data is None:
+        return []
+    
+    col_names = _names()
     run_variables = []
     for row in hdu.data:
         run_variables.append(RunVariable(
-            stage_id=row['stage_id'].strip(),
-            variable_id=row['variable_id'].strip(),
+            stage_id=_decode(row['stage_id']),
+            variable_id=_decode(row['variable_id']),
             start=AnyValue.from_array(row['start_value']).to_value(),
             end=AnyValue.from_array(row['end_value']).to_value(),
-            steps=row['steps']
+            steps=int(row['steps']),
+            is_ramp = bool(_get(row, 'is_ramp', False)),
+            ramp_start_start = float(_get(row, 'ramp_start_start', 0.0)),
+            ramp_start_end = float(_get(row, 'ramp_start_end', 0.0)),
+            ramp_end_start = float(_get(row, 'ramp_end_start', 0.0)),
+            ramp_end_end = float(_get(row, 'ramp_end_end', 0.0)),
+            ramp_mode = _decode(_get(row, 'ramp_mode', 'linear')) or 'linear',
         ))
     return run_variables
 
