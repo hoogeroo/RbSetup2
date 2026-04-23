@@ -6,10 +6,11 @@ import os
 import re
 from datetime import datetime
 
-from src.device.device_types import Stages
+from src.device.device_types import Stages, Stage
 from src.device.ai import AiCancel, AiProgress
 from src.value_types import FloatValue, IntValue, BoolValue
 from src.gui.plots import FluorescenceSample
+
 
 
 def is_number(s):
@@ -187,6 +188,8 @@ class MLOOPInterface(mli.Interface):
             if isinstance(msg, AiCancel):
                 print("Cancel received — stopping MLOOP optimization")
                 raise AiCancel
+            elif isinstance(msg, Stage):
+                self.device.run_stage(msg)
             else:
                 print(f"Ignoring non-cancel message during AI: {type(msg).__name__}")
 
