@@ -13,6 +13,7 @@ class MultiGoSettings:
         self.run_variables = run_variables
         self.fluorescence_threshold = fluorescence_threshold
         self.running_multigo = False
+        self._multigo_session_id = None
 
 # class for sending multigo progress updates from device to gui
 class MultiGoProgress:
@@ -160,7 +161,7 @@ def run_multigo_experiment(device, multigo_settings: MultiGoSettings, stages: St
             break
 
         # run the experiment once for this combined set of values
-        device.run_experiment(stages)
+        device.run_experiment(stages, multigo_settings=multigo_settings)
 
     # send final progress update
     device.device_pipe.send(MultiGoProgress(total_runs, total_runs))

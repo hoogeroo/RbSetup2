@@ -102,7 +102,7 @@ class MLOOPInterface(mli.Interface):
             else:
                 n_atoms, od_peak = self.wait_for_fluorescence_and_run()
                 cost, bad = self.cost_function(n_atoms, od_peak)
-                uncer = 1.0 
+                uncer = 1e-8
 
             self.record_history(cost, n_atoms, od_peak, uncer, bad)
 
@@ -166,13 +166,14 @@ class MLOOPInterface(mli.Interface):
         """
         maximum_cost = 1e6
 
-        if N <= 0 or od_peak <= 0 or not np.isfinite(N) or not np.isfinite(od_peak):
+        if N <= 0 or od_peak <= 0.3 or not np.isfinite(N) or not np.isfinite(od_peak):
             return maximum_cost, True
 
-        alpha = 1
-        normaliser_lowN = 2 / (1 + np.exp(1e3 / N))
+        alpha = -1/5 # alpha = -1/5 is for thermal cloud. proportional to N/T^3, which is a PSD proxy. But cant condense at alpha = -1/5, alpha > 0 for condensation.
+        normaliser_lowN = 2 / (1 + np.exp(1e5 / N))
 
-        cost = -normaliser_lowN * (od_peak ** 3) * N ** (alpha - 1.8) * 1e6
+        # cost = -normaliser_lowN * (od_peak ** 3) * N ** (alpha - 1.8) * 1e6
+        cost = - np.log(N*od_peak**2)
         self.cost_list.append(cost)
         
         return cost, False

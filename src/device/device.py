@@ -62,6 +62,16 @@ class AbstractDevice:
 
         # initialize background management for filtering
         self.image_analysis = ImageAnalysis(self)
+    
+    def _begin_multigo_session(self, multigo_settings):
+        # Allocate a unique session ID for this multigo session (stored in multigo settings class)
+        if getattr(multigo_settings, "_multigo_session_id", None) is None:
+            now = datetime.now()
+            multigo_settings._multigo_session_id = now.strftime("%Y%m%d_%H%M%S_%f")
+
+            # reset multigo directory and previous session key to ensure new directory is created for this session
+            self._current_multigo_key = None
+            self._current_multigo_dir = None
 
     # spawns the gui in a separate process
     def run(self):
@@ -98,15 +108,15 @@ class AbstractDevice:
                             break
                     if found:
                         continue
-                    self.push_amp = msg.push_amplitude.constant_value()
-                    self.mot1_amp = msg.mot1_amplitude.constant_value()
-                    self.push_freq = msg.push_frequency.constant_value()
-                    self.mot1_freq = msg.mot1_frequency.constant_value()
+                    # self.push_amp = msg.push_amplitude.constant_value()
+                    # self.mot1_amp = msg.mot1_amplitude.constant_value()
+                    # self.push_freq = msg.push_frequency.constant_value()
+                    # self.mot1_freq = msg.mot1_frequency.constant_value()
 
-                    dds_amp_update(3, self.push_amp) 
-                    dds_freq_update(3, self.push_freq)
-                    dds_amp_update(1, self.mot1_amp)
-                    dds_freq_update(1, self.mot1_freq)
+                    # dds_amp_update(3, self.push_amp) 
+                    # dds_freq_update(3, self.push_freq)
+                    # dds_amp_update(1, self.mot1_amp)
+                    # dds_freq_update(1, self.mot1_freq)
 
                     # sets the outputs to the ones in a stage (for dc)
                     self.run_stage(msg)
@@ -115,6 +125,7 @@ class AbstractDevice:
                     self.run_experiment(msg)
                 elif isinstance(msg, MultiGoSubmission):
                     # run the multi-go routine
+                    self._begin_multigo_session(msg.multigo_settings)
                     run_multigo_experiment(self, msg.multigo_settings, msg.stages)
                 elif isinstance(msg, AiSubmission):
                     # run the AI routine
@@ -162,7 +173,7 @@ class AbstractDevice:
         temps = fetch_temperatures(ESP_url)
         if temps and temps.get('upper_coil') and temps.get('lower_coil', 999) < temp_threshold:
             # disable_pulsing()
-            dds_amp_update(3, 0.0)
+            # dds_amp_update(3, 0.0)
 
             time.sleep(0.2)
             # tell the camera server to acquire a frame
@@ -216,7 +227,7 @@ class AbstractDevice:
             self.run_experiment_device(flattened_stages, slm_hold_times, slm_insertion_index, slm.enabled)
 
             # enable_pulsing()
-            dds_amp_update(3, 1.0)
+            # dds_amp_update(3, 0.9)
 
             # read back the camera images
             n_atoms = float('nan')
@@ -277,8 +288,8 @@ class AbstractDevice:
             return (n_atoms, max_od, images)
         
         else:
-            print("Temperature too high, skipping experiment and pulsing")
-            dds_amp_update(3, 1.0)
+            print("Temperature too high, skipping experiment")
+            # dds_amp_update(3, 1.0)
             return (float('nan'), float('nan'), None)
 
     # dummy method to be overridden by the device
@@ -301,72 +312,72 @@ class AbstractDevice:
         self.device_settings = device_settings
 
         # Check if MOT loading is enabled and handle pulsing accordingly
-        if self.device_settings.load_mot:
-            enable_pulsing()
-        else:
-            disable_pulsing()
+        # if self.device_settings.load_mot:
+        #     enable_pulsing()
+        # else:
+        #     disable_pulsing()
 
 '''
 temporary functions to enable/disable pulsing
 '''
 
-def enable_pulsing():
-    import socket
+# def enable_pulsing():
+#     import socket
 
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(2)
-        s.connect((TCP_IP, TCP_PORT))
-        ml = 'PULSE,ON'
-        s.send(ml.encode())
+#     try:
+#         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#         s.settimeout(2)
+#         s.connect((TCP_IP, TCP_PORT))
+#         ml = 'PULSE,ON'
+#         s.send(ml.encode())
 
-        s.close()
-        time.sleep(0.1)
-    except:
-        pass
+#         s.close()
+#         time.sleep(0.1)
+#     except:
+#         pass
 
 
 
-def disable_pulsing():
-    import socket
+# def disable_pulsing():
+#     import socket
 
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(2)
-        s.connect((TCP_IP, TCP_PORT))
-        ml = 'PULSE,OFF'
-        s.send(ml.encode())
+#     try:
+#         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#         s.settimeout(2)
+#         s.connect((TCP_IP, TCP_PORT))
+#         ml = 'PULSE,OFF'
+#         s.send(ml.encode())
 
-        s.close()
-        time.sleep(0.1)
-    except:
-        pass
+#         s.close()
+#         time.sleep(0.1)
+#     except:
+#         pass
 
-def dds_amp_update(id, amplitude):
-    import socket
+# def dds_amp_update(id, amplitude):
+#     import socket
     
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(1)
-        s.connect((TCP_IP, TCP_PORT))
-        ml = 'AMPL,%d,%f' % (id, amplitude)
-        s.send(ml.encode())
-        s.recv(5)
-        s.close()
-    except:
-        pass
+#     try:
+#         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#         s.settimeout(1)
+#         s.connect((TCP_IP, TCP_PORT))
+#         ml = 'AMPL,%d,%f' % (id, amplitude)
+#         s.send(ml.encode())
+#         s.recv(5)
+#         s.close()
+#     except:
+#         pass
  
 
-def dds_freq_update(id, frequency):
-    import socket
+# def dds_freq_update(id, frequency):
+#     import socket
     
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(1)
-        s.connect((TCP_IP, TCP_PORT))
-        ml = 'FREQ,%d,%f' % (id, frequency)
-        s.send(ml.encode())
-        s.recv(5)
-        s.close()
-    except:
-        pass
+#     try:
+#         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#         s.settimeout(1)
+#         s.connect((TCP_IP, TCP_PORT))
+#         ml = 'FREQ,%d,%f' % (id, frequency)
+#         s.send(ml.encode())
+#         s.recv(5)
+#         s.close()
+#     except:
+#         pass

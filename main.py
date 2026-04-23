@@ -63,6 +63,7 @@ try:
                 VariableTypeBool("Grey Molasses Shutter", "grey_molasses_shutter"),
                 VariableTypeBool("RF Disable", "rf_disable"),
                 VariableTypeBool("Flip Mirror", "flip_mirror"),
+                VariableTypeBool("Camera Shutter", "camera_shutter"),
             ]
 
             self.setattr_device("core")
@@ -102,7 +103,7 @@ try:
             self.urukul0_ch1.cpld.init()
             self.urukul0_ch1.init()
             self.urukul0_ch1.set_att(6.0 * dB)
-            self.urukul0_ch1.cfg_sw(False) # allows for fast switching using ttl
+            self.urukul0_ch1.cfg_sw(True) # allows for fast switching using ttl
             self.urukul0_ch2.cpld.init()
             self.urukul0_ch2.init()
             self.urukul0_ch2.cfg_sw(True)
@@ -110,7 +111,7 @@ try:
             self.urukul0_ch3.cpld.init()
             self.urukul0_ch3.init()
             self.urukul0_ch3.set_att(6.0 * dB)
-            self.urukul0_ch3.cfg_sw(False) # allows for fast switching using ttl
+            self.urukul0_ch3.cfg_sw(True) # allows for fast switching using ttl
             self.urukul1_ch0.cpld.init()
             self.urukul1_ch0.init()
             self.urukul1_ch0.cfg_sw(True)
@@ -196,6 +197,7 @@ try:
                 dac[6] = s.dipole_amplitude[i]
                 dac[7] = 5.0 if s.rf_disable[i] else 0.0
                 dac[8] = s.analog[i]
+                dac[9] = 5.0  if s.camera_shutter[i] else 0.0
                 self.fastino0.set_group(0, dac)
 
                 # update rf output
