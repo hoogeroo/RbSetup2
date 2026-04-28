@@ -4,7 +4,7 @@ multigo.py: has the code for running multigo experiments
 
 import numpy as np
 
-from src.device.device_types import Stages
+from src.device.device_types import Stages, Stage
 from src.gui.plots import FluorescenceSample
 from src.value_types import FloatValue
 
@@ -148,10 +148,13 @@ def run_multigo_experiment(device, multigo_settings: MultiGoSettings, stages: St
         while True:
             if device.device_pipe.poll(0.1):
                 msg = device.device_pipe.recv()
-                if not isinstance(msg, MultiGoCancel):
-                    print(f"Received weird message during multigo: {type(msg)}")
-                canceled = True
-                break
+                if isinstance(msg, MultiGoCancel):
+                    canceled = True
+                    break
+                elif isinstance(msg, Stage):
+                    device.run_stage(msg)
+                else:
+                    print(f"Received stage update during multigo: {msg.stage_id}")
 
             fluorescence = device.read_fluorescence()
             device.device_pipe.send(FluorescenceSample(fluorescence))

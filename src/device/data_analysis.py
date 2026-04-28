@@ -85,14 +85,12 @@ class ImageAnalysis:
         Returns:
             Float
         """
-        #od_max = round(np.max(od_image), 2)
-        
-        #return od_max
         # handle non-finite values safely
         if not np.any(np.isfinite(od_image)):
             return 0.0
         od_max = round(float(np.nanmax(np.nan_to_num(od_image, nan=0.0, posinf=0.0, neginf=0.0))), 2)
         return od_max
+
 
     
     def get_atom_number(self, od_image: np.ndarray, pixel_size = 16e-6, crosssection = 1.3e-13) -> float:
@@ -120,7 +118,11 @@ class ImageAnalysis:
             x, y = np.indices(od_image.shape)
         
             Gaussian_2D = curve_fit(self.fit_2D_Gaussian, (x, y), od_image.ravel(), p0 = initial_guess)
+            x, y = np.indices(od_image.shape)
+        
+            Gaussian_2D = curve_fit(self.fit_2D_Gaussian, (x, y), od_image.ravel(), p0 = initial_guess)
             sigma_x, sigma_y, amp, x0, y0, offset = Gaussian_2D[0]
+            atom_number = 2 * area_px * np.pi * abs(sigma_x) * abs(sigma_y) * amp / crosssection # Gaussian integral result
             atom_number = 2 * area_px * np.pi * abs(sigma_x) * abs(sigma_y) * amp / crosssection # Gaussian integral result
         except RuntimeError:
             # Fallback to simple sum if fitting fails

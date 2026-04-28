@@ -174,7 +174,7 @@ class MLOOPInterface(mli.Interface):
         normaliser_lowN = 2 / (1 + np.exp(1e5 / N))
 
         # cost = -normaliser_lowN * (od_peak ** 3) * N ** (alpha - 1.8) * 1e6
-        cost = - np.log(N*od_peak**2)
+        cost = - np.log(N*od_peak**3)
         self.cost_list.append(cost)
         
         return cost, False
