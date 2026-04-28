@@ -62,6 +62,9 @@ class AbstractDevice:
 
         # initialize background management for filtering
         self.image_analysis = ImageAnalysis(self)
+
+        # Placeholder for current camera images (used for filtering current images when settings are changed)
+        self.current_camera_images = None
     
     def _begin_multigo_session(self, multigo_settings):
         # Allocate a unique session ID for this multigo session (stored in multigo settings class)
@@ -134,6 +137,9 @@ class AbstractDevice:
                 elif isinstance(msg, DeviceSettings):
                     # update the device settings
                     self.update_device_settings(msg)
+                    if msg.fringe_removal or msg.pca or msg.low_pass or msg.fft_filter:
+                        filtered_images = self.image_analysis.filter_images(self.current_camera_images)
+                        self.device_pipe.send(filtered_images)
                 elif isinstance(msg, SLMSettings):
                     # update the SLM settings
                     self.slm_settings = msg
@@ -243,6 +249,7 @@ class AbstractDevice:
             if images is not None:
                 # filter the images and extract parameters
                 camera_images = CameraImages(images[0], images[1], images[2])
+                self.current_camera_images = camera_images  # store the current images for potential re-filtering when settings are changed
                 filtered_images = self.image_analysis.filter_images(camera_images)
                 self.device_pipe.send(filtered_images)
                 n_atoms = filtered_images.n_atoms
