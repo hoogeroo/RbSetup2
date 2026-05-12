@@ -21,12 +21,13 @@ def fringe_removal(FG: np.ndarray, backgrounds: list[np.ndarray]):
     
     nk = np.size(flat_ref)
     backgrounds = np.array(backgrounds)
-    sx,sy,nimgs = backgrounds.shape
-    all_backgrounds = backgrounds.reshape([sx*sy,nimgs]).astype(float)
+    print(f'backgrounds shape: {backgrounds.shape}')
+    nimgs, sx, sy = backgrounds.shape
+    all_backgrounds = backgrounds.transpose(1, 2, 0).reshape([sx*sy, nimgs]).astype(float)
 
     FG_flat = FG.reshape([sx*sy]).astype(float)
     O1 = np.zeros([sx*sy])
-    Rk = all_backgrounds[flat_ref,:].reshape([nk,nimgs])
+    Rk = all_backgrounds[flat_ref, :].reshape([nk, nimgs])
     b = np.dot(np.transpose(Rk),Rk)
 
     Ak = FG_flat[flat_ref].reshape(nk)
@@ -40,7 +41,7 @@ def fringe_removal(FG: np.ndarray, backgrounds: list[np.ndarray]):
       opref = np.reshape(O1,[sx,sy])
       print('Fringe reduction success!')
     except:
-      BG=backgrounds[:,:,-1]
+      BG=backgrounds[-1]
       odimage=np.reshape(-np.log(FG_flat/all_backgrounds[:,-1]),[sx,sy])
       opref=BG
       print('Fringe reduction Failed!')

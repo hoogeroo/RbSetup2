@@ -2,6 +2,7 @@
 data_analysis.py: Data analysis tools and utilities for the experimental GUI such as retrieving physical parameters from images.
 """
 
+import os
 import numpy as np
 from typing import Tuple, Optional, List
 import matplotlib.pyplot as plt
@@ -12,6 +13,8 @@ from scipy.optimize import curve_fit
 from src.device import filtering
 from src.gui.plots import CameraImages
 
+background_save_path = 'runs/background_bank.npz'
+
 
 class ImageAnalysis:
     """Class for analyzing experimental images and extracting physical parameters."""
@@ -20,6 +23,7 @@ class ImageAnalysis:
         self.device = device
         self.background_bank = []
         self.number_of_backgrounds = 0
+        self.load_backgrounds()
 
     def fit_2D_Gaussian(self, coords, sigma_x, sigma_y, A, x0, y0, offset):
         """2D Gaussian function for fitting."""
@@ -45,8 +49,17 @@ class ImageAnalysis:
             self.background_bank.pop(0)
             self.number_of_backgrounds = 100
 
+        # Save current background bank to npz file
+        np.savez(background_save_path, backgrounds=np.array(self.background_bank))
+
         # Background was added
         return True
+    
+    def load_backgrounds(self):
+        if os.path.exists(background_save_path):
+            data = np.load(background_save_path)
+            self.background_bank = list(data['backgrounds'])
+            self.number_of_backgrounds = len(self.background_bank)
 
     def filter_images(self, images: CameraImages) -> CameraImages:
         # process images
@@ -60,7 +73,7 @@ class ImageAnalysis:
         images.max_od = self.get_max_od(od_image)
 
         # apply filtering based on device settings
-        if self.device.device_settings.fringe_removal  and self.device.number_of_backgrounds > 5:
+        if self.device.device_settings.fringe_removal  and self.number_of_backgrounds > 5:
             od_image, opref = filtering.fringe_removal(foreground, self.background_bank)
 
         if self.device.device_settings.pca and self.number_of_backgrounds > 5:

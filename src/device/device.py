@@ -30,7 +30,7 @@ if not os.path.exists(SAVE_PATH):
 # TCP settings for pulse control
 TCP_IP = "130.216.51.242"
 TCP_PORT = 8833
-temp_threshold = 35.0
+temp_threshold = 40
 
 '''
 Abstraction over the device to run the gui without artiq
