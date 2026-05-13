@@ -5,9 +5,10 @@ from scipy.optimize import curve_fit
 import os
 import math
 import re
+from scipy.ndimage import gaussian_filter, label, find_objects
 
 # -------- Control Parameters --------
-skip_points = 5
+skip_points = 2
 magnification = 2.6
 px_size = 16e-6  # Pixel size in meters
 Rb_cross_section = 1.3e-13  # Cross-section of Rb in m^2
@@ -17,21 +18,53 @@ mass_rubid = 86.909184 * 1.66E-27
 boltzmann = 1.380649E-23
 hbar = 1.0545718E-34
 
-cross_sections = False
+cross_sections = True
+
+bimodal_fit = True
+
+ODT = True
 
 # Aliases used later in PSD helper (avoid NameError)
 mRb = mass_rubid
 kB = boltzmann
 
-t_array = np.linspace(20, 44, 8) * 1e-3  # time of flight in s
+t_array = np.linspace(20, 35.5, 8) * 1e-3  # time of flight in s
 
-fits_folder = "runs/multigo_2026-04-28_10-21-50"
+fits_folder = "runs/multigo_2026-05-13_11-41-39"
 
 # -------- Main calculations --------
+def find_ROI(image, smooth_sigma=1.0, threshold_factor=0.15, pad=8):
+    """Find the region of interest (ROI) containing the atomic cloud."""
+    image[image < 0] = 0
+    smoothed = gaussian_filter(image, sigma=smooth_sigma)
+
+    threshold = threshold_factor * np.max(smoothed)
+    mask = smoothed > threshold
+
+    lab, nlab = label(mask)
+    slices = find_objects(lab)
+    areas = []
+    for i, sl in enumerate(slices, start=1):
+            areas.append((np.sum(lab[sl] == i), sl))
+
+    _, best_label, best_slice = max(areas, key=lambda x: x[0])
+
+    ys, xs = best_slice
+    y0 = max(ys.start - pad, 0)
+    y1 = min(ys.stop + pad, image.shape[0]) 
+    x0 = max(xs.start - pad, 0)
+    x1 = min(xs.stop + pad, image.shape[1])
+    return (y0, y1, x0, x1), (lab == best_label), smoothed
 
 def fit_2D_Gaussian(xy, sigma_x, sigma_y, amp, x0, y0, offset):
     x, y = xy
     return (offset + amp * np.exp(-((x - x0) ** 2 / (2 * sigma_x**2) + (y - y0) ** 2 / (2 * sigma_y**2)))).ravel()
+
+def fit_TF(xy, n0, x0, y0, R_x, R_y, offset):
+    x, y = xy
+    inside = (1 - ((x - x0) / R_x) ** 2 - ((y - y0) / R_y) ** 2)
+    
+    return (offset + n0 * inside**(3/2)).ravel()
 
 
 def linear_fit(x, m, c):
@@ -43,15 +76,23 @@ def calculate_atom_number(image, sigma_x, sigma_y, amp):
     return atom_number_2D
 
 
-def calculate_peak_PSD(peak_od_first, peak_od_extrap, T, sz_extrap, sz):
+def calculate_peak_PSD(peak_od_first, T, peak_od_extrap = None, sz_extrap = None, sz = None, ODT_w = 40e-6):
     # T is expected in Kelvin
     lambda_dB = math.sqrt((2 * math.pi * hbar**2) / (mass_rubid * boltzmann * T))
+    
     n_col_extrap = peak_od_extrap / Rb_cross_section
     n_col = peak_od_first / Rb_cross_section
-    n0_extrap = n_col_extrap / (math.sqrt(2 * math.pi) * sz_extrap)
-    n0 = n_col / (math.sqrt(2 * math.pi) * sz)
-    peak_PSD_extrap = n0_extrap * lambda_dB**3
-    peak_PSD = n0 * lambda_dB**3
+    if ODT is False:
+        n0_extrap = n_col_extrap / (math.sqrt(2 * math.pi) * sz_extrap)
+        n0 = n_col / (math.sqrt(2 * math.pi) * sz)
+        peak_PSD_extrap = n0_extrap * lambda_dB**3
+        peak_PSD = n0 * lambda_dB**3
+    else:
+        n0_extrap = n_col_extrap / (math.sqrt(2 * math.pi) * sz_extrap)
+        n_col = peak_od_first / Rb_cross_section
+        n0 = n_col / (math.sqrt(2 * math.pi) * ODT_w)
+        peak_PSD = n0 * lambda_dB**3
+        peak_PSD_extrap = n0_extrap * lambda_dB**3  # Not meaningful in ODT case since extrapolation is based on free expansion assumptions
 
     return peak_PSD_extrap, peak_PSD
 
@@ -202,6 +243,30 @@ def main():
         image_list[idx, :, :] = od_image
 
     for idx in range(len(fits_files)):
+        if bimodal_fit:
+            roi, mask, od_image = find_ROI(image_list[idx, :, :])
+            cropped_image = image_list[idx, roi[0]:roi[1], roi[2]:roi[3]]
+            
+            sigma_x_guess, sigma_y_guess = guess_widths(od_image)
+            amp_guess = guess_amplitude(od_image)
+            x0_guess, y0_guess = guess_center(od_image)
+            offset_guess = guess_offset(od_image)
+
+            initial_guesses = [sigma_x_guess, sigma_y_guess, amp_guess, x0_guess, y0_guess, offset_guess]
+
+            y_idx, x_idx = np.indices(od_image.shape)
+
+            popt, pcov = curve_fit(
+                fit_TF,
+                (x_idx, y_idx),
+                od_image.ravel(),
+                p0=initial_guesses,
+                maxfev=100000
+            )
+
+            amp_fit, x0_fit, y0_fit, sigma_x_fit, sigma_y_fit, offset_fit = popt
+
+
         od_image = image_list[idx, :, :]
 
         sigma_x_guess, sigma_y_guess = guess_widths(od_image)
@@ -217,7 +282,7 @@ def main():
             (x_idx, y_idx),
             od_image.ravel(),
             p0=initial_guesses,
-            maxfev=1000000,
+            maxfev=100000
         )
 
         sigma_x_fit, sigma_y_fit, amp_fit, x0_fit, y0_fit, offset_fit = popt
@@ -259,8 +324,9 @@ def main():
     print(f"Initial cloud size (mean sigma0 from width^2 intercepts): {mean_sigma0*1e6:.2f} µm")
 
     # Calculate peak PSD
-    sz_approx_extrap = math.sqrt(sigma0_x * sigma0_y)
-    sz_approx = np.sqrt(np.min(widths_x) * np.min(widths_y))
+    
+    sz_approx_extrap = math.sqrt(sigma0_x * sigma0_y)/2
+    sz_approx = np.sqrt(np.min(widths_x) * np.min(widths_y))/2
 
     popt_amplitude, pcov_amplitude = curve_fit(linear_fit, t_array[:skip_points], amplitudes[:skip_points])
     _, intercept_amplitude = popt_amplitude
@@ -271,7 +337,7 @@ def main():
     mean_temp_K = mean_temp_uK * 1e-6
 
     peak_PSD_extrap, peak_PSD = calculate_peak_PSD(
-        max_amp, intercept_amplitude, mean_temp_K, sz_approx_extrap, sz_approx
+        peak_od_first=max_amp, T=temp_y*1e-6, peak_od_extrap=intercept_amplitude, sz_extrap=sz_approx_extrap, sz=sz_approx
     )
     print(f"Peak PSD (extrapolated): {peak_PSD_extrap:.2e}")
     print(f"Peak PSD (approx): {peak_PSD:.2e}")
