@@ -154,7 +154,7 @@ def load_settings(path, window):
         window.stages_gui.multigo_settings = MultiGoSettings(run_variables, fluorescence_threshold)
 
     # load the ai settings
-    if ai_hdu.header.get("pretrain") is not fits.card.Undefined:
+    if "pretrain" in ai_hdu.header:
         learner = ai_hdu.header.get('learner', 'neural_net')  # default to neural_net if not found
         pre_training_model = getattr(AiSettings, 'pre_training_model', None)
         window.stages_gui.ai_settings = AiSettings(
@@ -188,6 +188,7 @@ def run_variable_list_to_hdu(run_variables):
         fits.Column(name='ramp_end_start', format='D', array=[getattr(var, 'ramp_end_start', 0.0) for var in run_variables]),
         fits.Column(name='ramp_end_end', format='D', array=[getattr(var, 'ramp_end_end', 0.0) for var in run_variables]),
         fits.Column(name='ramp_mode', format='A12', array=[getattr(var, 'ramp_mode', 'linear') for var in run_variables]),
+        fits.Column(name='is_ramp_hold_start', format='L', array=[var.is_ramp_hold_start for var in run_variables]),
     ]
     return fits.BinTableHDU.from_columns(columns)
 
@@ -225,6 +226,7 @@ def run_variable_hdu_to_list(hdu):
             ramp_end_start = float(_get(row, 'ramp_end_start', 0.0)),
             ramp_end_end = float(_get(row, 'ramp_end_end', 0.0)),
             ramp_mode = _decode(_get(row, 'ramp_mode', 'linear')) or 'linear',
+            ramp_hold_start = bool(_get(row, 'is_ramp_hold_start', False)),
         ))
     return run_variables
 

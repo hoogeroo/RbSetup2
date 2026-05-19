@@ -140,6 +140,12 @@ class FloatValue:
             return "Hold"
         elif self.is_constant():
             return f"{self.constant_value()}"
+        elif self.is_ramp_hold_start():
+            end = self.array[2]
+            mode = self.ramp_mode()
+            if mode == 'exponential':
+                return f"(Hold -> {end} [exp])"
+            return f"(Hold -> {end})"
         elif self.is_ramp():
             start, end = self.ramp_values()
             mode = self.ramp_mode()
@@ -158,8 +164,8 @@ class FloatValue:
         if not np.issubdtype(array.dtype, np.floating):
             raise ValueError("Array must be of floating point type")
         # accept linear (2.0) and exponential (3.0) ramp codes
-        if array[0] not in (0.0, 1.0, 2.0, 3.0):
-            raise ValueError("First element of array must be 0.0 (hold), 1.0 (constant), 2.0 (ramp linear) or 3.0 (ramp exponential)")
+        if array[0] not in (0.0, 1.0, 2.0, 3.0, 4.0, 5.0):
+            raise ValueError("First element of array must be 0.0 (hold), 1.0 (constant), 2.0 (ramp linear), 3.0 (ramp exponential), 4.0 (ramp hold start linear), or 5.0 (ramp hold start exponential)")
         value = FloatValue()
         value.array = array
         return value
@@ -179,6 +185,13 @@ class FloatValue:
         self.array[1] = start
         self.array[2] = end
 
+    def set_ramp_hold_start(self, end, mode='linear'):
+        # mode: 'linear' or 'exponential'
+        code = 4.0 if mode == 'linear' else 5.0
+        self.array[0] = code
+        self.array[1] = 0.0  # start is hold (0.0)
+        self.array[2] = end
+
     def hold():
         value = FloatValue()
         value.set_hold()
@@ -193,6 +206,11 @@ class FloatValue:
         float_value = FloatValue()
         float_value.set_ramp(start, end, mode=mode)
         return float_value
+    
+    def ramp_hold_start(end, mode='linear'):
+        float_value = FloatValue()
+        float_value.set_ramp_hold_start(end, mode=mode)
+        return float_value
 
     def is_hold(self):
         return self.array[0] == 0.0
@@ -202,11 +220,14 @@ class FloatValue:
 
     def is_ramp(self):
         return self.array[0] in (2.0, 3.0)
+    
+    def is_ramp_hold_start(self):
+        return self.array[0] in (4.0, 5.0)
 
     def ramp_mode(self):
         if not self.is_ramp():
             raise ValueError("Value is not a ramp")
-        return 'linear' if self.array[0] == 2.0 else 'exponential'
+        return 'linear' if self.array[0] in (2.0, 4.0) else 'exponential'
 
     def constant_value(self):
         if not self.is_constant():
@@ -219,11 +240,27 @@ class FloatValue:
         return self.array[1], self.array[2]
 
     # samples values in a float ramp
-    def sample(self, step, samples):
+    def ramp_end(self):
+        if not self.is_ramp() or self.is_ramp_hold_start():
+            raise ValueError("Value is not a ramp")
+        return self.array[2]
+    
+    def sample(self, step, samples, prev_value = None):
         if self.is_hold():
             raise ValueError("Cannot sample a hold value")
         if self.is_constant():
             return self.constant_value()
+        if self.is_ramp_hold_start():
+            if prev_value is None:
+                raise ValueError("Previous value must be provided for ramp hold start sampling")
+            start = prev_value
+            end = self.array[2]
+            if samples <= 1:
+                return start
+            t = step / (samples - 1)
+            if self.ramp_mode() == 'linear':
+                return start + (end - start) * t
+            return start * (end / start) ** t # Exponential
         if self.is_ramp():
             start, end = self.array[1], self.array[2]
             if samples <= 1:
@@ -259,6 +296,12 @@ class FloatValue:
             for i in range(steps):
                 output.append(FloatValue.ramp(values1[i], values2[i], mode=mode))
             return output
+        if self.is_ramp_hold_start() and end.is_ramp_hold_start():
+            end1 = self.ramp_end()
+            end2 = end.ramp_end()
+            ends = np.linspace(end1, end2, steps)
+            mode = self.ramp_mode()
+            return [FloatValue.ramp_hold_start(end, mode=mode) for end in ends]
 
 # used for storing any type of value
 class AnyValue:

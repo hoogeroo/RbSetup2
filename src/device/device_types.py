@@ -103,6 +103,8 @@ class FlattenedStages:
                     elif isinstance(value, FloatValue):
                         if value.is_ramp():
                             flattened_list.append(value.sample(sample, samples))
+                        elif value.is_ramp_hold_start():
+                            flattened_list.append(value.sample(sample, samples, prev_value=flattened_list[-1]))
 
         # set all the outputs back to the dc values at the end of the sequence
         for variable in variables:

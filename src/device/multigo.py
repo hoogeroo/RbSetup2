@@ -117,9 +117,14 @@ def run_multigo_experiment(device, multigo_settings: MultiGoSettings, stages: St
     for var in run_variables:
         if getattr(var, 'is_ramp', False):
             # ramp: interpolate start and end of the ramp independently
-            starts = np.linspace(var.ramp_start_start, var.ramp_start_end, n_steps)
             ends = np.linspace(var.ramp_end_start, var.ramp_end_end, n_steps)
-            array = [FloatValue.ramp(starts[j], ends[j], mode=var.ramp_mode)
+            
+            if getattr(var, 'ramp_hold_start', False):
+                # if ramp hold start, modify the start of the ramp to hold the previous end value
+                array = [FloatValue.ramp_hold_start(ends[j], mode=var.ramp_mode) for j in range(n_steps)]
+            else:
+                starts = np.linspace(var.ramp_start_start, var.ramp_start_end, n_steps)
+                array = [FloatValue.ramp(starts[j], ends[j], mode=var.ramp_mode)
                      for j in range(n_steps)]
         else:
             # constant: use existing value-type interpolation

@@ -3,13 +3,15 @@ run_variables.py: widget for adding and removing run variables, used by multigo 
 '''
 
 from PyQt6.QtWidgets import *
+from PyQt6.QtCore import Qt
 from src.variable_types import VariableTypeFloat
 
 # stores a run variable (constant or ramp sweep)
 class RunVariable:
     def __init__(self, stage_id, variable_id, start, end, steps,
                  is_ramp=False, ramp_start_start=0.0, ramp_start_end=0.0,
-                 ramp_end_start=0.0, ramp_end_end=0.0, ramp_mode='linear'):
+                 ramp_end_start=0.0, ramp_end_end=0.0, ramp_mode='linear',
+                 ramp_hold_start=False):
         self.stage_id = stage_id
         self.variable_id = variable_id
         # constant sweep (is_ramp=False)
@@ -23,6 +25,7 @@ class RunVariable:
         self.ramp_end_start = ramp_end_start
         self.ramp_end_end = ramp_end_end
         self.ramp_mode = ramp_mode
+        self.ramp_hold_start = ramp_hold_start
 
     # Used to exclude qt references from pickling when saving run variables 
     def __getstate__(self):
@@ -82,16 +85,18 @@ class RunVariableWidget(QWidget):
         for rv in self.run_variables:
             # read current widget values into the RunVariable
             if hasattr(rv, '_ramp_cb') and rv._ramp_cb.isChecked():
+                start_held = hasattr(rv, '_ramp_start_hold_cb') and rv._ramp_start_hold_label.isVisible()
                 run_variables.append(RunVariable(
                     rv.stage_id, rv.variable_id, 
                     rv._start_w.get_value(), rv._end_w.get_value(),
                     rv._steps_w.value() if self.steps else rv.steps,
                     is_ramp = True,
-                    ramp_start_start = rv._ramp_start_from.value(),
+                    ramp_start_start = rv._ramp_start_to.value() if start_held else rv._ramp_start_from.value(),
                     ramp_start_end = rv._ramp_start_to.value(),
                     ramp_end_start = rv._ramp_end_from.value(),
                     ramp_end_end = rv._ramp_end_to.value(),
                     ramp_mode = rv._ramp_mode_combo.currentText(),
+                    ramp_hold_start = start_held
                 ))
             else:
                 run_variables.append(RunVariable(
@@ -149,28 +154,56 @@ class RunVariableWidget(QWidget):
         self.add_run_variable(run_variable)
 
     # helper: build a labelled from→to range widget for ramp sweeps
-    def _make_ramp_range(self, variable, label_text, from_val, to_val):
+    def _make_ramp_range(self, variable, label_text, from_val, to_val, show_hold=False, hold_active=False):
         container = QWidget()
         vbox = QVBoxLayout()
         vbox.setContentsMargins(0, 0, 0, 0)
         container.setLayout(vbox)
+        
         vbox.addWidget(QLabel(label_text))
+
         hbox = QHBoxLayout()
+        hold_label = QLabel("Hold Start")
+        hold_label.setVisible(False)
+        hbox.addWidget(hold_label)
+
         from_spin = QDoubleSpinBox()
         from_spin.setMinimum(variable.minimum)
         from_spin.setMaximum(variable.maximum)
         from_spin.setSingleStep(variable.step)
         from_spin.setValue(from_val)
+        hbox.addWidget(from_spin)
+        hbox.addWidget(QLabel("→"))
+
+
         to_spin = QDoubleSpinBox()
         to_spin.setMinimum(variable.minimum)
         to_spin.setMaximum(variable.maximum)
         to_spin.setSingleStep(variable.step)
         to_spin.setValue(to_val)
-        hbox.addWidget(from_spin)
-        hbox.addWidget(QLabel("→"))
         hbox.addWidget(to_spin)
         vbox.addLayout(hbox)
-        return container, from_spin, to_spin
+
+        if show_hold:
+            def set_hold(fs=from_spin, hl = hold_label):
+                fs.setVisible(False)
+                hl.setVisible(True)
+
+            def set_value(fs=from_spin, hl = hold_label):
+                fs.setVisible(True)
+                hl.setVisible(False)
+
+            from_spin.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
+            from_spin.addAction("Hold", set_hold)
+
+            hold_label.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
+            hold_label.addAction("Value", set_value)
+
+            if hold_active:
+                from_spin.setVisible(False)
+                hold_label.setVisible(True)
+
+        return container, from_spin, to_spin, hold_label
 
     # add a run variable row to the grid
     def add_run_variable(self, run_variable):
@@ -215,20 +248,23 @@ class RunVariableWidget(QWidget):
             # stacked widget: page 0 = constant, page 1 = ramp
             start_stack = QStackedWidget()
             start_stack.addWidget(start_w)
-            rs_container, rs_from, rs_to = self._make_ramp_range(
-                variable, "Ramp Start", run_variable.ramp_start_start, run_variable.ramp_start_end)
+            rs_container, rs_from, rs_to, rs_hold_label = self._make_ramp_range(
+                variable, "Ramp Start", run_variable.ramp_start_start, run_variable.ramp_start_end,
+                show_hold=True, hold_active=getattr(run_variable, 'ramp_hold_start', False)
+            )
             start_stack.addWidget(rs_container)
             self.grid.addWidget(start_stack, row, 2)
 
             end_stack = QStackedWidget()
             end_stack.addWidget(end_w)
-            re_container, re_from, re_to = self._make_ramp_range(
+            re_container, re_from, re_to, _ = self._make_ramp_range(
                 variable, "Ramp End", run_variable.ramp_end_start, run_variable.ramp_end_end)
             end_stack.addWidget(re_container)
             self.grid.addWidget(end_stack, row, 3)
 
             run_variable._ramp_start_from = rs_from
             run_variable._ramp_start_to = rs_to
+            run_variable._ramp_start_hold_label = rs_hold_label
             run_variable._ramp_end_from = re_from
             run_variable._ramp_end_to = re_to
 

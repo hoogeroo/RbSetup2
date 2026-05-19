@@ -228,6 +228,20 @@ class FloatWidget(QWidget):
         self.ramp_spinbox2.setVisible(True)
         self.changed_signal.emit()
 
+    def mode_ramp_hold_start(self, mode='linear'):
+        self.state = "ramp_hold_start"
+        self.ramp_mode_sel = mode
+        self.hide()
+        self.ramp_hold_start_label.setVisible(True)
+        self.ramp_spinbox2.setVisible(True)
+        self.changed_signal.emit()
+
+    def _ramp_start_hold(self):
+        self.ramp_hold_start(self.ramp_mode_sel)
+
+    def _ramp_start_value(self):
+        self.mode_ramp
+
     def get_value(self):
         if self.state == "hold":
             return FloatValue.hold()
@@ -235,6 +249,8 @@ class FloatWidget(QWidget):
             return FloatValue.constant(self.spinbox.value())
         elif self.state == "ramp":
             return FloatValue.ramp(self.ramp_spinbox1.value(), self.ramp_spinbox2.value(), mode=self.ramp_mode_sel)
+        elif self.state == "ramp_hold_start":
+            return FloatValue.ramp_hold_start(self.ramp_spinbox2.value(), mode=self.ramp_mode_sel)
         else:
             raise ValueError(f"FloatWidget in invalid state {self.state}")
 
@@ -250,6 +266,10 @@ class FloatWidget(QWidget):
             start, end = value.ramp_values()
             self.ramp_spinbox1.setValue(start)
             self.ramp_spinbox2.setValue(end)
+        if value.is_ramp_hold_start():
+            mode = value.ramp_mode()
+            self.mode_ramp_hold_start(mode)
+            self.ramp_spinbox2.setValue(value.ramp_end())
         self.changed_signal.emit()
     
     def update_color(self):
@@ -257,6 +277,8 @@ class FloatWidget(QWidget):
 
         boxes = [self.spinbox, self.ramp_spinbox1, self.ramp_spinbox2]
         for box in boxes:
+            if not box.isVisible():
+                continue
             value = box.value()
             color = background_color(value, self.variable)
             box.setStyleSheet(f"background-color: {color.name()}")
