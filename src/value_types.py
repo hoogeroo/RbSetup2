@@ -225,7 +225,7 @@ class FloatValue:
         return self.array[0] in (4.0, 5.0)
 
     def ramp_mode(self):
-        if not self.is_ramp():
+        if not self.is_ramp() or self.is_ramp_hold_start():
             raise ValueError("Value is not a ramp")
         return 'linear' if self.array[0] in (2.0, 4.0) else 'exponential'
 

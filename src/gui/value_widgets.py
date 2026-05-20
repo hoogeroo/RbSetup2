@@ -185,7 +185,8 @@ class FloatWidget(QWidget):
         self.ramp_spinbox1.setMinimum(self.variable.minimum)
         self.ramp_spinbox1.setMaximum(self.variable.maximum)
         self.ramp_spinbox1.setSingleStep(self.variable.step)
-        self.ramp_spinbox1.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
+        self.ramp_spinbox1.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
+        self.ramp_spinbox1.addAction("Hold", self._ramp_start_hold)
         self.ramp_spinbox1.valueChanged.connect(self.changed_signal.emit)
         self.ramp_spinbox1.setVisible(False)
         layout.addWidget(self.ramp_spinbox1)
@@ -200,12 +201,21 @@ class FloatWidget(QWidget):
         self.ramp_spinbox2.setVisible(False)
         layout.addWidget(self.ramp_spinbox2)
 
+        self.ramp_hold_start_label = QLabel("Hold")
+        self.ramp_hold_start_label.setMinimumSize(QSize(0, 24))
+        self.ramp_hold_start_label.setMaximumSize(QSize(big, 24))
+        self.ramp_hold_start_label.setVisible(False)
+        self.ramp_hold_start_label.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
+        self.ramp_hold_start_label.addAction("Value", self._ramp_start_value)
+        layout.addWidget(self.ramp_hold_start_label)
+
         self.setLayout(layout)
 
     def hide(self):
         self.spinbox.setVisible(False)
         self.hold_label.setVisible(False)
         self.ramp_spinbox1.setVisible(False)
+        self.ramp_hold_start_label.setVisible(False)
         self.ramp_spinbox2.setVisible(False)
 
     def mode_hold(self):
@@ -237,7 +247,7 @@ class FloatWidget(QWidget):
         self.changed_signal.emit()
 
     def _ramp_start_hold(self):
-        self.ramp_hold_start(self.ramp_mode_sel)
+        self.mode_ramp_hold_start(self.ramp_mode_sel)
 
     def _ramp_start_value(self):
         self.mode_ramp

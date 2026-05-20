@@ -188,7 +188,7 @@ def run_variable_list_to_hdu(run_variables):
         fits.Column(name='ramp_end_start', format='D', array=[getattr(var, 'ramp_end_start', 0.0) for var in run_variables]),
         fits.Column(name='ramp_end_end', format='D', array=[getattr(var, 'ramp_end_end', 0.0) for var in run_variables]),
         fits.Column(name='ramp_mode', format='A12', array=[getattr(var, 'ramp_mode', 'linear') for var in run_variables]),
-        fits.Column(name='is_ramp_hold_start', format='L', array=[var.is_ramp_hold_start for var in run_variables]),
+        fits.Column(name='ramp_hold_start', format='L', array=[getattr(var, 'ramp_hold_start', False) for var in run_variables]),
     ]
     return fits.BinTableHDU.from_columns(columns)
 
@@ -202,7 +202,7 @@ def run_variable_hdu_to_list(hdu):
             return set()
     def _decode(x):
         if isinstance(x, (bytes, np.bytes_)):
-            x = x.decode(errors.ignore)
+            x = x.decode(errors="ignore")
         return str(x).strip()
     
     def _get(row, col, default):
@@ -226,7 +226,7 @@ def run_variable_hdu_to_list(hdu):
             ramp_end_start = float(_get(row, 'ramp_end_start', 0.0)),
             ramp_end_end = float(_get(row, 'ramp_end_end', 0.0)),
             ramp_mode = _decode(_get(row, 'ramp_mode', 'linear')) or 'linear',
-            ramp_hold_start = bool(_get(row, 'is_ramp_hold_start', False)),
+            ramp_hold_start = bool(_get(row, 'ramp_hold_start', False)),
         ))
     return run_variables
 
