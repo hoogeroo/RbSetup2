@@ -229,13 +229,20 @@ class MLOOPInterface(mli.Interface):
         # write reconstructed ramp values
         for rv_idx, parts in ramp_parts.items():
             param = self.params[rv_idx]
-            rs = parts.get('ramp_start', 0.0)
+            
             re = parts.get('ramp_end', 0.0)
             mode = getattr(param, 'ramp_mode', 'linear')
             stage = self.stages.get_stage(param.stage_id)
-            setattr(stage, param.variable_id, FloatValue.ramp(rs, re, mode=mode))
-            param.current_value = (rs, re)
-            print(f"  {param.stage_id}.{param.variable_id} = ramp({rs}, {re}, {mode})")
+            if getattr(param, 'ramp_hold_start', False):
+                rs = parts.get('ramp_start', 0.0)
+                setattr(stage, param.variable_id, FloatValue.ramp_hold_start(re, mode=mode))
+                param.current_value = re
+                print(f"  {param.stage_id}.{param.variable_id} = ramp_hold_start({re}, {mode})")
+            else:
+                rs = parts.get('ramp_start', 0.0)
+                setattr(stage, param.variable_id, FloatValue.ramp(rs, re, mode=mode))
+                param.current_value = (rs, re)
+                print(f"  {param.stage_id}.{param.variable_id} = ramp({rs}, {re}, {mode})")
 
     def iterate_start(self):
         """Called before the MLOOP controller starts. Populates parameter boundaries."""
@@ -248,14 +255,20 @@ class MLOOPInterface(mli.Interface):
     def record_history(self, cost, n_atoms, od_peak, uncer, bad):
         """Record parameter values and send plot data to GUI if the result was good."""
         histvec = []
-        for p in self.params:
-            cv = p.current_value if p.current_value is not None else 0.0
-            if isinstance(cv, tuple):
+        for rv_id, component in self.param_map:
+            p = self.params[rv_id]
+            cv = p.current_value 
+            if cv is None:
+                histvec.append(0.0)
+            elif isinstance(cv, tuple):
                 # ramp variable → two entries matching MLOOP parameter order
-                histvec.extend(cv)
+                histvec.append(cv[0] if component == 'ramp_start' else cv[1])
             else:
                 histvec.append(cv)
             p.history.append(cv)
+        
+        for p in self.params:
+            p.history.append(p.current_value if p.current_value is not None else 0.0)
 
         if not bad:
             self.history['trials'].append(histvec)
@@ -299,24 +312,44 @@ class MLOOPInterface(mli.Interface):
         """
         self.mloop_parameter_dict = {}
 
+        def _bounds(a, b):
+            lo, hi = min(a, b), max(a, b)
+            if lo == hi:
+                hi = lo * 1.001 if lo != 0 else lo + 1e-4
+            return lo, hi
+
         for i, param in enumerate(self.params):
             base_name = f"{param.stage_id}_{param.variable_id}"
 
             if getattr(param, 'is_ramp', False):
-                # ramp → two MLOOP parameters
-                rs_min = min(param.ramp_start_start, param.ramp_start_end)
-                rs_max = max(param.ramp_start_start, param.ramp_start_end)
-                self.param_names.append(f"{base_name}_ramp_start")
-                self.min_boundary.append(rs_min)
-                self.max_boundary.append(rs_max)
-                self.param_map.append((i, 'ramp_start'))
+                if not getattr(param, 'ramp_hold_start', False):
+                    rs_min = min(param.ramp_start_start, param.ramp_start_end)
+                    rs_max = max(param.ramp_start_start, param.ramp_start_end)
+                    self.param_names.append(f"{base_name}_ramp_start")
+                    self.min_boundary.append(rs_min)
+                    self.max_boundary.append(rs_max)
+                    self.param_map.append((i, 'ramp_start'))
+                    re_min = min(param.ramp_end_start, param.ramp_end_end)
+                    re_max = max(param.ramp_end_start, param.ramp_end_end)
+                    
+                    self.param_names.append(f"{base_name}_ramp_start")
+                    self.min_boundary.append(rs_min)
+                    self.max_boundary.append(rs_max)
+                    self.param_map.append((i, 'ramp_start'))
 
-                re_min = min(param.ramp_end_start, param.ramp_end_end)
-                re_max = max(param.ramp_end_start, param.ramp_end_end)
-                self.param_names.append(f"{base_name}_ramp_end")
-                self.min_boundary.append(re_min)
-                self.max_boundary.append(re_max)
-                self.param_map.append((i, 'ramp_end'))
+                    self.param_names.append(f"{base_name}_ramp_end")
+                    self.min_boundary.append(re_min)
+                    self.max_boundary.append(re_max)
+                    self.param_map.append((i, 'ramp_end'))
+
+                else:
+                    re_min = min(param.ramp_end_start, param.ramp_end_end)
+                    re_max = max(param.ramp_end_start, param.ramp_end_end)
+                    
+                    self.param_names.append(f"{base_name}_ramp_end")
+                    self.min_boundary.append(re_min)
+                    self.max_boundary.append(re_max)
+                    self.param_map.append((i, 'ramp_end'))
             else:
                 # constant → one MLOOP parameter
                 rangemin = min(param.start.constant_value(), param.end.constant_value())

@@ -231,6 +231,8 @@ class StagesGui:
                     if isinstance(widget_value, FloatValue) and widget_value.is_ramp():
                         _, end = widget_value.ramp_values()
                         widget_value = FloatValue.constant(end)
+                    elif isinstance(widget_value, FloatValue) and widget_value.is_ramp_hold_start():
+                        widget_value = FloatValue.constant(widget_value.ramp_end())
                     setattr(current_values, variable.id, widget_value)
                 else:
                     # if the stage is disabled, don't change the current value

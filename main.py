@@ -9,6 +9,7 @@ from src.device.device import AbstractDevice
 from src.gui import *
 from src.value_types import *
 from src.variable_types import *
+from scipy.interpolate import interp1d
 
 try:
     from artiq.experiment import *
@@ -20,12 +21,14 @@ try:
 
             coil_current_calibration = lambda percentage: 5.0 * percentage / 100.0
 
-            percentage = np.concatenate((np.arange(3, 10, 1), np.arange(10, 70, 10))) 
-            dipole_powers = np.array([23.3E-3, 59E-3, 0.165, 0.377, 0.715, 1.18, 1.79, 2.51, 14.6, 31, 49.3, 65.4, 71.1]) # in milliWatts
-            dipole_powers *= 100 / max(dipole_powers)
-            dipole_volts = 3.4 * percentage / max(percentage) # in Volts
-            dipole_calibration = np.poly1d(np.polyfit(dipole_powers, dipole_volts, 5)) # We want to put in a desired power and get back a voltage
-
+            percentage = np.array([0.0, 1, 2, 3, 4, 4.5, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100])
+            dipole_power = np.array([381.2e-6, 382.5e-6, 404.1e-6, 471.8e-6, 705.5e-6, 947.2e-6, 1.293e-3, 2.371e-3, 4.012e-3, 6.233e-3, 8.948e-3, 12.24e-3, 16.17e-3,
+                20.36e-3, 24.97e-3, 30.01e-3, 35.44e-3, 41.14e-3, 47.42e-3, 53.82e-3, 60.5e-3, 67.3e-3, 74.41e-3, 81.74e-3, 89.21e-3, 96.84e-3, 104.9e-3,
+                145.5e-3, 189.7e-3, 235.1e-3, 277.2e-3, 318.4e-3, 353.6e-3, 385.4e-3, 412.0e-3, 431.2e-3, 448.1e-3, 464.5e-3, 474.0e-3, 482.6e-3, 490.1e-3, 495.9e-3])
+            dipole_power -= min(dipole_power) # Shift all by background noise
+            dipole_powers = dipole_power/np.max(np.abs(dipole_power))*100
+            dipole_calibration = interp1d(dipole_powers, percentage*5/100, kind='cubic', fill_value="extrapolate")
+        
             sheet_powers = np.array([0.75,0.96,1.62,2.65,3.95,5.43,6.99,8.49,9.81,10.83,11.57,11.97,12.01])
             sheet_powers -= min(sheet_powers)
             sheet_powers *= 100.0 / max(sheet_powers)

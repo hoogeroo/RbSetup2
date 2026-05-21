@@ -190,6 +190,15 @@ class FloatWidget(QWidget):
         self.ramp_spinbox1.valueChanged.connect(self.changed_signal.emit)
         self.ramp_spinbox1.setVisible(False)
         layout.addWidget(self.ramp_spinbox1)
+
+        self.ramp_hold_start_label = QLabel("Hold Start")
+        self.ramp_hold_start_label.setMinimumSize(QSize(0, 24))
+        self.ramp_hold_start_label.setMaximumSize(QSize(big, 24))
+        self.ramp_hold_start_label.setVisible(False)
+        self.ramp_hold_start_label.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
+        self.ramp_hold_start_label.addAction("Value", self._ramp_start_value)
+        layout.addWidget(self.ramp_hold_start_label)
+
         self.ramp_spinbox2 = QDoubleSpinBox()
         self.ramp_spinbox2.setMinimumSize(QSize(0, 24))
         self.ramp_spinbox2.setMaximumSize(QSize(big, 24))
@@ -200,14 +209,6 @@ class FloatWidget(QWidget):
         self.ramp_spinbox2.valueChanged.connect(self.changed_signal.emit)
         self.ramp_spinbox2.setVisible(False)
         layout.addWidget(self.ramp_spinbox2)
-
-        self.ramp_hold_start_label = QLabel("Hold")
-        self.ramp_hold_start_label.setMinimumSize(QSize(0, 24))
-        self.ramp_hold_start_label.setMaximumSize(QSize(big, 24))
-        self.ramp_hold_start_label.setVisible(False)
-        self.ramp_hold_start_label.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
-        self.ramp_hold_start_label.addAction("Value", self._ramp_start_value)
-        layout.addWidget(self.ramp_hold_start_label)
 
         self.setLayout(layout)
 
@@ -250,7 +251,7 @@ class FloatWidget(QWidget):
         self.mode_ramp_hold_start(self.ramp_mode_sel)
 
     def _ramp_start_value(self):
-        self.mode_ramp
+        self.mode_ramp(self.ramp_mode_sel)
 
     def get_value(self):
         if self.state == "hold":
@@ -287,7 +288,7 @@ class FloatWidget(QWidget):
 
         boxes = [self.spinbox, self.ramp_spinbox1, self.ramp_spinbox2]
         for box in boxes:
-            if not box.isVisible():
+            if box.isHidden():
                 continue
             value = box.value()
             color = background_color(value, self.variable)

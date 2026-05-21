@@ -85,7 +85,7 @@ class RunVariableWidget(QWidget):
         for rv in self.run_variables:
             # read current widget values into the RunVariable
             if hasattr(rv, '_ramp_cb') and rv._ramp_cb.isChecked():
-                start_held = hasattr(rv, '_ramp_start_hold_cb') and rv._ramp_start_hold_label.isVisible()
+                start_held = hasattr(rv, '_ramp_start_hold_label') and rv._ramp_start_hold_label.isVisible()
                 run_variables.append(RunVariable(
                     rv.stage_id, rv.variable_id, 
                     rv._start_w.get_value(), rv._end_w.get_value(),
@@ -112,6 +112,8 @@ class RunVariableWidget(QWidget):
         if hasattr(value, 'is_ramp') and value.is_ramp():
             _, end = value.ramp_values()
             return value.__class__.constant(end)
+        if hasattr(value, 'is_ramp_hold_start') and value.is_ramp_hold_start():
+            return value.__class__.constant(value.ramp_end())
         return value
 
     # create a new run variable
@@ -163,7 +165,7 @@ class RunVariableWidget(QWidget):
         vbox.addWidget(QLabel(label_text))
 
         hbox = QHBoxLayout()
-        hold_label = QLabel("Hold Start")
+        hold_label = QLabel("Hold")
         hold_label.setVisible(False)
         hbox.addWidget(hold_label)
 
@@ -173,8 +175,9 @@ class RunVariableWidget(QWidget):
         from_spin.setSingleStep(variable.step)
         from_spin.setValue(from_val)
         hbox.addWidget(from_spin)
-        hbox.addWidget(QLabel("→"))
 
+        arrow_label = QLabel("→")
+        hbox.addWidget(arrow_label)
 
         to_spin = QDoubleSpinBox()
         to_spin.setMinimum(variable.minimum)
@@ -185,13 +188,22 @@ class RunVariableWidget(QWidget):
         vbox.addLayout(hbox)
 
         if show_hold:
-            def set_hold(fs=from_spin, hl = hold_label):
+            def set_hold(fs=from_spin, ts=to_spin, al=arrow_label, hl=hold_label):
                 fs.setVisible(False)
+                ts.setVisible(False)
+                al.setVisible(False)
                 hl.setVisible(True)
 
-            def set_value(fs=from_spin, hl = hold_label):
+            def set_value(fs=from_spin, ts=to_spin, al=arrow_label, hl=hold_label):
                 fs.setVisible(True)
+                ts.setVisible(True)
+                al.setVisible(True)
                 hl.setVisible(False)
+
+            def sync_to(val, ts=to_spin): #makes to value slightly larger than from value to appease mloop
+                ts.setValue(val*1.001)
+
+            from_spin.valueChanged.connect(sync_to)
 
             from_spin.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
             from_spin.addAction("Hold", set_hold)
@@ -200,8 +212,7 @@ class RunVariableWidget(QWidget):
             hold_label.addAction("Value", set_value)
 
             if hold_active:
-                from_spin.setVisible(False)
-                hold_label.setVisible(True)
+                set_hold()
 
         return container, from_spin, to_spin, hold_label
 
