@@ -186,7 +186,11 @@ class AbstractDevice:
             camera = None
             try:
                 camera = CameraConnection()
-                camera.shoot(3)
+                # In the terminal, add this temporarily to device.py after receiving device_settings
+                if self.device_settings.imaging_type == "Absorption":
+                    camera.shoot(3)
+                elif self.device_settings.imaging_type == "Fluorescence":
+                    camera.shoot(2)
             except Exception as e:
                 print("Error occurred while shooting:", e)
 
@@ -244,16 +248,24 @@ class AbstractDevice:
                 try:
                     # read the image from the camera server
                     images = camera.read(timeout=1)
+                    print(len(images), "images read from camera")
                 except Exception as e:
                     print("Error occurred while reading camera images:", e)
             if images is not None:
                 # filter the images and extract parameters
-                camera_images = CameraImages(images[0], images[1], images[2])
-                self.current_camera_images = camera_images  # store the current images for potential re-filtering when settings are changed
-                filtered_images = self.image_analysis.filter_images(camera_images)
-                self.device_pipe.send(filtered_images)
-                n_atoms = filtered_images.n_atoms
-                max_od = filtered_images.max_od
+                if self.device_settings.imaging_type == "Absorption":
+                    camera_images = CameraImages(images[0], images[1], images[2])
+                    self.current_camera_images = camera_images  # store the current images for potential re-filtering when settings are changed
+                    filtered_images = self.image_analysis.filter_images(camera_images)
+                    self.device_pipe.send(filtered_images)
+                    n_atoms = filtered_images.n_atoms
+                    max_od = filtered_images.max_od
+                
+                elif self.device_settings.imaging_type == "Fluorescence":
+                    camera_images = CameraImages(foreground = images[0], background = None, empty = images[1], fluoimage=images[0] - images[1])
+                    self.device_pipe.send(camera_images)
+                    n_atoms = 0.0
+                    max_od = 0.0
 
             # save the results if requested (only save when we actually have camera_images)
             if self.device_settings.save_runs and camera_images is not None:

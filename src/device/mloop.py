@@ -173,8 +173,8 @@ class MLOOPInterface(mli.Interface):
         alpha = 1 # alpha = -1/5 is for thermal cloud. proportional to N/T^3, which is a PSD proxy. But cant condense at alpha = -1/5, alpha > 0 for condensation.
         normaliser_lowN = 2 / (1 + np.exp(1e5 / N))
 
-        cost = -normaliser_lowN * (od_peak ** 3) * N ** (alpha - 1.8) * 1e6
-        # cost = - np.log(N*od_peak**3)
+        # cost = -normaliser_lowN * (od_peak ** 3) * N ** (alpha - 1.8) * 1e6
+        cost = - np.log(N*od_peak)
         self.cost_list.append(cost)
         
         return cost, False

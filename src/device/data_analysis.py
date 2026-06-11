@@ -166,7 +166,7 @@ class ImageAnalysis:
             initial_guess = (sigma_x, sigma_y, amp, x0, y0, offset)
 
             x, y = np.indices(od_image.shape)
-            popt, _ = curve_fit(self.fit_2D_Gaussian, (x, y), od_image.ravel(), p0=initial_guess, maxfev=5000)
+            popt, _ = curve_fit(self.fit_2D_Gaussian, (x, y), od_image.ravel(), p0=initial_guess)
             sigma_x, sigma_y, amp, x0, y0, offset = popt
             atom_number = 2 * area_px * np.pi * abs(sigma_x) * abs(sigma_y) * amp / crosssection
         except Exception:

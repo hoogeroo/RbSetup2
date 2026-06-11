@@ -58,6 +58,7 @@ class Gui(QMainWindow):
         # connect the menu actions
         self.action_save.triggered.connect(self.save_settings_dialog)
         self.action_load.triggered.connect(self.load_settings_dialog)
+        self.imaging_type.currentIndexChanged.connect(self.update_device_settings)
         self.action_fringe_removal.triggered.connect(self.update_device_settings)
         self.action_pca.triggered.connect(self.update_device_settings)
         self.action_low_pass_filter.triggered.connect(self.update_device_settings)
@@ -129,6 +130,7 @@ class Gui(QMainWindow):
         # create a DeviceSettings object with the current values
         load_mot = self.load_mot.isChecked()
         save_runs = self.save_runs.isChecked()
+        imaging_type = self.imaging_type.currentText() # Default is absorption, other option is fluorescence
         
         # Get current filtering settings from the menu actions
         fringe_removal = self.action_fringe_removal.isChecked()
@@ -142,7 +144,8 @@ class Gui(QMainWindow):
             fringe_removal=fringe_removal,
             pca=pca,
             low_pass=low_pass,
-            fft_filter=fft_filter
+            fft_filter=fft_filter,
+            imaging_type=imaging_type
         )
 
         # send the device settings to the device

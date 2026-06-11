@@ -12,13 +12,14 @@ from PyQt6.QtWidgets import QTabWidget
 FLUORESCENCE_SAMPLES = 100
 
 class CameraImages:
-    def __init__(self, foreground: np.ndarray, background: np.ndarray, empty: np.ndarray, od: np.ndarray=None, n_atoms: float = float('nan'), max_od: float = float('nan')):
+    def __init__(self, foreground: np.ndarray, background: np.ndarray, empty: np.ndarray, od: np.ndarray=None, n_atoms: float = float('nan'), max_od: float = float('nan'), fluoimage: np.ndarray=None):
         self.foreground = foreground
         self.background = background
         self.empty = empty
         self.od = od
         self.n_atoms = n_atoms
         self.max_od = max_od
+        self.fluoimage = fluoimage
 
 class FluorescenceSample:
     def __init__(self, sample: float):
@@ -65,7 +66,7 @@ class PlotsGui:
     def update_images(self, camera_images: CameraImages):
         # store unfiltered images for saving later
         self.images = camera_images
-
+        
         # format the atom number nicely
         atom_number = camera_images.n_atoms
         keys = ['K', 'M', 'B', 'T']
@@ -81,7 +82,7 @@ class PlotsGui:
         self.camera_tabs.clear()
 
         # plot the images
-        image_names = [("OD Image", "od"), ("Foreground", "foreground"), ("Background", "background"), ("Empty Image", "empty"),("Multigo", "multigo")] 
+        image_names = [("OD Image", "od"), ("Foreground", "foreground"), ("Background", "background"), ("Empty Image", "empty"), ("Fluo Image", "fluoimage"), ("Multigo", "multigo")]
         for (tab_name, image_name) in image_names:
             canvas = FigureCanvas(Figure(figsize=(5, 3)))
             fig = canvas.figure
@@ -89,10 +90,11 @@ class PlotsGui:
             # plot the new image
             ax = fig.subplots()
             if image_name != "multigo":
-                image = getattr(camera_images, image_name)
-                ax.imshow(image, aspect='equal', cmap='inferno')
-                ax.set_title(f"{tab_name} - {atom_number_rounded} atoms")
-                fig.colorbar(ax.images[0], ax=ax)
+                image = getattr(camera_images, image_name, None)
+                if image is not None:
+                    ax.imshow(image, aspect='equal', cmap='inferno')
+                    ax.set_title(f"{tab_name} - {atom_number_rounded} atoms")
+                    fig.colorbar(ax.images[0], ax=ax)
             else:
                 self.multigo_y.append(camera_images.n_atoms)
                 self.multigo_x.append(len(self.multigo_y))

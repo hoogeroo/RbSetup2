@@ -44,13 +44,14 @@ class AiSubmission:
 
 # device settings that aren't directly related to the experiment stages or dc values
 class DeviceSettings:
-    def __init__(self, load_mot=False, save_runs=False, fringe_removal=False, pca=False, low_pass=False, fft_filter=False):
+    def __init__(self, load_mot=False, save_runs=False, fringe_removal=False, pca=False, low_pass=False, fft_filter=False, imaging_type="Absorption"):
         self.load_mot = load_mot
         self.save_runs = save_runs
         self.fringe_removal = fringe_removal
         self.pca = pca
         self.low_pass = low_pass
         self.fft_filter = fft_filter
+        self.imaging_type = imaging_type
 
 # SLM server address
 SLM_SERVER_URL = "http://130.216.51.133:5000"

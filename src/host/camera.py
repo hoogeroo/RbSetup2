@@ -13,6 +13,7 @@ from astropy.io import fits
 TCPIP= '130.216.51.122'
 PORT = 54321
 TMPFITS = '/home/lab/Documents/zdrive/kuroTemp/temp.fit'
+BFFITS = '/home/lab/Documents/zdrive/kuroTemp/BFtemp.fit'
 
 '''
 when this class is instantiated it tries to connect to the camera server
