@@ -272,6 +272,14 @@ try:
             sample = [0.0]*8
             self.sampler0.sample(sample)
             return -1000.0 * sample[3]
+        
+        @kernel
+        def set_push_beam(self, enabled: TBool):
+            self.core.break_realtime()
+            if enabled:
+                self.urukul0_ch3.sw.on()
+            else:
+                self.urukul0_ch3.sw.off()
 
 # if artiq isn't available run the gui without it
 except ImportError:

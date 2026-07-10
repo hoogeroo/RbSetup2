@@ -7,7 +7,7 @@ import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvas
 from matplotlib.figure import Figure
 
-from PyQt6.QtWidgets import QTabWidget
+from PyQt6.QtWidgets import QTabWidget, QDialog, QVBoxLayout
 
 FLUORESCENCE_SAMPLES = 100
 
@@ -136,3 +136,22 @@ class PlotsGui:
         # update ambient temperature
         if 'ambient_temp' in temperatures and temperatures['ambient_temp'] is not None:
             self.window.lblambient.setText(f"{temperatures['ambient_temp']:.1f} °C")
+
+    def update_mot_lifetime(self, result)
+        import matplotlib.pyplot as plt
+        self.window.log.append(f'Mot Lifetime: {result.tau: .2f} +- {result.tau_error: .2f}\n',
+                               f'Baseline: {result.offset: .2f}')
+        
+        plt.figure("MOT Lifetime")
+        plt.clf()
+
+        plt.plot(result.times, result.fluorescence, "o", label = "Measured Fluorescene"))
+
+        plt.plot(result.times, result.fittedfluorescence, "--", label = "Exponential Fit"))
+        plt.xlabel("Time (s)")
+        plt.ylabel("Fluorescence")
+        plt.title(f"MOT Lifetime = {result.tau: .2f} +- {result.tau_error:.2f} s")
+        plt.legend(loc = 'best')
+        plt.tight_layout()
+
+        plt.show(block=False)

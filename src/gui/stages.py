@@ -3,17 +3,20 @@ stages.py: this file has the code for managing the stages in the experiment alon
 '''
 
 from uuid import uuid4
+import math
 
 from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtWidgets import *
+from dataclasses import dataclass
 
 from src.device.ai import AiSettings
-from src.device.device_types import AiSubmission, DeviceSettings, MultiGoSubmission, Stage, Stages
+from src.device.device_types import AiSubmission, DeviceSettings, MultiGoSubmission, Stage, Stages, MeasureMOTLifetime, MOTLifetimeResult
 from src.device.multigo import MultiGoSettings
 from src.gui.ai import AiDialog, AiProgressDialog
 from src.gui.multigo import MultiGoDialog, MultiGoProgressDialog
 from src.gui.value_widgets import background_color, big
 from src.variable_types import *
+from src.gui.plots import FLUORESCENCE_SAMPLES
 
 # class to represent a stage in the gui. differs from Stage in that it can't be sent to the device
 class GuiStage:
@@ -85,6 +88,9 @@ class StagesGui:
 
         # connect the run button to the submit_experiment method
         self.window.run_experiment.clicked.connect(self.submit_experiment)
+
+        # Button to measure mot lifetime through fluorescence decay. It just turns of loading and keeps Dc values fixed
+        self.window.measure_mot_T.clicked.connect(self.measure_mot_lifetime)
 
         # connect the load mot and save runs checkbox to the update_device_settings method
         self.window.load_mot.stateChanged.connect(self.window.update_device_settings)
@@ -163,6 +169,12 @@ class StagesGui:
     def submit_experiment(self):
         # run the actual experiment
         self.window.gui_pipe.send(self.extract_stages())
+
+    def measure_mot_lifetime(self):
+        self.window.measure_mot_T.setEnabled(False)  # disable the button
+        self.window.measure_mot_T.setText("Measuring...")
+
+        self.window.gui_pipe.send(MeasureMOTLifetime(samples = FLUORESCENCE_SAMPLES))
 
     # open the multigo options popup
     def multigo_dialog(self):

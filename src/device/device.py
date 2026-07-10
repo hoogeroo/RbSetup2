@@ -1,4 +1,4 @@
-'''
+x   `'''
 device.py: has the device code that works without artiq. mainly talking to the gui and taking photos
 '''
 
@@ -11,7 +11,7 @@ from scipy.interpolate import CubicSpline
 import time
 
 from src.device.ai import AiCancel, AiExecuter
-from src.device.device_types import AiSubmission, DeviceSettings, FlattenedStages, MultiGoSubmission, SLMSettings, SLM_SERVER_URL, Stage, Stages
+from src.device.device_types import AiSubmission, DeviceSettings, FlattenedStages, MultiGoSubmission, SLMSettings, SLM_SERVER_URL, Stage, Stages, MeasureMOTLifetime
 from src.device.multigo import MultiGoCancel, run_multigo_experiment
 from src.gui.fits import save_settings
 from src.gui.gui import run_gui
@@ -19,7 +19,7 @@ from src.gui.plots import CameraImages, FluorescenceSample
 from src.host.camera import CameraConnection
 from src.variable_types import VariableTypeBool, VariableTypeInt, VariableTypeFloat
 from src.device import filtering
-from src.device.data_analysis import ImageAnalysis
+from src.device.data_analysis import ImageAnalysis, FluoresceneAnalysis
 from src.value_types import BoolValue, IntValue, FloatValue
 from src.gui.temperatures import fetch_temperatures, ESP_url
 
@@ -147,6 +147,9 @@ class AbstractDevice:
                     print("Can't cancel multigo - not running")
                 elif isinstance(msg, AiCancel):
                     print("Can't cancel AI - not running")
+                elif isinstance(msg, MeasureMOTLifetime):
+                    # run the MOT lifetime measurement
+                    self.run_mot_lifetime(msg.samples)
                 else:
                     print(f"Received unknown message type: {type(msg)}")
                     break
@@ -168,6 +171,33 @@ class AbstractDevice:
         # stop the gui process
         self.gui_process.terminate()
         self.gui_process.join()
+
+    def run_mot_lifetime(self, samples: int):
+        fluorescence_data = []
+        times = []
+
+        self.set_push_beam(False)  # turn off the push beam for MOT loading
+        try:
+            start_time = time.monotonic()
+            for i in range(samples):
+                fluorescence = self.read_fluorescence()
+                fluorescence_data.append(fluorescence)
+                times.append(time.monotonic() - start_time)
+
+                time.sleep(0.3
+        finally:
+            self.set_push_beam(True)
+
+        A, tau, offset, tau_error, fitted_fluorescence = FluorescenceAnalysis.extract_mot_lifetime(times, fluorescence_data)
+        self.device_pipe_send(
+            MotLifetimeResult(
+                tau=float(tau, tau_error=float(tau_error), 
+                offset=float(offset), 
+                times=list(times), 
+                fluorescence=list(fluorescence), 
+                fitted_fluorescence=list(fitted_fluorescence),
+                )
+            ))
 
     # sets the current output values to the ones in a stage
     def run_stage(self, stage):
@@ -331,6 +361,10 @@ class AbstractDevice:
     # read fluorescence signal
     def read_fluorescence(self) -> float:
         return 100.0
+    
+    #Dummy push beam control method to be overridden by the device
+    def set_push_beam(self, enabled: bool):
+        print(f"Push beam set to {'ON' if enabled else 'OFF'}")
     
     def update_device_settings(self, device_settings):
         self.device_settings = device_settings

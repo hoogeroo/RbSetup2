@@ -259,3 +259,23 @@ class ImageAnalysis:
         sy = np.sqrt(np.sum(data * (y - Y0) ** 2) / total)
 
         return sx, sy
+    
+class FluoresceneAnalysis:
+
+    def exponential_decay(self, A, x0, x, c):
+        return c + A * np.exp(-x/x0)
+
+    def extract_mot_lifetime(self, times: list, fluorescence_data: list):
+        A_guess = max(fluorescence_data)
+        offset_guess = 200
+        x0_guess = 10
+
+        p0 = [A_guess, x0_guess, offset_guess]
+        bounds = ([0, 1e-3, 0], [5000, 120, 500])
+
+        popt, pcov = curve_fit(self.exponential_decay, times, fluorescence_data, p0=p0, bounds=bounds)
+        A, tau, offset = popt
+        tau_error = np.sqrt(pcov[1, 1])
+        fitted_fluorescence = self.exponential_decay(popt*)
+
+        return (A, tau, offset, tau_error, fitted_fluorescence)

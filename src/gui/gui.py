@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import QApplication, QFileDialog, QMainWindow
 from PyQt6.uic import loadUi
 
 from src.device.ai import AiProgress
-from src.device.device_types import DeviceSettings
+from src.device.device_types import DeviceSettings, MOTLifetimeResult
 from src.device.multigo import MultiGoProgress
 from src.gui.ai import AiPlotData
 from src.gui.fits import load_settings, save_settings
@@ -122,6 +122,9 @@ class Gui(QMainWindow):
                 # Pass AI plot data to the AI progress dialog if it exists
                 if hasattr(self, 'ai_progress') and self.ai_progress:
                     self.ai_progress.update_ai_plots(msg)
+            elif isinstance(msg, MOTLifetimeResult):
+                self.plots_gui.update_mot_lifetime(msg)
+                self.measure_mot_T.setEnabled(True)
             else:
                 print("Received unknown message type from device:", type(msg))
 

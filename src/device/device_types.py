@@ -53,6 +53,19 @@ class DeviceSettings:
         self.fft_filter = fft_filter
         self.imaging_type = imaging_type
 
+@dataclass
+class MeasureMOTLifetime:
+    samples: int
+
+@dataclass
+class MOTLifetimeResult:
+    tau: float
+    tau_error: float
+    offset: float
+    times: list
+    fluorescence: list
+    fitted_fluorescence: list
+
 # SLM server address
 SLM_SERVER_URL = "http://130.216.50.106:5000"
 
