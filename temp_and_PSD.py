@@ -7,25 +7,27 @@ import math
 import re
 
 # -------- Control Parameters --------
-skip_points = 4
-magnification = 2.6
+skip_points = 5
 px_size = 16e-6  # Pixel size in meters
 Rb_cross_section = 1.3e-13  # Cross-section of Rb in m^2
+magnification = 2.6
 area_px = (px_size / magnification)**2  # Area per pixel in m^2
+mu = 0.5 * 9.274009994e-24  # Bohr magneton in J/T
+kb = 1.380649e-23  # Boltzmann constant in J/K
 
 mass_rubid = 86.909184 * 1.66E-27
 boltzmann = 1.380649E-23
 hbar = 1.0545718E-34
 
-cross_sections = True
+# mask_radius = 200
+cross_sections = False
 
-# Aliases used later in PSD helper (avoid NameError)
 mRb = mass_rubid
 kB = boltzmann
 
-t_array = np.linspace(20, 40, 10) * 1e-3  # time of flight in s
+t_array = np.linspace(1, 40, 9) * 1e-3  # time of flight in s
 
-fits_folder = "runs/multigo_2026-05-14_13-41-29"
+fits_folder = "runs/multigo_2026-07-03_13-46-52"
 
 # -------- Main calculations --------
 
@@ -43,17 +45,26 @@ def calculate_atom_number(image, sigma_x, sigma_y, amp):
     return atom_number_2D
 
 
-def calculate_peak_PSD(peak_od_first, peak_od_extrap, T, sz_extrap, sz):
+def calculate_peak_PSD(N, T, sx, sy, sz):
     # T is expected in Kelvin
-    lambda_dB = math.sqrt((2 * math.pi * hbar**2) / (mass_rubid * boltzmann * T))
-    n_col_extrap = peak_od_extrap / Rb_cross_section
-    n_col = peak_od_first / Rb_cross_section
-    n0_extrap = n_col_extrap / (math.sqrt(2 * math.pi) * sz_extrap)
-    n0 = n_col / (math.sqrt(2 * math.pi) * sz)
-    peak_PSD_extrap = n0_extrap * lambda_dB**3
-    peak_PSD = n0 * lambda_dB**3
+    # lambda_dB = math.sqrt((2 * math.pi * hbar**2) / (mass_rubid * boltzmann * T))
+    # n_col_extrap = peak_od_extrap / Rb_cross_section
+    # n_col = peak_od_first / Rb_cross_section
+    # n0_extrap = n_col_extrap / (math.sqrt(2 * math.pi) * sz_extrap)
+    # n0 = n_col / (math.sqrt(2 * math.pi) * sz)
+    # peak_PSD_extrap = n0_extrap * lambda_dB**3
+    # peak_PSD = n0 * lambda_dB**3
 
-    return peak_PSD_extrap, peak_PSD
+    # return peak_PSD_extrap, peak_PSD
+    bz = 5.5
+
+    n0 = N / (np.pi * sx * sy * sz)
+    lambda_dB = math.sqrt((2 * math.pi * hbar**2) / (mass_rubid * boltzmann * T))
+    peak_PSD = n0 * lambda_dB**3
+    psd2 = (N / (32 * np.pi)) * (mu * bz / (kb * T))**3 * lambda_dB**3
+    print(f"PSD2: {psd2}")
+
+    return peak_PSD
 
 
 def calculate_temperature(slope_x, slope_y):
@@ -203,6 +214,14 @@ def main():
 
     for idx in range(len(fits_files)):
         od_image = image_list[idx, :, :]
+        # from scipy.ndimage import gaussian_filter
+        # od_image = gaussian_filter(od_image, sigma=1)  # Apply Gaussian smoothing
+        # fig, ax = plt.subplots(figsize=(8, 6), subplot_kw={'projection': '3d'})
+        # ny, nx = od_image.shape
+        # x = np.arange(nx)
+        # y = np.arange(ny)
+        # X, Y = np.meshgrid(x, y)
+        # surf = ax.plot_surface(X, Y, od_image, cmap='inferno')
 
         sigma_x_guess, sigma_y_guess = guess_widths(od_image)
         amp_guess = guess_amplitude(od_image)
@@ -221,14 +240,37 @@ def main():
         )
 
         sigma_x_fit, sigma_y_fit, amp_fit, x0_fit, y0_fit, offset_fit = popt
+        # mask_radius = max(4 * abs(sigma_x_fit), 4 * abs(sigma_y_fit))
+        # print(f"sigma-x = {sigma_x_fit:.2f}, sigma-y = {sigma_y_fit:.2f}, amp = {amp_fit:.2f}, x0 = {x0_fit:.2f}, y0 = {y0_fit:.2f}, offset = {offset_fit:.2f}")
+
+        # #create mask ROI
+        # y_min = int(y0_fit - mask_radius)
+        # y_max = int(y0_fit + mask_radius)
+        # x_min = int(x0_fit - mask_radius)
+        # x_max = int(x0_fit + mask_radius)
+        # mask = np.zeros_like(od_image, dtype=bool)
+        # mask[y_min:y_max, x_min:x_max] = True
+
+        # od_image = np.where(mask, od_image, 0)
+        # # Fit the 2D Gaussian again on the masked image
+        # popt, pcov = curve_fit(
+        #     fit_2D_Gaussian,
+        #     (x_idx, y_idx),
+        #     od_image.ravel(),
+        #     p0=initial_guesses,
+        #     maxfev=1000000,
+        # )
+
+        # sigma_x_fit, sigma_y_fit, amp_fit, x0_fit, y0_fit, offset_fit = popt
 
         atom_numbers[idx] = calculate_atom_number(od_image, sigma_x_fit, sigma_y_fit, amp_fit)
         widths_x[idx] = np.abs(sigma_x_fit) * (px_size / magnification)  # Convert from pixels to meters
         widths_y[idx] = np.abs(sigma_y_fit) * (px_size / magnification)  # Convert from pixels to meters
         amplitudes[idx] = amp_fit
+        # print(f"widths")
 
         if cross_sections:
-            plot_cross_sections(od_image, popt, title=f"Image {idx+1}: {fits_files[idx]}")
+            plot_cross_sections(od_image, popt, title=f"Image {idx+1}: {fits_files[idx]}K")
 
     # Calculate the slopes for temperature calculation (fit width^2 vs t^2)
     t2 = t_array[skip_points:] ** 2
@@ -259,21 +301,29 @@ def main():
     print(f"Initial cloud size (mean sigma0 from width^2 intercepts): {mean_sigma0*1e6:.2f} µm")
 
     # Calculate peak PSD
-    sz_approx_extrap = math.sqrt(sigma0_x * sigma0_y)
-    sz_approx = np.sqrt(np.min(widths_x) * np.min(widths_y))
+    sz_approx_extrap = 0.5 * math.sqrt(sigma0_x * sigma0_y)
+    # sz_approx_extrap = 1
+    sz_approx = 0.5*np.sqrt(widths_y[0]*widths_x[0])  # Use the first measured widths as an approximation for sz
+    print(f"Approximate cloud size (from min widths): {sz_approx*1e6:.2f} µm")
 
-    popt_amplitude, pcov_amplitude = curve_fit(linear_fit, t_array[:skip_points], amplitudes[:skip_points])
+    popt_amplitude, pcov_amplitude = curve_fit(linear_fit, t_array, amplitudes)
     _, intercept_amplitude = popt_amplitude
 
     max_amp = float(np.max(amplitudes))
 
     # mean_temp_uK -> K
     mean_temp_K = mean_temp_uK * 1e-6
+    N = np.mean(atom_numbers[2:]) #exclude first two points due to undercounting in dense cloud
+    print(f"Mean atom number (excluding first two points): {N:.2e}")
 
-    peak_PSD_extrap, peak_PSD = calculate_peak_PSD(
-        max_amp, intercept_amplitude, mean_temp_K, sz_approx_extrap, sz_approx
-    )
-    print(f"Peak PSD (extrapolated): {peak_PSD_extrap:.2e}")
+    # peak_PSD_extrap, peak_PSD = calculate_peak_PSD(
+    #     amplitudes[0], amplitudes[0], mean_temp_K, sz_approx_extrap, sz_approx
+    # )
+    # print(f"Peak PSD (extrapolated): {peak_PSD_extrap:.2e}")
+    bz = (2 * kb * mean_temp_K) / (mu * sz_approx)
+    print(f"bz: {bz:.2f} T")
+    print(f"widthx[0]: {widths_x[0]*1e6:.2f} µm, widths_y[0]: {widths_y[0]*1e6:.2f} µm, widthz_approx: {sz_approx*1e6:.2f} µm")
+    peak_PSD = calculate_peak_PSD(N, mean_temp_K, widths_x[0], widths_y[0], sz_approx)
     print(f"Peak PSD (approx): {peak_PSD:.2e}")
 
     # Plot things

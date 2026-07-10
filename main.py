@@ -40,6 +40,7 @@ try:
                 VariableTypeFloat("Time (ms)", "time", 0.0, 10000.0, 10.0),
                 VariableTypeInt("Samples", "samples", 1, 10000, 100),
                 VariableTypeBool("Camera", "camera"),
+                VariableTypeBool("BFCam", "bfcam"),
                 VariableTypeFloat("Analog", "analog", -10.0, 10.0, 0.1),
                 VariableTypeFloat("Dipole Amplitude", "dipole_amplitude", 0.0, 100.0, 0.5, calibration=dipole_calibration),
                 VariableTypeFloat("MOT 2 coils current", "mot2_coils_current", 0.0, 100.0, 0.5, calibration=coil_current_calibration),
@@ -73,6 +74,7 @@ try:
             self.setattr_device("ttl0")   # SLM sync input 
             self.setattr_device("ttl4")
             self.setattr_device("ttl5")
+            self.setattr_device("ttl6")
             self.setattr_device("ttl7")   # SLM frame-advance trigger
             self.setattr_device('fastino0')
             self.setattr_device("sampler0")
@@ -188,6 +190,9 @@ try:
                     self.ttl5.on()
                 else:
                     self.ttl5.off()
+
+                if s.bfcam[i]:
+                    self.ttl6.pulse(3.0 * ms)
 
                 # update analog outputs
                 dac = [0.0] * 32

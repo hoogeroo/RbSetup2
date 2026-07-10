@@ -54,7 +54,7 @@ class DeviceSettings:
         self.imaging_type = imaging_type
 
 # SLM server address
-SLM_SERVER_URL = "http://130.216.51.133:5000"
+SLM_SERVER_URL = "http://130.216.50.106:5000"
 
 # SLM experiment settings sent from GUI to device
 class SLMSettings:

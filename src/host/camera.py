@@ -13,7 +13,7 @@ from astropy.io import fits
 TCPIP= '130.216.51.122'
 PORT = 54321
 TMPFITS = '/home/lab/Documents/zdrive/kuroTemp/temp.fit'
-BFFITS = '/home/lab/Documents/zdrive/kuroTemp/BFtemp.fit'
+BFFITS = '/home/lab/Documents/zdrive/kuroTemp/BFtemp.fits'
 
 '''
 when this class is instantiated it tries to connect to the camera server
@@ -58,6 +58,22 @@ class CameraConnection:
         hdu.close()
 
         os.remove(TMPFITS)
+
+        return outdata
+
+    def read_bf(self, timeout=10):
+        t = 0
+        while not (os.path.exists(BFFITS)):
+            time.sleep(0.1)
+            t = t + 1
+            if (t > timeout * 10): break
+
+        hdu = fits.open(BFFITS)
+        imgdata = hdu[0].data
+        outdata = np.array(imgdata)
+        hdu.close()
+
+        os.remove(BFFITS)
 
         return outdata
 

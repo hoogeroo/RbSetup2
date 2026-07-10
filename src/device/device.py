@@ -194,6 +194,8 @@ class AbstractDevice:
             except Exception as e:
                 print("Error occurred while shooting:", e)
 
+            # time.sleep(1.0)
+
             # prepare SLM from settings
             slm = self.slm_settings
             slm_hold_times = [float(t) for t in slm.hold_times] if slm.enabled and slm.hold_times else [0.0]
@@ -241,25 +243,28 @@ class AbstractDevice:
 
             # read back the camera images
             n_atoms = float('nan')
+            n_atoms_roi = float('nan')
             max_od = float('nan')
             images = None
             camera_images = None
+            bf_image = None
             if camera:
                 try:
                     # read the image from the camera server
                     images = camera.read(timeout=1)
-                    print(len(images), "images read from camera")
+                    bf_image = camera.read_bf(timeout=1)
                 except Exception as e:
                     print("Error occurred while reading camera images:", e)
             if images is not None:
                 # filter the images and extract parameters
                 if self.device_settings.imaging_type == "Absorption":
-                    camera_images = CameraImages(images[0], images[1], images[2])
+                    camera_images = CameraImages(images[0], images[1], images[2], bf_image=bf_image, fluoimage=None)
                     self.current_camera_images = camera_images  # store the current images for potential re-filtering when settings are changed
                     filtered_images = self.image_analysis.filter_images(camera_images)
                     self.device_pipe.send(filtered_images)
                     n_atoms = filtered_images.n_atoms
                     max_od = filtered_images.max_od
+                    n_atoms_roi = filtered_images.n_atoms_roi
                 
                 elif self.device_settings.imaging_type == "Fluorescence":
                     camera_images = CameraImages(foreground = images[0], background = None, empty = images[1], fluoimage=images[0] - images[1])
@@ -303,8 +308,8 @@ class AbstractDevice:
                     camera_images,
                     overwrite=False,
                 )
-            
-            return (n_atoms, max_od, images)
+
+            return n_atoms, max_od, images, bf_image, n_atoms_roi
         
         else:
             print("Temperature too high, skipping experiment")

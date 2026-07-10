@@ -12,13 +12,16 @@ from PyQt6.QtWidgets import QTabWidget
 FLUORESCENCE_SAMPLES = 100
 
 class CameraImages:
-    def __init__(self, foreground: np.ndarray, background: np.ndarray, empty: np.ndarray, od: np.ndarray=None, n_atoms: float = float('nan'), max_od: float = float('nan'), fluoimage: np.ndarray=None):
+    def __init__(self, foreground: np.ndarray, background: np.ndarray, empty: np.ndarray, od: np.ndarray=None, bf_image: np.ndarray=None, master_empty: np.ndarray=None, n_atoms: float = float('nan'), max_od: float = float('nan'), n_atoms_roi: float = float('nan'), fluoimage: np.ndarray=None):
         self.foreground = foreground
         self.background = background
         self.empty = empty
         self.od = od
+        self.bf_image = bf_image
+        self.master_empty = master_empty
         self.n_atoms = n_atoms
         self.max_od = max_od
+        self.n_atoms_roi = n_atoms_roi
         self.fluoimage = fluoimage
 
 class FluorescenceSample:
@@ -78,11 +81,20 @@ class PlotsGui:
             break
         atom_number_rounded = str(round(atom_number, 2)) + keys[count - 1]
 
+        count = 0
+        n_atoms_roi = camera_images.n_atoms_roi
+        for div in range(0, len(keys)):
+          n_atoms_roi = n_atoms_roi/1000
+          count += 1
+          if n_atoms_roi < 1000:
+            break
+        n_atoms_roi_rounded = str(round(n_atoms_roi, 2)) + keys[count - 1]
+
         # clear existing tabs
         self.camera_tabs.clear()
 
         # plot the images
-        image_names = [("OD Image", "od"), ("Foreground", "foreground"), ("Background", "background"), ("Empty Image", "empty"), ("Fluo Image", "fluoimage"), ("Multigo", "multigo")]
+        image_names = [("OD Image", "od"), ("Foreground", "foreground"), ("Background", "background"), ("Empty Image", "empty"), ("Fluo Image", "fluoimage"), ("Master Empty", "master_empty"), ("Multigo", "multigo"), ("BF Image", "bf_image")]
         for (tab_name, image_name) in image_names:
             canvas = FigureCanvas(Figure(figsize=(5, 3)))
             fig = canvas.figure
@@ -93,7 +105,7 @@ class PlotsGui:
                 image = getattr(camera_images, image_name, None)
                 if image is not None:
                     ax.imshow(image, aspect='equal', cmap='inferno')
-                    ax.set_title(f"{tab_name} - {atom_number_rounded} atoms")
+                    ax.set_title(f"{tab_name} - {atom_number_rounded} atoms, Max OD: {camera_images.max_od:.2f}, N_atoms ROI: {n_atoms_roi_rounded}")
                     fig.colorbar(ax.images[0], ax=ax)
             else:
                 self.multigo_y.append(camera_images.n_atoms)
@@ -107,7 +119,7 @@ class PlotsGui:
 
         # print to the log
         text = self.window.log.document().toPlainText()
-        text += f"Num Atoms: {atom_number_rounded}\nMax OD: {camera_images.max_od:.2f}\n\n"
+        text += f"Num Atoms: {atom_number_rounded}\nMax OD: {camera_images.max_od:.2f}\n N_atoms ROI: {n_atoms_roi_rounded}\n\n"
         self.window.log.setPlainText(text)
         self.window.log.verticalScrollBar().setValue(self.window.log.verticalScrollBar().maximum())
 

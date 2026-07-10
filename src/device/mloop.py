@@ -91,8 +91,8 @@ class MLOOPInterface(mli.Interface):
             if num_runs != 1:
                 cost_temp = []
                 for n in range(num_runs):
-                    n_atoms, od_peak = self.wait_for_fluorescence_and_run()
-                    cost, bad = self.cost_function(n_atoms, od_peak)
+                    n_atoms, od_peak, n_atoms_roi = self.wait_for_fluorescence_and_run()
+                    cost, bad = self.cost_function(n_atoms, od_peak, n_atoms_roi)
                     cost_temp.append(cost)
                 cost = np.mean(cost_temp)
                 if num_runs > 2:
@@ -101,11 +101,11 @@ class MLOOPInterface(mli.Interface):
                     uncer = 2 * (max(cost_temp) - min(cost_temp))
             
             else:
-                n_atoms, od_peak = self.wait_for_fluorescence_and_run()
-                cost, bad = self.cost_function(n_atoms, od_peak)
+                n_atoms, od_peak, n_atoms_roi = self.wait_for_fluorescence_and_run()
+                cost, bad = self.cost_function(n_atoms, od_peak, n_atoms_roi)
                 uncer = 1e-8
 
-            self.record_history(cost, n_atoms, od_peak, uncer, bad)
+            self.record_history(cost, n_atoms, od_peak, n_atoms_roi, uncer, bad)
 
             self.check_stop()
 
@@ -148,10 +148,10 @@ class MLOOPInterface(mli.Interface):
 
             if self.fluorescence >= self.fluorescence_threshold:
                 print(f"Fluorescence threshold reached: {self.fluorescence} >= {self.fluorescence_threshold}")
-                n_atoms, od_peak, _ = self.device.run_experiment(self.stages)
-                print(f"Experiment completed: n_atoms={n_atoms:.2e}, od_peak={od_peak:.3f}")
+                n_atoms, od_peak, _, __, n_atoms_roi = self.device.run_experiment(self.stages)
+                print(f"Experiment completed: n_atoms={n_atoms:.2e}, od_peak={od_peak:.3f}, n_atoms_roi={n_atoms_roi:.2e}")
                 self.continue_mloop.clear()
-                return n_atoms, od_peak
+                return n_atoms, od_peak, n_atoms_roi
 
             self.check_stop()
 
@@ -160,21 +160,27 @@ class MLOOPInterface(mli.Interface):
 
     # ── Cost function ────────────────────────────────────────────────────
 
-    def cost_function(self, N, od_peak, multiple_runs = False):
+    def cost_function(self, N, od_peak, n_atoms_roi, multiple_runs = False):
         """Compute cost from atom number and OD peak.
         
         See: https://arxiv.org/abs/2205.08057
         """
         maximum_cost = 1e6
+        N_ref = 65000000
+        OD_ref = 3.26
 
-        if N <= 0 or N > 500000000 or od_peak <= 0.3 or not np.isfinite(N) or not np.isfinite(od_peak):
+        if N <= 0 or N > 100000000 or od_peak <= 0.3 or not np.isfinite(N) or not np.isfinite(od_peak):
             return maximum_cost, True
+        # if n_atoms_roi <= 0 or not np.isfinite(n_atoms_roi):
+        #     return maximum_cost, True
 
         alpha = 1 # alpha = -1/5 is for thermal cloud. proportional to N/T^3, which is a PSD proxy. But cant condense at alpha = -1/5, alpha > 0 for condensation.
         normaliser_lowN = 2 / (1 + np.exp(1e5 / N))
 
         # cost = -normaliser_lowN * (od_peak ** 3) * N ** (alpha - 1.8) * 1e6
-        cost = - np.log(N*od_peak)
+        # cost = - np.log(n_atoms_roi)
+        cost = - np.log(N/N_ref) - np.log(od_peak/OD_ref)
+        print(f"Cost function: N={N:.2e}, od_peak={od_peak:.3f}, n_atoms_roi={n_atoms_roi:.2e}, cost={cost:.3f}")
         self.cost_list.append(cost)
         
         return cost, False
@@ -248,11 +254,12 @@ class MLOOPInterface(mli.Interface):
         """Called before the MLOOP controller starts. Populates parameter boundaries."""
         print('Starting MLOOP optimization...')
         self.check_stop()
+        self.reset_model()
         self.Populate_MLOOP_parameters()
 
     # ── History & plotting ───────────────────────────────────────────────
 
-    def record_history(self, cost, n_atoms, od_peak, uncer, bad):
+    def record_history(self, cost, n_atoms, od_peak, n_atoms_roi, uncer, bad):
         """Record parameter values and send plot data to GUI if the result was good."""
         histvec = []
         for rv_id, component in self.param_map:
@@ -272,7 +279,7 @@ class MLOOPInterface(mli.Interface):
 
         if not bad:
             self.history['trials'].append(histvec)
-            self.history['cost'].append([cost, n_atoms, od_peak, uncer])
+            self.history['cost'].append([cost, n_atoms_roi, od_peak, uncer])
             self.plotcost()
 
     def plotcost(self):
@@ -331,11 +338,6 @@ class MLOOPInterface(mli.Interface):
                     self.param_map.append((i, 'ramp_start'))
                     re_min = min(param.ramp_end_start, param.ramp_end_end)
                     re_max = max(param.ramp_end_start, param.ramp_end_end)
-                    
-                    self.param_names.append(f"{base_name}_ramp_start")
-                    self.min_boundary.append(rs_min)
-                    self.max_boundary.append(rs_max)
-                    self.param_map.append((i, 'ramp_start'))
 
                     self.param_names.append(f"{base_name}_ramp_end")
                     self.min_boundary.append(re_min)
