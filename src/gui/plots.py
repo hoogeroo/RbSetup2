@@ -139,8 +139,8 @@ class PlotsGui:
 
     def update_mot_lifetime(self, result)
         import matplotlib.pyplot as plt
-        self.window.log.append(f'Mot Lifetime: {result.tau: .2f} +- {result.tau_error: .2f}\n',
-                               f'Baseline: {result.offset: .2f}')
+        self.window.log.setPlainText(f'Mot Lifetime: {result.tau: .2f} +- {result.tau_error: .2f}\n',
+                               f'Baseline: {result.offset: .2f}\n')
         
         plt.figure("MOT Lifetime")
         plt.clf()
