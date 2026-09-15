@@ -6,6 +6,7 @@ import numpy as np
 
 from src.value_types import FloatValue
 from src.variable_types import VariableTypeFloat
+from dataclasses import dataclass
 
 # dummy class used to represent the device's digital and analog outputs
 # this class will be filled with ids set in the variables array then 
@@ -44,8 +45,8 @@ class AiSubmission:
 
 # device settings that aren't directly related to the experiment stages or dc values
 class DeviceSettings:
-    def __init__(self, load_mot=False, save_runs=False, fringe_removal=False, pca=False, low_pass=False, fft_filter=False, imaging_type="Absorption"):
-        self.load_mot = load_mot
+    def __init__(self, takebf=False, save_runs=False, fringe_removal=False, pca=False, low_pass=False, fft_filter=False, imaging_type="Absorption"):
+        self.takebf = takebf
         self.save_runs = save_runs
         self.fringe_removal = fringe_removal
         self.pca = pca
@@ -62,9 +63,9 @@ class MOTLifetimeResult:
     tau: float
     tau_error: float
     offset: float
-    times: list
-    fluorescence: list
-    fitted_fluorescence: list
+    times: np.ndarray
+    fluorescence: np.ndarray
+    fitted_fluorescence: np.ndarray
 
 # SLM server address
 SLM_SERVER_URL = "http://130.216.50.106:5000"

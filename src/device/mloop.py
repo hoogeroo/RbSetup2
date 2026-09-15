@@ -10,6 +10,7 @@ from src.device.device_types import Stages, Stage
 from src.device.ai import AiCancel, AiProgress
 from src.value_types import FloatValue, IntValue, BoolValue
 from src.gui.plots import FluorescenceSample
+from src.host.camera import CameraConnection
 
 
 
@@ -40,6 +41,8 @@ class MLOOPInterface(mli.Interface):
         self.stages = stages
         self.fluorescence_threshold = fluorescence_threshold
         self.continue_mloop = threading.Event()
+
+        camera =  CameraConnection()
 
         if filename:
             self.param_fname = filename
@@ -144,7 +147,9 @@ class MLOOPInterface(mli.Interface):
             elapsed += check_interval
 
             self.fluorescence = self.device.read_fluorescence()
-            self.device.device_pipe.send(FluorescenceSample(self.fluorescence))
+            # self.fluorescence_bf = camera.get_fluo_bf()
+            self.fluorescence_bf = 0.0
+            self.device.device_pipe.send(FluorescenceSample(self.fluorescence, self.fluorescence_bf))
 
             if self.fluorescence >= self.fluorescence_threshold:
                 print(f"Fluorescence threshold reached: {self.fluorescence} >= {self.fluorescence_threshold}")
@@ -166,8 +171,8 @@ class MLOOPInterface(mli.Interface):
         See: https://arxiv.org/abs/2205.08057
         """
         maximum_cost = 1e6
-        N_ref = 65000000
-        OD_ref = 3.26
+        # N_ref = 43000000
+        # OD_ref = 2.9
 
         if N <= 0 or N > 100000000 or od_peak <= 0.3 or not np.isfinite(N) or not np.isfinite(od_peak):
             return maximum_cost, True
@@ -179,7 +184,8 @@ class MLOOPInterface(mli.Interface):
 
         # cost = -normaliser_lowN * (od_peak ** 3) * N ** (alpha - 1.8) * 1e6
         # cost = - np.log(n_atoms_roi)
-        cost = - np.log(N/N_ref) - np.log(od_peak/OD_ref)
+        # cost = - np.log(N/N_ref) - 0.5 * np.log(od_peak/OD_ref)
+        cost = - np.log(N)
         print(f"Cost function: N={N:.2e}, od_peak={od_peak:.3f}, n_atoms_roi={n_atoms_roi:.2e}, cost={cost:.3f}")
         self.cost_list.append(cost)
         

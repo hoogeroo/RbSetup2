@@ -125,16 +125,17 @@ class Gui(QMainWindow):
             elif isinstance(msg, MOTLifetimeResult):
                 self.plots_gui.update_mot_lifetime(msg)
                 self.measure_mot_T.setEnabled(True)
+                self.measure_mot_T.setText("Mot Lifetime")
             else:
                 print("Received unknown message type from device:", type(msg))
 
     # send the current device settings to the device
     def update_device_settings(self):
         # create a DeviceSettings object with the current values
-        load_mot = self.load_mot.isChecked()
         save_runs = self.save_runs.isChecked()
         imaging_type = self.imaging_type.currentText() # Default is absorption, other option is fluorescence
-        
+        takebf = self.takebf.isChecked() # Default is not taking blackfly images
+
         # Get current filtering settings from the menu actions
         fringe_removal = self.action_fringe_removal.isChecked()
         pca = self.action_pca.isChecked()
@@ -142,13 +143,13 @@ class Gui(QMainWindow):
         fft_filter = self.action_fft_filter.isChecked()
         
         device_settings = DeviceSettings(
-            load_mot=load_mot,
+            takebf=takebf,
             save_runs=save_runs,
             fringe_removal=fringe_removal,
             pca=pca,
             low_pass=low_pass,
             fft_filter=fft_filter,
-            imaging_type=imaging_type
+            imaging_type=imaging_type,
         )
 
         # send the device settings to the device

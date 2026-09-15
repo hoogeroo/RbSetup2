@@ -192,54 +192,55 @@ try:
                     self.ttl5.off()
 
                 if s.bfcam[i]:
-                    self.ttl6.pulse(3.0 * ms)
+                    self.ttl6.on()
+                else:
+                    self.ttl6.off()
 
                 # update analog outputs
                 dac = [0.0] * 32
                 dac[0] = 5.0 if s.shutter[i] else 0.0
                 dac[1] = 5.0 if s.grey_molasses_shutter[i] else 0.0
-                dac[2] = s.mot2_coils_current[i] 
+                dac[2] = 5.0 if s.camera_shutter[i] else 0.0
                 dac[3] = s.x_field[i]
-                dac[4] = s.y_field[i]
+                dac[4] = s.y_field[i]* 0.6
                 dac[5] = s.z_field[i]
                 dac[6] = s.dipole_amplitude[i]
                 dac[7] = 5.0 if s.rf_disable[i] else 0.0
-                dac[8] = s.analog[i]
-                dac[9] = 5.0  if s.camera_shutter[i] else 0.0
+                dac[9] = s.mot2_coils_current[i] 
                 self.fastino0.set_group(0, dac)
 
-                # update rf output
+                # update rf output0.00
                 self.urukul0_ch0.set(
-                    s.repump_frequency[i] * MHz,
-                    amplitude=s.repump_amplitude[i] * 0.6
-                )
-                self.urukul0_ch1.set(
-                    s.mot1_frequency[i] * MHz,
-                    amplitude=s.mot1_amplitude[i] * 0.6
-                )
-                self.urukul0_ch2.set(
-                    s.mot2_frequency[i] * MHz,
-                    amplitude=s.mot2_amplitude[i] * 0.6
-                )
-                self.urukul0_ch3.set(
-                    s.push_frequency[i] * MHz,
-                    amplitude=s.push_amplitude[i] * 0.6
-                )
-                self.urukul1_ch0.set(
-                    s.shadow_frequency[i] * MHz,
-                    amplitude=s.shadow_amplitude[i] * 0.6
-                )
-                self.urukul1_ch1.set(
                     s.optical_pump_frequency[i] * MHz,
                     amplitude=s.optical_pump_amplitude[i] * 0.6
                 )
-                self.urukul1_ch2.set(
+                self.urukul0_ch1.set(
+                    s.shadow_frequency[i] * MHz,
+                    amplitude=s.shadow_amplitude[i] * 0.6
+                )
+                self.urukul0_ch2.set(
+                    s.push_frequency[i] * MHz,
+                    amplitude=s.push_amplitude[i] * 0.6
+                )
+                self.urukul0_ch3.set(
+                    s.rf_frequency[i] * MHz,
+                    amplitude=s.rf_amplitude[i] * 0.6
+                )
+                self.urukul1_ch0.set(
                     s.sheet_frequency[i] * MHz,
                     amplitude=s.sheet_amplitude[i] * 0.6
                 )
+                self.urukul1_ch1.set(
+                    s.mot2_frequency[i] * MHz,
+                    amplitude=s.mot2_amplitude[i] * 0.6
+                )
+                self.urukul1_ch2.set(
+                    s.repump_frequency[i] * MHz,
+                    amplitude=s.repump_amplitude[i] * 0.6
+                )
                 self.urukul1_ch3.set(
-                    s.rf_frequency[i] * MHz,
-                    amplitude=s.rf_amplitude[i] * 0.6
+                    s.mot1_frequency[i] * MHz,
+                    amplitude=s.mot1_amplitude[i] * 0.6
                 )
 
                 # wait for the duration of the stage
@@ -263,7 +264,7 @@ try:
             delay(10*ms)
 
             self.urukul0_ch3.sw.off()
-            self.urukul0_ch1.sw.on()
+            self.urukul0_ch1.sw.off()
 
         @kernel
         def read_fluorescence(self) -> float:
@@ -274,12 +275,14 @@ try:
             return -1000.0 * sample[3]
         
         @kernel
-        def set_push_beam(self, enabled: TBool):
+        def set_push_beam(self, enabled: bool):
             self.core.break_realtime()
             if enabled:
-                self.urukul0_ch3.sw.on()
+                self.urukul0_ch2.set(70.0, 1.0)
+                self.urukul1_ch3.set(70.0, 1.0)
             else:
-                self.urukul0_ch3.sw.off()
+                self.urukul0_ch2.set(70.0, 0.0)
+                self.urukul1_ch3.set(70.0, 0.0)
 
 # if artiq isn't available run the gui without it
 except ImportError:

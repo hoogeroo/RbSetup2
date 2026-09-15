@@ -7,7 +7,7 @@ import math
 import re
 
 # -------- Control Parameters --------
-skip_points = 5
+skip_points = 1
 px_size = 16e-6  # Pixel size in meters
 Rb_cross_section = 1.3e-13  # Cross-section of Rb in m^2
 magnification = 2.6
@@ -25,11 +25,11 @@ cross_sections = False
 mRb = mass_rubid
 kB = boltzmann
 
-t_array = np.linspace(1, 40, 9) * 1e-3  # time of flight in s
+t_array = np.linspace(30, 40, 7) * 1e-3  # time of flight in s
 
-fits_folder = "runs/multigo_2026-07-03_13-46-52"
+fits_folder = "runs/multigo_2026-07-13_10-20-02"
 
-# -------- Main calculations --------
+# -------- Main calculations --------fits_folder
 
 def fit_2D_Gaussian(xy, sigma_x, sigma_y, amp, x0, y0, offset):
     x, y = xy
@@ -58,6 +58,7 @@ def calculate_peak_PSD(N, T, sx, sy, sz):
     # return peak_PSD_extrap, peak_PSD
     bz = 5.5
 
+        # remove central widget since we are using docks
     n0 = N / (np.pi * sx * sy * sz)
     lambda_dB = math.sqrt((2 * math.pi * hbar**2) / (mass_rubid * boltzmann * T))
     peak_PSD = n0 * lambda_dB**3
@@ -76,6 +77,7 @@ def calculate_temperature(slope_x, slope_y):
 
 
 # -------- Functions for fit guesses --------
+        # remove central widget since we are using docks
 
 def guess_widths(od_image):
     x_profile = np.sum(od_image, axis=0)
@@ -113,6 +115,7 @@ def guess_offset(od_image):
 # Load the image
 
 def load_image(filepath):
+        # remove central widget since we are using docks
     with fits.open(filepath) as hdul:
         image_data = hdul[1].data
     od_image = image_data[3, :, :]  # Extract the 2D image from the data cube
@@ -132,6 +135,7 @@ def plots(t_array, widths_x, widths_y, amplitudes, fit_x=None, fit_y=None):
     plt.ylabel('Width$^2$ (m$^2$)')
     plt.legend()
 
+        # remove central widget since we are using docks
     plt.figure(2)
     plt.plot(t_array, amplitudes, 'o', label='Amplitude')
     plt.xlabel('Time of Flight (s)')
@@ -153,6 +157,7 @@ def plot_cross_sections(od_image, popt, title=None):
     fit_img = fit_2D_Gaussian((x_idx, y_idx), *popt).reshape(od_image.shape)
 
     x = np.arange(od_image.shape[1])
+        # remove central widget since we are using docks
     y = np.arange(od_image.shape[0])
 
     data_cross_x = od_image[y0_int, :]
@@ -171,6 +176,7 @@ def plot_cross_sections(od_image, popt, title=None):
 
     axs[1].plot(y, data_cross_y, 'b.', ms=3, label='Data')
     axs[1].plot(y, fit_cross_y, 'r-', lw=2, label='2D fit')
+        # remove central widget since we are using docks
     axs[1].set_title('Vertical cross-section')
     axs[1].set_xlabel('y (px)')
     axs[1].set_ylabel('OD')
@@ -204,6 +210,7 @@ def main():
     widths_x = np.empty(len(fits_files))
     widths_y = np.empty(len(fits_files))
     atom_numbers = np.empty(len(fits_files))
+        # remove central widget since we are using docks
     amplitudes = np.empty(len(fits_files))
 
     for idx, file in enumerate(fits_files):
@@ -218,6 +225,7 @@ def main():
         # od_image = gaussian_filter(od_image, sigma=1)  # Apply Gaussian smoothing
         # fig, ax = plt.subplots(figsize=(8, 6), subplot_kw={'projection': '3d'})
         # ny, nx = od_image.shape
+        # remove central widget since we are using docks
         # x = np.arange(nx)
         # y = np.arange(ny)
         # X, Y = np.meshgrid(x, y)
@@ -234,6 +242,7 @@ def main():
         popt, pcov = curve_fit(
             fit_2D_Gaussian,
             (x_idx, y_idx),
+        # remove central widget since we are using docks
             od_image.ravel(),
             p0=initial_guesses,
             maxfev=1000000,
@@ -273,7 +282,8 @@ def main():
             plot_cross_sections(od_image, popt, title=f"Image {idx+1}: {fits_files[idx]}K")
 
     # Calculate the slopes for temperature calculation (fit width^2 vs t^2)
-    t2 = t_array[skip_points:] ** 2
+    t2 = t_array[skip_points-1:] ** 2
+    # t2 = t_array ** 2
     popt_x, pcov_x = curve_fit(linear_fit, t2, widths_x[skip_points:] ** 2)
     popt_y, pcov_y = curve_fit(linear_fit, t2, widths_y[skip_points:] ** 2)
     slope_x, intercept_x = popt_x
@@ -294,7 +304,7 @@ def main():
 
     temp_x, temp_y, mean_temp_uK = calculate_temperature(slope_x, slope_y)
     print(f"Temperatures (X, Y, mean): {temp_x:.3g}, {temp_y:.3g}, {mean_temp_uK:.3g} µK")
-    plots(t_array, widths_x, widths_y, amplitudes, fit_x, fit_y)
+    plots(t_array, widths_x[1:], widths_y[1:], amplitudes[1:], fit_x, fit_y)
 
     # Use sigma0 values for an initial cloud size estimate
     mean_sigma0 = 0.5 * (sigma0_x + sigma0_y)
@@ -305,6 +315,22 @@ def main():
     # sz_approx_extrap = 1
     sz_approx = 0.5*np.sqrt(widths_y[0]*widths_x[0])  # Use the first measured widths as an approximation for sz
     print(f"Approximate cloud size (from min widths): {sz_approx*1e6:.2f} µm")
+
+    def sigma2_model(t, sigma0_sq, cov_xv, v2):
+        return sigma0_sq + 2 * cov_xv * t + v2 * t**2
+    
+    popt_x, _ = curve_fit(sigma2_model, t_array[skip_points-1:], widths_x[skip_points:]**2, p0=(widths_x[skip_points]**2, 0, 0.02**2))
+    popt_y, _ = curve_fit(sigma2_model, t_array[skip_points-1], widths_y[skip_points:]**2, p0=(widths_y[skip_points]**2, 0, 0.02**2))
+
+    sigma0_sq_x, cov_x, v2_x = popt_x
+    sigma0_sq_y, cov_y, v2_y = popt_y
+
+    T_x2 = v2_x * mass_rubid / boltzmann
+    T_y2 = v2_y * mass_rubid / boltzmann
+    mean_temp2_uK = 0.5 * (T_x2 + T_y2) * 1e6
+    print(f"Temperatures from sigma^2 model (X, Y, mean): {T_x2*1e6:.3g}, {T_y2*1e6:.3g}, {mean_temp2_uK:.3g} µK")
+    print(f"Covariances (X, Y): {cov_x:.3e}, {cov_y:.3e} m/s")
+    print(f" All widths (um): {[w*1e6 for w in widths_x]}\n, {[w*1e6 for w in widths_y]}")
 
     popt_amplitude, pcov_amplitude = curve_fit(linear_fit, t_array, amplitudes)
     _, intercept_amplitude = popt_amplitude
@@ -320,13 +346,52 @@ def main():
     #     amplitudes[0], amplitudes[0], mean_temp_K, sz_approx_extrap, sz_approx
     # )
     # print(f"Peak PSD (extrapolated): {peak_PSD_extrap:.2e}")
+
+    sigma_z_expected = (2 * kb * mean_temp_K / (mu * 5.5))  # Expected cloud size in z based on temperature and magnetic field
+    print(f"Expected cloud size in z (sigma_z_expected): {sigma_z_expected*1e6:.2f} µm")
+    sigma_r_expected = (2 * kb * mean_temp_K / (mu * 2.75))  # Expected cloud size in r based on temperature and magnetic field
+    print(f"Expected cloud size in r (sigma_r_expected): {sigma_r_expected*1e6:.2f} µm")
     bz = (2 * kb * mean_temp_K) / (mu * sz_approx)
     print(f"bz: {bz:.2f} T")
     print(f"widthx[0]: {widths_x[0]*1e6:.2f} µm, widths_y[0]: {widths_y[0]*1e6:.2f} µm, widthz_approx: {sz_approx*1e6:.2f} µm")
     peak_PSD = calculate_peak_PSD(N, mean_temp_K, widths_x[0], widths_y[0], sz_approx)
     print(f"Peak PSD (approx): {peak_PSD:.2e}")
 
-    # Plot things
+    # def qmt_release_sigma(t, T0, sigma0, tau, I0=85, Ilev = 6.5):
+    #     t = np.asarray(t)
+    #     sigma = np.empty_like(t, dtype=float)
+
+    #     t_lev = tau * np.log(I0 / Ilev)
+    #     ratio_lev = Ilev / I0
+
+    #     sigma_lev = sigma0 * ratio_lev**(-1/3)
+    #     T_lev = T0 * ratio_lev**(2/3)
+    #     v_lev = np.sqrt(kB * T_lev / mRb)
+
+    #     for i, ti in enumerate(t):
+    #         if ti <= t_lev:
+    #             ratio = np.exp(-ti/tau)
+    #             sigma[i] = sigma0 * ratio**(-1/3)
+    #         else:
+    #             dt = ti - t_lev
+    #             sigma[i] = np.sqrt(sigma_lev**2 + (v_lev * dt)**2)
+
+    #     return sigma
+    
+    # p0 = [30e-6, 80e-6, 10e-3]
+
+    # poptx, pcovx = curve_fit(qmt_release_sigma, t_array[:7], widths_x[:7], p0=p0, bounds=([0.1e-6, 1e-6, 0.1e-3], [500e-6, 2e-3, 100e-3]))
+    # popty, pcovy = curve_fit(qmt_release_sigma, t_array[:7], widths_y[:7], p0=p0, bounds=([0.1e-6, 1e-6, 0.1e-3], [500e-6, 2e-3, 100e-3]))
+
+    # t0_x, sigma0_x, tau_x = poptx
+    # t0_y, sigma0_y, tau_y = popty
+
+    # mean_t = 0.5 * (t0_x + t0_y)
+    # mean_sigma0 = 0.5 * (sigma0_x + sigma0_y)
+    # print(f"QMT release fit results: mean_t = {mean_t*1e6:.2f} µK, mean_sigma0 = {mean_sigma0*1e6:.2f} µm, tau_x = {tau_x*1e3:.2f} ms, tau_y = {tau_y*1e3:.2f} ms")
+    # print(f"QMT release fit results: t0_x = {t0_x*1e6:.2f} µK, sigma0_x = {sigma0_x*1e6:.2f} µm, tau_x = {tau_x*1e3:.2f} ms")
+    # print(f"QMT release fit results: t0_y = {t0_y*1e6:.2f} µK, sigma0_y = {sigma0_y*1e6:.2f} µm, tau_y = {tau_y*1e3:.2f} ms")
+    # # Plot things
     
 
 

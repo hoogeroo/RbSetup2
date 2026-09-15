@@ -89,6 +89,41 @@ class ImageAnalysis:
             self.empty_bank = list(data['empties'])
             self.number_of_empties = len(self.empty_bank)
 
+    def process_OD_image(self, fg: np.ndarray, bg: np.ndarray, empty: np.ndarray, save: bool=False) -> np.ndarray:
+        fg = fg - empty
+        bg = bg - empty
+        od_image = -np.log(fg / bg)
+
+        if save:
+            self.save_background(bg)
+
+        return od_image
+
+    def get_n_atoms_from_bf(self, bf_od_image: np.ndarray, pixel_size=5.86e-6, crosssection=1.3e-13) -> float:
+        area_px = (pixel_size) ** 2  # Area of one pixel in m^2 assuming 1:1 imaging
+        n_atoms_bf_sum = float(round(area_px * np.sum(bf_od_image) / crosssection, 2))
+
+        # Use Gaussian fitting to estimate the atom number
+        try:
+            amp = float(np.max(bf_od_image))  # Amplitude guess
+            y0, x0 = np.unravel_index(np.argmax(bf_od_image), bf_od_image.shape)  # Center guess (rows, cols)
+            sigma_x, sigma_y = self.guess_widths(bf_od_image)
+            if not np.isfinite(sigma_x) or sigma_x <= 0:
+                sigma_x = 1.0
+            if not np.isfinite(sigma_y) or sigma_y <= 0:
+                sigma_y = 1.0
+            offset = float(np.mean(bf_od_image[0:10, 0:10]))
+            initial_guess = (sigma_x, sigma_y, amp, x0, y0, offset)
+
+            x, y = np.indices(bf_od_image.shape)
+            popt, _ = curve_fit(self.fit_2D_Gaussian, (x, y), bf_od_image.ravel(), p0=initial_guess)
+            sigma_x, sigma_y, amp, x0, y0, offset = popt
+            n_atoms_bf = 2 * area_px * np.pi * abs(sigma_x) * abs(sigma_y) * amp / crosssection
+        except Exception:
+            n_atoms_bf = 0.0
+
+        return n_atoms_bf, n_atoms_bf_sum
+
     def filter_images(self, images: CameraImages) -> CameraImages:
         # process images
         self.save_empty(images.empty)
@@ -97,22 +132,22 @@ class ImageAnalysis:
         total_empty = master_empty + Current_offset # Accounts for any constant shifts of the empty image photon counts
         images.master_empty = total_empty
 
-        foreground = images.foreground - total_empty
-        background = images.background - total_empty
-        self.save_background(background)
-        od_image = -np.log(foreground / background)
+        od_image = self.process_OD_image(images.foreground, images.background, total_empty, save=True)
+        if images.bf_foreground is not None:
+            images.bf_image = self.process_OD_image(images.bf_foreground, images.bf_background, images.bf_empty)
+            images.n_atoms_bf, images.n_atoms_bf_sum = self.get_n_atoms_from_bf(images.bf_image)
 
         # calculate physical parameters
-        images.n_atoms = self.get_atom_number(od_image)
+        images.n_atoms_int, images.n_atoms_sum = self.get_atom_number(od_image)
         images.max_od = self.get_max_od(od_image)
         images.n_atoms_roi = self.get_atom_number_in_ROI(od_image, Rx=40, Ry=25)
 
         # apply filtering based on device settings
         if self.device.device_settings.fringe_removal  and self.number_of_backgrounds > 5:
-            od_image, opref = filtering.fringe_removal(foreground, self.background_bank)
+            od_image, opref = filtering.fringe_removal(images.foreground - total_empty, self.background_bank)
 
         if self.device.device_settings.pca and self.number_of_backgrounds > 5:
-            od_image, opref = filtering.pca(foreground, self.background_bank)
+            od_image, opref = filtering.pca(images.foreground - total_empty, self.background_bank)
 
         if self.device.device_settings.low_pass:
             od_image = filtering.low_pass(od_image)
@@ -121,6 +156,7 @@ class ImageAnalysis:
             od_image = filtering.fft_filter(od_image)
 
         images.od = od_image
+    
         return images
 
     def get_max_od(self, od_image: np.ndarray) -> float:
@@ -139,10 +175,10 @@ class ImageAnalysis:
         od_max = round(float(np.nanmax(np.nan_to_num(od_image, nan=0.0, posinf=0.0, neginf=0.0))), 2)
         return od_max
     
-    def get_atom_number_in_ROI(self, od_image: np.ndarray, Rx, Ry, pixel_size = 16e-6, crosssection = 1.3e-13) -> float:
+    def get_atom_number_in_ROI(self, od_image: np.ndarray, Rx, Ry, pixel_size = 5.86e-6, crosssection = 1.3e-13) -> float:
         try:
             ### Gaussian Fitting Guesses ###
-            amp = float(od_max)  # Amplitude guess
+            amp = float(max(od_image))  # Amplitude guess
             y0, x0 = np.unravel_index(np.argmax(od_image), od_image.shape)  # Center guess (rows, cols)
             sigma_x, sigma_y = self.guess_widths(od_image)
             # guard against zero/NaN widths
@@ -241,11 +277,13 @@ class ImageAnalysis:
             popt, _ = curve_fit(self.fit_2D_Gaussian, (x, y), od_image.ravel(), p0=initial_guess)
             sigma_x, sigma_y, amp, x0, y0, offset = popt
             atom_number = 2 * area_px * np.pi * abs(sigma_x) * abs(sigma_y) * amp / crosssection
+            atom_number_sum = float(round(area_px * np.sum(od_image) / crosssection, 2))
         except Exception:
             # Fallback to simple sum if fitting fails
-            atom_number = float(round(area_px * np.sum(od_image) / crosssection, 2))
+            atom_number = float('nan')
+            atom_number_sum = float(round(area_px * np.sum(od_image) / crosssection, 2))
 
-        return atom_number
+        return atom_number, atom_number_sum
 
 
     def guess_widths(self, data: np.ndarray):
@@ -260,22 +298,25 @@ class ImageAnalysis:
 
         return sx, sy
     
-class FluoresceneAnalysis:
-
-    def exponential_decay(self, A, x0, x, c):
+class FluorescenceAnalysis:
+    @staticmethod
+    def exponential_decay(x, A, x0, c):
         return c + A * np.exp(-x/x0)
 
-    def extract_mot_lifetime(self, times: list, fluorescence_data: list):
+    @staticmethod
+    def extract_mot_lifetime(times: np.ndarray, fluorescence_data: np.ndarray):
         A_guess = max(fluorescence_data)
         offset_guess = 200
         x0_guess = 10
+        k0_guess = 0
+        B_guess = 0
 
         p0 = [A_guess, x0_guess, offset_guess]
-        bounds = ([0, 1e-3, 0], [5000, 120, 500])
+        bounds = ([0, 1e-3, 0], [10000, 120, 500])
 
-        popt, pcov = curve_fit(self.exponential_decay, times, fluorescence_data, p0=p0, bounds=bounds)
+        popt, pcov = curve_fit(FluorescenceAnalysis.exponential_decay, times, fluorescence_data, p0=p0, bounds=bounds)
         A, tau, offset = popt
         tau_error = np.sqrt(pcov[1, 1])
-        fitted_fluorescence = self.exponential_decay(popt*)
+        fitted_fluorescence = FluorescenceAnalysis.exponential_decay(times, *popt)
 
         return (A, tau, offset, tau_error, fitted_fluorescence)

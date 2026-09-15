@@ -243,7 +243,10 @@ class AiProgressDialog(QDialog):
                 )
             
             # Update legends and plot limits, then redraw
-            self.ax_param_vs_run.legend(fontsize='small', loc='best')
+            self.ax_legend = self.ai_figure.add_subplot(2, 2, 2)
+            self.ax_legend.axis('off')
+            handles, labels = self.ax_param_vs_run.get_legend_handles_labels()
+            self.ax_legend.legend(handles, labels, loc = 'upper left')
             for ax in [self.ax_cost_vs_run, self.ax_param_vs_run, self.ax_cost_vs_param]:
                 ax.relim()
                 ax.autoscale_view()

@@ -1,4 +1,4 @@
-x   `'''
+'''
 device.py: has the device code that works without artiq. mainly talking to the gui and taking photos
 '''
 
@@ -11,7 +11,7 @@ from scipy.interpolate import CubicSpline
 import time
 
 from src.device.ai import AiCancel, AiExecuter
-from src.device.device_types import AiSubmission, DeviceSettings, FlattenedStages, MultiGoSubmission, SLMSettings, SLM_SERVER_URL, Stage, Stages, MeasureMOTLifetime
+from src.device.device_types import AiSubmission, DeviceSettings, FlattenedStages, MultiGoSubmission, SLMSettings, SLM_SERVER_URL, Stage, Stages, MeasureMOTLifetime, MOTLifetimeResult
 from src.device.multigo import MultiGoCancel, run_multigo_experiment
 from src.gui.fits import save_settings
 from src.gui.gui import run_gui
@@ -19,7 +19,7 @@ from src.gui.plots import CameraImages, FluorescenceSample
 from src.host.camera import CameraConnection
 from src.variable_types import VariableTypeBool, VariableTypeInt, VariableTypeFloat
 from src.device import filtering
-from src.device.data_analysis import ImageAnalysis, FluoresceneAnalysis
+from src.device.data_analysis import ImageAnalysis, FluorescenceAnalysis
 from src.value_types import BoolValue, IntValue, FloatValue
 from src.gui.temperatures import fetch_temperatures, ESP_url
 
@@ -52,7 +52,7 @@ class AbstractDevice:
             VariableTypeFloat("z Field", "z_field", 0.0, 5.0, 0.1, hidden=True),
             VariableTypeFloat("Rf Magnitude", "rf_magnitude"),
             VariableTypeFloat("Rf Freq (MHz)", "rf_freq", 1.0, 100.0, 1.0),
-        ]
+        ] 
 
         # initialize the device settings
         self.device_settings = DeviceSettings()
@@ -84,8 +84,19 @@ class AbstractDevice:
 
         # start the gui in a separate process
         self.gui_process = Process(target=run_gui, args=(self.variables, gui_pipe,))
-        self.gui_process.daemon = True # so gui exits when main process exits
+        self.gui_process.daemon = True # so gui exits when main process exitsdac[8] = s.analog[i]
         self.gui_process.start()
+
+        self.camera = CameraConnection()
+        try:
+            self.camera.connect_bf()
+            self.camera.start_cycle()
+            time.sleep(5.0)
+            self.bf_connected = True
+            self.bf_cycling = True
+        except:
+            pass
+        
 
         # process all the messages from the gui
         queue = []
@@ -95,6 +106,24 @@ class AbstractDevice:
                 while device_pipe.poll():
                     msg = device_pipe.recv()
                     queue.append(msg)
+
+            if not self.bf_connected:
+                try:
+                    self.camera.connect_bf()
+                    self.camera.start_cycle()
+                    time.sleep(2.0)
+                    self.bf_connected = True
+                    self.bf_cycling = True
+                except:
+                    pass
+
+            if not self.bf_cycling:
+                try:
+                    self.camera.start_cycle()
+                    time.sleep(2.0)
+                    self.bf_cycling = True
+                except:
+                    pass
 
             # process all the messages from the queue
             while queue:
@@ -111,15 +140,6 @@ class AbstractDevice:
                             break
                     if found:
                         continue
-                    # self.push_amp = msg.push_amplitude.constant_value()
-                    # self.mot1_amp = msg.mot1_amplitude.constant_value()
-                    # self.push_freq = msg.push_frequency.constant_value()
-                    # self.mot1_freq = msg.mot1_frequency.constant_value()
-
-                    # dds_amp_update(3, self.push_amp) 
-                    # dds_freq_update(3, self.push_freq)
-                    # dds_amp_update(1, self.mot1_amp)
-                    # dds_freq_update(1, self.mot1_freq)
 
                     # sets the outputs to the ones in a stage (for dc)
                     self.run_stage(msg)
@@ -159,12 +179,18 @@ class AbstractDevice:
                 break
 
             # read the fluorescence signal
-            fluorescence = self.read_fluorescence()
-            device_pipe.send(FluorescenceSample(fluorescence))
+            try:
+                if self.bf_connected:
+                    fluorescence_bf = self.camera.get_fluo_bf()
+                else:
+                    fluorescence_bf = 0.0
+                
+                fluorescence = 0.0
 
-            # pulse the push laser if requested
-            if self.device_settings.load_mot:
-                self.pulse_push_laser()
+                device_pipe.send(FluorescenceSample(sample=fluorescence, sample_bf=fluorescence_bf))
+                    
+            except:
+                pass
 
         print("Exiting...")
 
@@ -173,31 +199,32 @@ class AbstractDevice:
         self.gui_process.join()
 
     def run_mot_lifetime(self, samples: int):
-        fluorescence_data = []
-        times = []
+        fluorescence_data = np.empty(samples)
+        times = np.empty(samples)
 
         self.set_push_beam(False)  # turn off the push beam for MOT loading
         try:
+            time.sleep(0.5)
             start_time = time.monotonic()
             for i in range(samples):
                 fluorescence = self.read_fluorescence()
-                fluorescence_data.append(fluorescence)
-                times.append(time.monotonic() - start_time)
+                fluorescence_data[i] = fluorescence
+                times[i] = time.monotonic() - start_time
 
-                time.sleep(0.3
+                time.sleep(0.3)
         finally:
             self.set_push_beam(True)
 
         A, tau, offset, tau_error, fitted_fluorescence = FluorescenceAnalysis.extract_mot_lifetime(times, fluorescence_data)
-        self.device_pipe_send(
-            MotLifetimeResult(
-                tau=float(tau, tau_error=float(tau_error), 
+        self.device_pipe.send(
+            MOTLifetimeResult(
+                tau=float(tau), tau_error=float(tau_error), 
                 offset=float(offset), 
-                times=list(times), 
-                fluorescence=list(fluorescence), 
-                fitted_fluorescence=list(fitted_fluorescence),
+                times=np.array(times), 
+                fluorescence=np.array(fluorescence_data), 
+                fitted_fluorescence=np.array(fitted_fluorescence),
                 )
-            ))
+            )
 
     # sets the current output values to the ones in a stage
     def run_stage(self, stage):
@@ -208,23 +235,23 @@ class AbstractDevice:
     def run_experiment(self, stages, multigo_settings=None) -> tuple[float, float, np.ndarray]:
         temps = fetch_temperatures(ESP_url)
         if temps and temps.get('upper_coil') and temps.get('lower_coil', 999) < temp_threshold:
-            # disable_pulsing()
-            # dds_amp_update(3, 0.0)
 
-            time.sleep(0.2)
+            time.sleep(0.5)
             # tell the camera server to acquire a frame
-            camera = None
             try:
-                camera = CameraConnection()
-                # In the terminal, add this temporarily to device.py after receiving device_settings
                 if self.device_settings.imaging_type == "Absorption":
-                    camera.shoot(3)
+                    self.camera.shoot(3)
+                    if self.device_settings.takebf:
+                        self.bf_cycling = False
+                        self.camera.stop_cycle()
+                        time.sleep(1.0)
+                        self.camera.bf_shoot()
                 elif self.device_settings.imaging_type == "Fluorescence":
-                    camera.shoot(2)
+                    self.camera.shoot(2)
             except Exception as e:
                 print("Error occurred while shooting:", e)
 
-            # time.sleep(1.0)
+            time.sleep(1.0)
 
             # prepare SLM from settings
             slm = self.slm_settings
@@ -268,31 +295,34 @@ class AbstractDevice:
             flattened_stages = FlattenedStages(stages, self.variables)
             self.run_experiment_device(flattened_stages, slm_hold_times, slm_insertion_index, slm.enabled)
 
-            # enable_pulsing()
-            # dds_amp_update(3, 0.9)
-
             # read back the camera images
             n_atoms = float('nan')
             n_atoms_roi = float('nan')
             max_od = float('nan')
             images = None
             camera_images = None
-            bf_image = None
-            if camera:
+            bf_images = None
+            time.sleep(5.0)
+            if self.camera:
                 try:
                     # read the image from the camera server
-                    images = camera.read(timeout=1)
-                    bf_image = camera.read_bf(timeout=1)
+                    images = self.camera.read(timeout=1)
                 except Exception as e:
                     print("Error occurred while reading camera images:", e)
+                try:
+                    # read the image from the camera server
+                    if self.device_settings.takebf:
+                        bf_images = self.camera.read_bf(timeout=10)
+                except Exception as e:
+                    pass
             if images is not None:
                 # filter the images and extract parameters
                 if self.device_settings.imaging_type == "Absorption":
-                    camera_images = CameraImages(images[0], images[1], images[2], bf_image=bf_image, fluoimage=None)
+                    camera_images = CameraImages(images[0], images[1], images[2], bf_foreground=bf_images[0], bf_background=bf_images[1], bf_empty=bf_images[2], fluoimage=None)
                     self.current_camera_images = camera_images  # store the current images for potential re-filtering when settings are changed
                     filtered_images = self.image_analysis.filter_images(camera_images)
                     self.device_pipe.send(filtered_images)
-                    n_atoms = filtered_images.n_atoms
+                    n_atoms = filtered_images.n_atoms_int
                     max_od = filtered_images.max_od
                     n_atoms_roi = filtered_images.n_atoms_roi
                 
@@ -339,7 +369,7 @@ class AbstractDevice:
                     overwrite=False,
                 )
 
-            return n_atoms, max_od, images, bf_image, n_atoms_roi
+            return n_atoms, max_od, images, n_atoms_roi
         
         else:
             print("Temperature too high, skipping experiment")

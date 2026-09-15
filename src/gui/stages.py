@@ -7,7 +7,6 @@ import math
 
 from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtWidgets import *
-from dataclasses import dataclass
 
 from src.device.ai import AiSettings
 from src.device.device_types import AiSubmission, DeviceSettings, MultiGoSubmission, Stage, Stages, MeasureMOTLifetime, MOTLifetimeResult
@@ -92,14 +91,12 @@ class StagesGui:
         # Button to measure mot lifetime through fluorescence decay. It just turns of loading and keeps Dc values fixed
         self.window.measure_mot_T.clicked.connect(self.measure_mot_lifetime)
 
-        # connect the load mot and save runs checkbox to the update_device_settings method
-        self.window.load_mot.stateChanged.connect(self.window.update_device_settings)
+        # connect the save runs checkbox to the update_device_settings method
         self.window.save_runs.stateChanged.connect(self.window.update_device_settings)
+        self.window.takebf.stateChanged.connect(self.window.update_device_settings)
 
     # gets a stage using the stage id
     def get_stage(self, stage_id):
-        #if stage_id == "dc":
-        #    stage=
         for stage in self.stages:
             if stage.id == stage_id:
                 return stage
