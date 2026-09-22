@@ -9,7 +9,7 @@ from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtWidgets import *
 
 from src.device.ai import AiSettings
-from src.device.device_types import AiSubmission, DeviceSettings, MultiGoSubmission, Stage, Stages, MeasureMOTLifetime, MOTLifetimeResult
+from src.device.device_types import AiSubmission, DeviceSettings, MultiGoSubmission, Stage, Stages, MeasureMOTLifetime, MOTLifetimeResult, MeasureMOTLoading, MOTLoadingResult
 from src.device.multigo import MultiGoSettings
 from src.gui.ai import AiDialog, AiProgressDialog
 from src.gui.multigo import MultiGoDialog, MultiGoProgressDialog
@@ -88,9 +88,11 @@ class StagesGui:
         # connect the run button to the submit_experiment method
         self.window.run_experiment.clicked.connect(self.submit_experiment)
 
-        # Button to measure mot lifetime through fluorescence decay. It just turns of loading and keeps Dc values fixed
+        # Button to measure mot lifetime through fluorescence decay. It just turns off loading and keeps Dc values fixed
         self.window.measure_mot_T.clicked.connect(self.measure_mot_lifetime)
 
+        # Button to measure MOT loading
+        self.window.measureloading.clicked.connect(self.measure_mot_loading)
         # connect the save runs checkbox to the update_device_settings method
         self.window.save_runs.stateChanged.connect(self.window.update_device_settings)
         self.window.takebf.stateChanged.connect(self.window.update_device_settings)
@@ -172,6 +174,12 @@ class StagesGui:
         self.window.measure_mot_T.setText("Measuring...")
 
         self.window.gui_pipe.send(MeasureMOTLifetime(samples = FLUORESCENCE_SAMPLES))
+
+    def measure_mot_loading(self):
+        self.window.measureloading.setEnabled(False)
+        self.window.measureloading.setText("Measuring...")
+
+        self.window.gui_pipe.send(MeasureMOTLoading(samples = 10, max_fluo = 7000, curr_stages = self.extract_stages()))
 
     # open the multigo options popup
     def multigo_dialog(self):

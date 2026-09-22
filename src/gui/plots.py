@@ -6,6 +6,9 @@ import numpy as np
 
 from matplotlib.backends.backend_qtagg import FigureCanvas
 from matplotlib.figure import Figure
+from PyQt6.QtWidgets import QLabel, QSizePolicy
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QImage, QPixmap
 
 from PyQt6.QtWidgets import QTabWidget, QDialog, QVBoxLayout
 
@@ -39,6 +42,10 @@ class FluorescenceSample:
         self.sample = sample
         self.sample_bf = sample_bf
 
+class MOTVideo:
+    def __init__(self, frame):
+        self.frame = frame
+
 class PlotsGui:
     def __init__(self, window):
         self.window = window
@@ -65,6 +72,15 @@ class PlotsGui:
         self.window.fluorescence_grid.addWidget(self.fluorescence_canvas)
         self.multigo_y=[]
         self.multigo_x=[]
+
+        self.camera_video_widget = self.window.camera_video_dock.widget()
+
+        self.bf_video_label = QLabel(self.camera_video_widget)
+        self.bf_video_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.bf_video_label.setScaledContents(False)
+        self.bf_video_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        self.camera_video_widget.layout().addWidget(self.bf_video_label)
 
     # update the fluorescence plot with a new sample
     def update_fluorescence(self, sample: FluorescenceSample):
@@ -149,7 +165,7 @@ class PlotsGui:
 
         # print to the log
         text = self.window.log.document().toPlainText()
-        text += f"Num Atoms Guassian integral: {atom_number_rounded}\nNum Atoms Sum {atom_number_sum_rounded}\nMax OD: {camera_images.max_od:.2f}\nN_atoms ROI: {n_atoms_roi_rounded}\nN_atoms BF: {atom_number_bf_rounded}\nN_atoms BF sum: {atom_number_bf_sum_rounded}\n"
+        text += f"Num Atoms Guassian integral: {atom_number_rounded}\nNum Atoms Sum {atom_number_sum_rounded}\nMax OD: {camera_images.max_od:.2f}\nN_atoms ROI: {n_atoms_roi_rounded}\nN_atoms BF: {atom_number_bf_rounded}\nN_atoms BF sum: {atom_number_bf_sum_rounded}\n\n"
         self.window.log.setPlainText(text)
         self.window.log.verticalScrollBar().setValue(self.window.log.verticalScrollBar().maximum())
 
@@ -187,3 +203,34 @@ class PlotsGui:
         plt.tight_layout()
 
         plt.show(block=False)
+
+        def update_loading_result(self, result):
+            import matplotlib.pyplot as plt
+            text = self.window.log.document().toPlainText()
+            text += f'Mot Lifetime: {result.tau: .2f} +- {result.tau_error: .2f}\n' f'Baseline: {result.offset: .2f}\n' f'max_atoms: {result.max_atoms: .2f} +- {result.max_atoms_err: .2f}' f'Loading rate: {result.max_atoms / result.tau: .2f}'
+            self.window.log.setPlainText(text)
+            self.window.log.verticalScrollBar().setValue(self.window.log.verticalScrollBar().maximum())
+            
+            plt.figure("MOT Loading")
+            plt.clf()
+
+            plt.plot(result.times, result.atom_data, "o", label = "Measured Atoms")
+
+            plt.plot(result.times, result.fitted_atoms, "--", label = "Exponential Fit")
+            plt.xlabel("Time (s)")
+            plt.ylabel("atoms")
+            plt.legend(loc = 'best')
+            plt.tight_layout()
+
+            plt.show(block=False)
+
+    def update_bf_video(self, video):
+        jpeg_data = video.frame
+        image = QImage()
+
+        if not image.loadFromData(jpeg_data):
+            return
+        
+        pixmap = QPixmap.fromImage(image)
+        scaled = pixmap.scaled(self.bf_video_label.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.FastTransformation)
+        self.bf_video_label.setPixmap(scaled)

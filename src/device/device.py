@@ -11,15 +11,15 @@ from scipy.interpolate import CubicSpline
 import time
 
 from src.device.ai import AiCancel, AiExecuter
-from src.device.device_types import AiSubmission, DeviceSettings, FlattenedStages, MultiGoSubmission, SLMSettings, SLM_SERVER_URL, Stage, Stages, MeasureMOTLifetime, MOTLifetimeResult
+from src.device.device_types import AiSubmission, DeviceSettings, FlattenedStages, MultiGoSubmission, SLMSettings, SLM_SERVER_URL, Stage, Stages, MeasureMOTLifetime, MOTLifetimeResult, MeasureMOTLoading, MOTLoadingResult
 from src.device.multigo import MultiGoCancel, run_multigo_experiment
 from src.gui.fits import save_settings
 from src.gui.gui import run_gui
-from src.gui.plots import CameraImages, FluorescenceSample
+from src.gui.plots import CameraImages, FluorescenceSample, MOTVideo
 from src.host.camera import CameraConnection
 from src.variable_types import VariableTypeBool, VariableTypeInt, VariableTypeFloat
 from src.device import filtering
-from src.device.data_analysis import ImageAnalysis, FluorescenceAnalysis
+from src.device.data_analysis import ImageAnalysis, FluorescenceAnalysis, LoadingAnalysis
 from src.value_types import BoolValue, IntValue, FloatValue
 from src.gui.temperatures import fetch_temperatures, ESP_url
 
@@ -84,19 +84,26 @@ class AbstractDevice:
 
         # start the gui in a separate process
         self.gui_process = Process(target=run_gui, args=(self.variables, gui_pipe,))
-        self.gui_process.daemon = True # so gui exits when main process exitsdac[8] = s.analog[i]
+        self.gui_process.daemon = True # so gui exits when main process exits
         self.gui_process.start()
 
         self.camera = CameraConnection()
+        
+        self.bf_connected = False
+        self.bf_cycling = False
+        self.last_video_frame = -1
+
         try:
             self.camera.connect_bf()
-            self.camera.start_cycle()
-            time.sleep(5.0)
             self.bf_connected = True
+
+            self.camera.start_cycle()
             self.bf_cycling = True
-        except:
-            pass
-        
+
+            self.camera.connect_video()
+
+        except Exception as e:
+            print(f'Blackfly startup error: {e}')
 
         # process all the messages from the gui
         queue = []
@@ -110,20 +117,22 @@ class AbstractDevice:
             if not self.bf_connected:
                 try:
                     self.camera.connect_bf()
-                    self.camera.start_cycle()
-                    time.sleep(2.0)
                     self.bf_connected = True
-                    self.bf_cycling = True
-                except:
-                    pass
 
-            if not self.bf_cycling:
+                    self.camera.start_cycle()
+                    self.bf_cycling = True
+
+                    self.camera.connect_video()
+                except Exception as e:
+                    print(f'Blackfly connection error: {e}')
+
+            elif self.bf_connected and not self.bf_cycling:
                 try:
                     self.camera.start_cycle()
-                    time.sleep(2.0)
                     self.bf_cycling = True
-                except:
-                    pass
+                    self.camera.connect_video()
+                except Exception as e:
+                    print(f'Blackfly cycle error: {e}')
 
             # process all the messages from the queue
             while queue:
@@ -170,6 +179,8 @@ class AbstractDevice:
                 elif isinstance(msg, MeasureMOTLifetime):
                     # run the MOT lifetime measurement
                     self.run_mot_lifetime(msg.samples)
+                elif isinstance(msg, MeasureMOTLoading):
+                    self.measure_mot_loading(msg.samples, msg.max_fluo, msg.curr_stages)
                 else:
                     print(f"Received unknown message type: {type(msg)}")
                     break
@@ -180,23 +191,62 @@ class AbstractDevice:
 
             # read the fluorescence signal
             try:
-                if self.bf_connected:
+                if self.bf_connected and self.bf_cycling:
                     fluorescence_bf = self.camera.get_fluo_bf()
                 else:
                     fluorescence_bf = 0.0
                 
                 fluorescence = 0.0
-
                 device_pipe.send(FluorescenceSample(sample=fluorescence, sample_bf=fluorescence_bf))
                     
             except:
                 pass
 
+            if self.bf_connected and self.bf_cycling:
+                frame_number= self.camera.video_frame_number
+                frame = self.camera.latest_frame
+
+                if frame is not None and frame_number != self.last_video_frame:
+                    self.last_video_frame = frame_number
+                    device_pipe.send(MOTVideo(frame))
+
+
         print("Exiting...")
 
         # stop the gui process
         self.gui_process.terminate()
+        self.camera.close_video()
         self.gui_process.join()
+
+    def measure_mot_loading(self, samples: int, max_fluo: int, curr_stages: np.ndarray):
+        fluo_array = np.linspace(3500, max_fluo, samples)
+        time_array = np.empty(samples)
+        atom_array = np.empty(samples)
+        start_time = time.monotonic()
+        for sample in range(samples):
+            while True:
+                current_fluorescence = self.camera.get_fluo_bf()
+                self.device_pipe.send(FluorescenceSample(sample=0.0, sample_bf=current_fluorescence))
+                if current_fluorescence >= fluo_array[sample]:
+                    time_array[sample] = time.monotonic() - start_time
+                    break
+            
+            _, _, _, _, _, n_atoms_bf = self.run_experiment(curr_stages)
+            atom_array[sample] = n_atoms_bf
+        
+        A, tau, offset, tau_error, A_error, fitted_atoms = LoadingAnalysis.extract_mot_loading(time_array, atom_array)
+        self.device_pipe.send(
+        MOTLoadingResult(
+            max_atoms = A,
+            max_atoms_err = A_error,
+            tau=float(tau), tau_error=float(tau_error), 
+            offset=float(offset), 
+            times=np.array(time_array), 
+            fluorescence=np.array(atom_array), 
+            fitted_fluorescence=np.array(fitted_atoms),
+            )
+        )
+
 
     def run_mot_lifetime(self, samples: int):
         fluorescence_data = np.empty(samples)
@@ -207,7 +257,7 @@ class AbstractDevice:
             time.sleep(0.5)
             start_time = time.monotonic()
             for i in range(samples):
-                fluorescence = self.read_fluorescence()
+                fluorescence = self.camera.get_fluo_bf()
                 fluorescence_data[i] = fluorescence
                 times[i] = time.monotonic() - start_time
 
@@ -244,7 +294,8 @@ class AbstractDevice:
                     if self.device_settings.takebf:
                         self.bf_cycling = False
                         self.camera.stop_cycle()
-                        time.sleep(1.0)
+                        self.camera.close_video()
+                        time.sleep(2.0)
                         self.camera.bf_shoot()
                 elif self.device_settings.imaging_type == "Fluorescence":
                     self.camera.shoot(2)
@@ -318,13 +369,18 @@ class AbstractDevice:
             if images is not None:
                 # filter the images and extract parameters
                 if self.device_settings.imaging_type == "Absorption":
-                    camera_images = CameraImages(images[0], images[1], images[2], bf_foreground=bf_images[0], bf_background=bf_images[1], bf_empty=bf_images[2], fluoimage=None)
+                    if bf_images is not None:
+                        camera_images = CameraImages(images[0], images[1], images[2], bf_foreground=bf_images[0], bf_background=bf_images[1], bf_empty=bf_images[2], fluoimage=None)
+                    else:
+                        camera_images = CameraImages(images[0], images[1], images[2])
+
                     self.current_camera_images = camera_images  # store the current images for potential re-filtering when settings are changed
                     filtered_images = self.image_analysis.filter_images(camera_images)
                     self.device_pipe.send(filtered_images)
                     n_atoms = filtered_images.n_atoms_int
                     max_od = filtered_images.max_od
                     n_atoms_roi = filtered_images.n_atoms_roi
+                    n_atoms_bf = filtered_images.n_atoms_bf
                 
                 elif self.device_settings.imaging_type == "Fluorescence":
                     camera_images = CameraImages(foreground = images[0], background = None, empty = images[1], fluoimage=images[0] - images[1])
@@ -369,7 +425,7 @@ class AbstractDevice:
                     overwrite=False,
                 )
 
-            return n_atoms, max_od, images, n_atoms_roi
+            return n_atoms, max_od, images, n_atoms_roi, n_atoms, n_atoms_bf
         
         else:
             print("Temperature too high, skipping experiment")

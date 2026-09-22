@@ -100,7 +100,13 @@ class ImageAnalysis:
         return od_image
 
     def get_n_atoms_from_bf(self, bf_od_image: np.ndarray, pixel_size=5.86e-6, crosssection=1.3e-13) -> float:
-        area_px = (pixel_size) ** 2  # Area of one pixel in m^2 assuming 1:1 imaging
+        area_px = (0.85 * pixel_size) ** 2  # Area of one pixel in m^2 
+
+        bf_od_image = np.nan_to_num(bf_od_image, nan=0.0, posinf=0.0, neginf=0.0)
+        bf_od_max = np.max(bf_od_image)
+        if not np.isfinite(bf_od_max) or bf_od_max <= 0:
+            return 0.0
+        
         n_atoms_bf_sum = float(round(area_px * np.sum(bf_od_image) / crosssection, 2))
 
         # Use Gaussian fitting to estimate the atom number
@@ -119,8 +125,9 @@ class ImageAnalysis:
             popt, _ = curve_fit(self.fit_2D_Gaussian, (x, y), bf_od_image.ravel(), p0=initial_guess)
             sigma_x, sigma_y, amp, x0, y0, offset = popt
             n_atoms_bf = 2 * area_px * np.pi * abs(sigma_x) * abs(sigma_y) * amp / crosssection
-        except Exception:
+        except Exception as e:
             n_atoms_bf = 0.0
+            print(f'BF fit issue {e}')
 
         return n_atoms_bf, n_atoms_bf_sum
 
@@ -308,8 +315,6 @@ class FluorescenceAnalysis:
         A_guess = max(fluorescence_data)
         offset_guess = 200
         x0_guess = 10
-        k0_guess = 0
-        B_guess = 0
 
         p0 = [A_guess, x0_guess, offset_guess]
         bounds = ([0, 1e-3, 0], [10000, 120, 500])
@@ -320,3 +325,25 @@ class FluorescenceAnalysis:
         fitted_fluorescence = FluorescenceAnalysis.exponential_decay(times, *popt)
 
         return (A, tau, offset, tau_error, fitted_fluorescence)
+
+class LoadingAnalysis:
+    @staticmethod
+    def exponential_loading(x, N, tau, N0):
+        return N0 + N * (1 - np.exp(x/tau))
+    
+    def extract_mot_loading(times: np.ndarray, atom_data:np.ndarray):
+        A_guess = max(atom_data)
+        offset_guess = 2000
+        x0_guess = 8
+        
+        p0 = [A_guess, x0_guess, offset_guess]
+        bounds = ([0, 1e-3, 0], [10000000, 120, 500000])
+
+        popt, pcov = curve_fit(LoadingAnalysis.exponential_loading, times, atom_data, p0=p0, bounds=bounds)
+        A, tau, offset = popt
+        A_error = np.sqrt(pcov[0, 0])
+        tau_error = A_error = np.sqrt(pcov[1, 1])
+
+        fitted_atoms = LoadingAnalysis.exponential_loading(times, *popt)
+
+        return (A, tau, offset, tau_error, A_error, fitted_atoms)

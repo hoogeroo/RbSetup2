@@ -7,12 +7,12 @@ from PyQt6.QtWidgets import QApplication, QFileDialog, QMainWindow
 from PyQt6.uic import loadUi
 
 from src.device.ai import AiProgress
-from src.device.device_types import DeviceSettings, MOTLifetimeResult
+from src.device.device_types import DeviceSettings, MOTLifetimeResult, MOTLoadingResult
 from src.device.multigo import MultiGoProgress
 from src.gui.ai import AiPlotData
 from src.gui.fits import load_settings, save_settings
 from src.gui.hidden import HiddenGui
-from src.gui.plots import CameraImages, FluorescenceSample, PlotsGui
+from src.gui.plots import CameraImages, FluorescenceSample, PlotsGui, MOTVideo
 from src.gui.stages import StagesGui
 from src.gui.temperatures import ESP_url
 from src.gui.SLM_gui import SLMGui
@@ -126,6 +126,12 @@ class Gui(QMainWindow):
                 self.plots_gui.update_mot_lifetime(msg)
                 self.measure_mot_T.setEnabled(True)
                 self.measure_mot_T.setText("Mot Lifetime")
+            elif isinstance(msg, MOTVideo):
+                self.plots_gui.update_bf_video(msg)
+            elif isinstance(msg, MOTLoadingResult):
+                self.plots_gui.update_loading_result(msg)
+                self.measureloading.setEnabled(True)
+                self.measureloading.setText("Measure Loading")
             else:
                 print("Received unknown message type from device:", type(msg))
 

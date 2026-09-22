@@ -67,6 +67,22 @@ class MOTLifetimeResult:
     fluorescence: np.ndarray
     fitted_fluorescence: np.ndarray
 
+@dataclass
+class MeasureMOTLoading:
+    samples: int
+    max_fluo: int
+    curr_stages: np.ndarray
+@dataclass
+class MOTLoadingResult:
+    max_atoms: float
+    max_atoms_err = float
+    tau: float
+    tau_error: float
+    offset: float
+    times: np.ndarray
+    atom_data: np.ndarray
+    fitted_atoms: np.ndarray
+
 # SLM server address
 SLM_SERVER_URL = "http://130.216.50.106:5000"
 

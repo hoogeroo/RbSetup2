@@ -9,6 +9,7 @@ import numpy as np
 import struct
 from PIL import Image
 import io
+import threading
 
 from astropy.io import fits
 
@@ -32,6 +33,12 @@ class CameraConnection:
         conn.connect((TCPIP,PORT))
 
         self.conn_bf = None
+        self.conn_video = None
+
+        self.video_thread = None
+        self.video_running = False
+        self.latest_frame = None
+        self.video_frame_number = 0
 
         # message = 'alive?'
         # conn.send(message.encode())
@@ -124,15 +131,41 @@ class CameraConnection:
         self.conn_bf.send(message.encode())
         print("BF images taken")
 
-    def connect_video(self, timeout=10):
+    def connect_video(self, timeout=1):
+        if self.conn_video is not None:
+            return
+        
         self.conn_video = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.conn_video.settimeout(timeout)
         self.conn_video.connect((TCPIP, VIDEO_PORT))
+
+        self.video_running = True
+        self.latest_frame = None
+        self.video_frame_number = 0
+
+        self.video_thread = threading.Thread(target=self._video_loop, args=(self.conn_video,), daemon=True)
+        self.video_thread.start()
     
     def close_video(self, timeout=10):
+        self.video_running = False
+
+        if self.video_thread is not None:
+            try:
+                self.conn_video.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+        
         self.conn_video.close()
         self.conn_video = None
 
+        if self.video_thread is not None:
+            self.video_thread.join(timeout=1)
+            self.video_thread = None
+
+        self.latest_frame = None
+        print('BF video closed')
+
+    @staticmethod
     def recv_exact(sock, n):
         """Receive exactly n bytes from the socket."""
         data = bytearray()
@@ -144,16 +177,22 @@ class CameraConnection:
             data.extend(packet)
 
         return bytes(data)
+    
+    def _video_loop(self, sock):
+        while self.video_running:
+            try:
+                header = self.recv_exact(sock, 4)
+                frame_length = struct.unpack("!I", header)[0]
 
-    def get_bf_video(self, timeout=10):
-        header = self.recv_exact(self.conn_video, 4)
-        frame_length =  struct.unpack("!I", header)[0]
+                jpeg_data = self.recv_exact(sock, frame_length)
 
-        jpeg_data = self.recv_exact(self.conn_video, frame_length)
+                self.latest_frame = jpeg_data
+                self.video_frame_number += 1
 
-        video_array = np.array(Image.open(io.BytesIO(jpeg_data)))
-
-        return video_array
+            except (ConnectionError, socket.timeout, OSError):
+                break
+        
+        self.video_running = False
 
 if __name__ == '__main__':
     camera = CameraConnection()

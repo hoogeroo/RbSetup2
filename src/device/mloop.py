@@ -153,7 +153,7 @@ class MLOOPInterface(mli.Interface):
 
             if self.fluorescence >= self.fluorescence_threshold:
                 print(f"Fluorescence threshold reached: {self.fluorescence} >= {self.fluorescence_threshold}")
-                n_atoms, od_peak, _, __, n_atoms_roi = self.device.run_experiment(self.stages)
+                n_atoms, od_peak, _, __, n_atoms_roi, n_atoms_bf = self.device.run_experiment(self.stages)
                 print(f"Experiment completed: n_atoms={n_atoms:.2e}, od_peak={od_peak:.3f}, n_atoms_roi={n_atoms_roi:.2e}")
                 self.continue_mloop.clear()
                 return n_atoms, od_peak, n_atoms_roi

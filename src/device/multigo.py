@@ -7,6 +7,7 @@ import numpy as np
 from src.device.device_types import Stages, Stage
 from src.gui.plots import FluorescenceSample
 from src.value_types import FloatValue
+from src.host.camera import CameraConnection
 
 class MultiGoSettings:
     def __init__(self, run_variables, fluorescence_threshold):
@@ -161,8 +162,8 @@ def run_multigo_experiment(device, multigo_settings: MultiGoSettings, stages: St
                 else:
                     print(f"Received stage update during multigo: {msg.stage_id}")
 
-            fluorescence = device.read_fluorescence()
-            device.device_pipe.send(FluorescenceSample(fluorescence))
+            fluorescence = CameraConnection.get_fluo_bf()
+            device.device_pipe.send(FluorescenceSample(sample=0.0, sample_bf=fluorescence))
             if fluorescence >= fluorescence_threshold:
                 break
         if canceled:
