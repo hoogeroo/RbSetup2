@@ -106,6 +106,7 @@ def run_multigo_experiment(device, multigo_settings: MultiGoSettings, stages: St
     multigo_settings.running_multigo = True
     run_variables = multigo_settings.run_variables
     fluorescence_threshold = multigo_settings.fluorescence_threshold
+    camera = CameraConnection()
 
     if not run_variables:
         return
@@ -162,7 +163,7 @@ def run_multigo_experiment(device, multigo_settings: MultiGoSettings, stages: St
                 else:
                     print(f"Received stage update during multigo: {msg.stage_id}")
 
-            fluorescence = CameraConnection.get_fluo_bf()
+            fluorescence = camera.get_fluo_bf()
             device.device_pipe.send(FluorescenceSample(sample=0.0, sample_bf=fluorescence))
             if fluorescence >= fluorescence_threshold:
                 break

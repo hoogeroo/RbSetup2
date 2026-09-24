@@ -100,14 +100,16 @@ class ImageAnalysis:
         return od_image
 
     def get_n_atoms_from_bf(self, bf_od_image: np.ndarray, pixel_size=5.86e-6, crosssection=1.3e-13) -> float:
-        area_px = (0.85 * pixel_size) ** 2  # Area of one pixel in m^2 
-
+        area_px = (pixel_size/0.85) ** 2  # Area of one pixel in m^2 
+        print('1')
         bf_od_image = np.nan_to_num(bf_od_image, nan=0.0, posinf=0.0, neginf=0.0)
         bf_od_max = np.max(bf_od_image)
+        print('2')
         if not np.isfinite(bf_od_max) or bf_od_max <= 0:
             return 0.0
-        
+        print('3')
         n_atoms_bf_sum = float(round(area_px * np.sum(bf_od_image) / crosssection, 2))
+        print(f'raw sum bf: {np.sum(bf_od_image)}')
 
         # Use Gaussian fitting to estimate the atom number
         try:
@@ -124,7 +126,12 @@ class ImageAnalysis:
             x, y = np.indices(bf_od_image.shape)
             popt, _ = curve_fit(self.fit_2D_Gaussian, (x, y), bf_od_image.ravel(), p0=initial_guess)
             sigma_x, sigma_y, amp, x0, y0, offset = popt
+            print(sigma_x, sigma_y, amp)
             n_atoms_bf = 2 * area_px * np.pi * abs(sigma_x) * abs(sigma_y) * amp / crosssection
+            print(n_atoms_bf)
+            print(f'raw int bf: {2* np.pi * abs(sigma_x) * abs(sigma_y) * amp}')
+            print('bf',sigma_x * 5.86e-6 / 0.85, sigma_y * 5.86e-6 / 0.85)
+
         except Exception as e:
             n_atoms_bf = 0.0
             print(f'BF fit issue {e}')
@@ -142,6 +149,9 @@ class ImageAnalysis:
         od_image = self.process_OD_image(images.foreground, images.background, total_empty, save=True)
         if images.bf_foreground is not None:
             images.bf_image = self.process_OD_image(images.bf_foreground, images.bf_background, images.bf_empty)
+            
+            # median_bg = 0.45
+            # images.bf_image = images.bf_image - median_bg
             images.n_atoms_bf, images.n_atoms_bf_sum = self.get_n_atoms_from_bf(images.bf_image)
 
         # calculate physical parameters
@@ -285,6 +295,9 @@ class ImageAnalysis:
             sigma_x, sigma_y, amp, x0, y0, offset = popt
             atom_number = 2 * area_px * np.pi * abs(sigma_x) * abs(sigma_y) * amp / crosssection
             atom_number_sum = float(round(area_px * np.sum(od_image) / crosssection, 2))
+            print(f'raw sum p: {np.sum(od_image)}')
+            print(f'raw int p: {2 *  np.pi * abs(sigma_x) * abs(sigma_y) * amp}')
+            print('p', sigma_x * 16e-6 / 2.6, sigma_y * 16e-6 / 2.6)
         except Exception:
             # Fallback to simple sum if fitting fails
             atom_number = float('nan')
@@ -317,7 +330,7 @@ class FluorescenceAnalysis:
         x0_guess = 10
 
         p0 = [A_guess, x0_guess, offset_guess]
-        bounds = ([0, 1e-3, 0], [10000, 120, 500])
+        bounds = ([0, 1e-3, 0], [10000, 120, 3000])
 
         popt, pcov = curve_fit(FluorescenceAnalysis.exponential_decay, times, fluorescence_data, p0=p0, bounds=bounds)
         A, tau, offset = popt
@@ -325,25 +338,3 @@ class FluorescenceAnalysis:
         fitted_fluorescence = FluorescenceAnalysis.exponential_decay(times, *popt)
 
         return (A, tau, offset, tau_error, fitted_fluorescence)
-
-class LoadingAnalysis:
-    @staticmethod
-    def exponential_loading(x, N, tau, N0):
-        return N0 + N * (1 - np.exp(x/tau))
-    
-    def extract_mot_loading(times: np.ndarray, atom_data:np.ndarray):
-        A_guess = max(atom_data)
-        offset_guess = 2000
-        x0_guess = 8
-        
-        p0 = [A_guess, x0_guess, offset_guess]
-        bounds = ([0, 1e-3, 0], [10000000, 120, 500000])
-
-        popt, pcov = curve_fit(LoadingAnalysis.exponential_loading, times, atom_data, p0=p0, bounds=bounds)
-        A, tau, offset = popt
-        A_error = np.sqrt(pcov[0, 0])
-        tau_error = A_error = np.sqrt(pcov[1, 1])
-
-        fitted_atoms = LoadingAnalysis.exponential_loading(times, *popt)
-
-        return (A, tau, offset, tau_error, A_error, fitted_atoms)

@@ -42,7 +42,7 @@ class MLOOPInterface(mli.Interface):
         self.fluorescence_threshold = fluorescence_threshold
         self.continue_mloop = threading.Event()
 
-        camera =  CameraConnection()
+        self.camera =  CameraConnection()
 
         if filename:
             self.param_fname = filename
@@ -146,13 +146,13 @@ class MLOOPInterface(mli.Interface):
             self.continue_mloop.wait(timeout=check_interval)
             elapsed += check_interval
 
-            self.fluorescence = self.device.read_fluorescence()
-            # self.fluorescence_bf = camera.get_fluo_bf()
-            self.fluorescence_bf = 0.0
-            self.device.device_pipe.send(FluorescenceSample(self.fluorescence, self.fluorescence_bf))
+            # self.fluorescence = self.device.read_fluorescence()
+            self.fluorescence_bf = self.device.read_fluorescence()
+            # self.fluorescence_bf = 0.0
+            self.device.device_pipe.send(FluorescenceSample(0.0, self.fluorescence_bf))
 
-            if self.fluorescence >= self.fluorescence_threshold:
-                print(f"Fluorescence threshold reached: {self.fluorescence} >= {self.fluorescence_threshold}")
+            if self.fluorescence_bf >= self.fluorescence_threshold:
+                print(f"Fluorescence threshold reached: {self.fluorescence_bf} >= {self.fluorescence_threshold}")
                 n_atoms, od_peak, _, __, n_atoms_roi, n_atoms_bf = self.device.run_experiment(self.stages)
                 print(f"Experiment completed: n_atoms={n_atoms:.2e}, od_peak={od_peak:.3f}, n_atoms_roi={n_atoms_roi:.2e}")
                 self.continue_mloop.clear()
@@ -171,8 +171,8 @@ class MLOOPInterface(mli.Interface):
         See: https://arxiv.org/abs/2205.08057
         """
         maximum_cost = 1e6
-        # N_ref = 43000000
-        # OD_ref = 2.9
+        N_ref = 36000000
+        OD_ref = 1.8
 
         if N <= 0 or N > 100000000 or od_peak <= 0.3 or not np.isfinite(N) or not np.isfinite(od_peak):
             return maximum_cost, True
@@ -184,8 +184,8 @@ class MLOOPInterface(mli.Interface):
 
         # cost = -normaliser_lowN * (od_peak ** 3) * N ** (alpha - 1.8) * 1e6
         # cost = - np.log(n_atoms_roi)
-        # cost = - np.log(N/N_ref) - 0.5 * np.log(od_peak/OD_ref)
-        cost = - np.log(N)
+        cost = - np.log(N/N_ref) - 0.5 * np.log(od_peak/OD_ref)
+        # cost = - np.log(N)
         print(f"Cost function: N={N:.2e}, od_peak={od_peak:.3f}, n_atoms_roi={n_atoms_roi:.2e}, cost={cost:.3f}")
         self.cost_list.append(cost)
         

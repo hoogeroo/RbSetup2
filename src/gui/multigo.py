@@ -30,7 +30,7 @@ class MultiGoDialog(QDialog):
         # add fluorescence threshold
         form_layout = QFormLayout()
         self.fluorescence_threshold = QDoubleSpinBox()
-        self.fluorescence_threshold.setRange(0.0, 10000.0)
+        self.fluorescence_threshold.setRange(0.0, 100000.0)
         self.fluorescence_threshold.setSingleStep(100.0)
         form_layout.addRow(QLabel("Fluorescence Threshold"), self.fluorescence_threshold)
         layout.addLayout(form_layout)

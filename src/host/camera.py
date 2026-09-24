@@ -35,6 +35,9 @@ class CameraConnection:
         self.conn_bf = None
         self.conn_video = None
 
+        self.bf_connected = False
+        self.bf_cycling = False
+
         self.video_thread = None
         self.video_running = False
         self.latest_frame = None
@@ -100,16 +103,19 @@ class CameraConnection:
         self.conn_bf = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.conn_bf.settimeout(timeout)
         self.conn_bf.connect((TCPIP, BF_PORT))
+        self.bf_connected = True
 
         print("BF connected successfully")
 
     def start_cycle(self, timeout=10):
         message = "CYCLE"
         self.conn_bf.send(message.encode())
+        self.bf_cycling = True
 
     def stop_cycle(self, timeout=10):
         message = "STOP_CYCLE"
         self.conn_bf.send(message.encode())
+        self.bf_cycling = False
         print("BF cycle stopped")
 
     def get_fluo_bf(self, timeout=10):

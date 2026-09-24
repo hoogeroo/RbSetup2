@@ -27,7 +27,10 @@ def save_settings(path, variables, stages, images, multigo_settings=None, ai_set
     image_hdu = fits.ImageHDU()
     if images is not None:
         if images.background is not None:
-            images = np.array([images.foreground, images.background, images.empty, images.od])
+            if images.bf_image is not None:
+                images = np.array([images.foreground, images.background, images.empty, images.od])
+            else:
+                images = np.array([images.foreground, images.background, images.empty, images.od])
         else:
             images = np.array([images.foreground, images.empty, images.fluoimage])
         image_hdu.data = images.astype(np.float32)
@@ -91,6 +94,11 @@ def save_settings(path, variables, stages, images, multigo_settings=None, ai_set
     hdul = fits.HDUList([primary_hdu, image_hdu, stages_hdu, multigo_hdu, ai_hdu])
     hdul.writeto(path, overwrite=True)
 
+def save_bf(file_path, bf_image):
+    print(f'saving bf image to {file_path}')
+    fits.writeto(file_path, bf_image, overwrite=True)
+    print(f'saved bf image to {file_path}')
+    
 # load the settings from a fits file into the gui
 def load_settings(path, window):
     # read the fits file

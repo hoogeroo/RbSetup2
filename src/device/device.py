@@ -11,15 +11,15 @@ from scipy.interpolate import CubicSpline
 import time
 
 from src.device.ai import AiCancel, AiExecuter
-from src.device.device_types import AiSubmission, DeviceSettings, FlattenedStages, MultiGoSubmission, SLMSettings, SLM_SERVER_URL, Stage, Stages, MeasureMOTLifetime, MOTLifetimeResult, MeasureMOTLoading, MOTLoadingResult
+from src.device.device_types import AiSubmission, DeviceSettings, FlattenedStages, MultiGoSubmission, SLMSettings, SLM_SERVER_URL, Stage, Stages, MeasureMOTLifetime, MOTLifetimeResult
 from src.device.multigo import MultiGoCancel, run_multigo_experiment
-from src.gui.fits import save_settings
+from src.gui.fits import save_settings, save_bf
 from src.gui.gui import run_gui
 from src.gui.plots import CameraImages, FluorescenceSample, MOTVideo
 from src.host.camera import CameraConnection
 from src.variable_types import VariableTypeBool, VariableTypeInt, VariableTypeFloat
 from src.device import filtering
-from src.device.data_analysis import ImageAnalysis, FluorescenceAnalysis, LoadingAnalysis
+from src.device.data_analysis import ImageAnalysis, FluorescenceAnalysis
 from src.value_types import BoolValue, IntValue, FloatValue
 from src.gui.temperatures import fetch_temperatures, ESP_url
 
@@ -76,6 +76,7 @@ class AbstractDevice:
             self._current_multigo_key = None
             self._current_multigo_dir = None
 
+
     # spawns the gui in a separate process
     def run(self):
         # create a pipe for communication between the gui and the device
@@ -89,17 +90,11 @@ class AbstractDevice:
 
         self.camera = CameraConnection()
         
-        self.bf_connected = False
-        self.bf_cycling = False
         self.last_video_frame = -1
 
         try:
             self.camera.connect_bf()
-            self.bf_connected = True
-
             self.camera.start_cycle()
-            self.bf_cycling = True
-
             self.camera.connect_video()
 
         except Exception as e:
@@ -114,25 +109,25 @@ class AbstractDevice:
                     msg = device_pipe.recv()
                     queue.append(msg)
 
-            if not self.bf_connected:
+            if not self.camera.bf_connected:
                 try:
                     self.camera.connect_bf()
-                    self.bf_connected = True
-
                     self.camera.start_cycle()
-                    self.bf_cycling = True
-
                     self.camera.connect_video()
                 except Exception as e:
                     print(f'Blackfly connection error: {e}')
 
-            elif self.bf_connected and not self.bf_cycling:
+            elif self.camera.bf_connected and not self.camera.bf_cycling:
                 try:
                     self.camera.start_cycle()
-                    self.bf_cycling = True
-                    self.camera.connect_video()
+
                 except Exception as e:
                     print(f'Blackfly cycle error: {e}')
+            elif self.camera.bf_connected and not self.camera.video_running:
+                try:
+                    self.camera.connect_video()
+                except Exception as e:
+                    print(f'Error connecting live BF video: {e}')
 
             # process all the messages from the queue
             while queue:
@@ -179,8 +174,6 @@ class AbstractDevice:
                 elif isinstance(msg, MeasureMOTLifetime):
                     # run the MOT lifetime measurement
                     self.run_mot_lifetime(msg.samples)
-                elif isinstance(msg, MeasureMOTLoading):
-                    self.measure_mot_loading(msg.samples, msg.max_fluo, msg.curr_stages)
                 else:
                     print(f"Received unknown message type: {type(msg)}")
                     break
@@ -191,8 +184,8 @@ class AbstractDevice:
 
             # read the fluorescence signal
             try:
-                if self.bf_connected and self.bf_cycling:
-                    fluorescence_bf = self.camera.get_fluo_bf()
+                if self.camera.bf_connected and self.camera.bf_cycling:
+                    fluorescence_bf = self.read_fluorescence()
                 else:
                     fluorescence_bf = 0.0
                 
@@ -202,7 +195,7 @@ class AbstractDevice:
             except:
                 pass
 
-            if self.bf_connected and self.bf_cycling:
+            if self.camera.bf_connected and self.camera.video_running:
                 frame_number= self.camera.video_frame_number
                 frame = self.camera.latest_frame
 
@@ -218,35 +211,9 @@ class AbstractDevice:
         self.camera.close_video()
         self.gui_process.join()
 
-    def measure_mot_loading(self, samples: int, max_fluo: int, curr_stages: np.ndarray):
-        fluo_array = np.linspace(3500, max_fluo, samples)
-        time_array = np.empty(samples)
-        atom_array = np.empty(samples)
-        start_time = time.monotonic()
-        for sample in range(samples):
-            while True:
-                current_fluorescence = self.camera.get_fluo_bf()
-                self.device_pipe.send(FluorescenceSample(sample=0.0, sample_bf=current_fluorescence))
-                if current_fluorescence >= fluo_array[sample]:
-                    time_array[sample] = time.monotonic() - start_time
-                    break
-            
-            _, _, _, _, _, n_atoms_bf = self.run_experiment(curr_stages)
-            atom_array[sample] = n_atoms_bf
-        
-        A, tau, offset, tau_error, A_error, fitted_atoms = LoadingAnalysis.extract_mot_loading(time_array, atom_array)
-        self.device_pipe.send(
-        MOTLoadingResult(
-            max_atoms = A,
-            max_atoms_err = A_error,
-            tau=float(tau), tau_error=float(tau_error), 
-            offset=float(offset), 
-            times=np.array(time_array), 
-            fluorescence=np.array(atom_array), 
-            fitted_fluorescence=np.array(fitted_atoms),
-            )
-        )
-
+    def read_fluorescence():
+        fluorescence_bf = self.camera.get_fluo_bf()
+        return fluorescence_bf
 
     def run_mot_lifetime(self, samples: int):
         fluorescence_data = np.empty(samples)
@@ -286,13 +253,12 @@ class AbstractDevice:
         temps = fetch_temperatures(ESP_url)
         if temps and temps.get('upper_coil') and temps.get('lower_coil', 999) < temp_threshold:
 
-            time.sleep(0.5)
+            # time.sleep(0.5)
             # tell the camera server to acquire a frame
             try:
                 if self.device_settings.imaging_type == "Absorption":
                     self.camera.shoot(3)
                     if self.device_settings.takebf:
-                        self.bf_cycling = False
                         self.camera.stop_cycle()
                         self.camera.close_video()
                         time.sleep(2.0)
@@ -350,10 +316,11 @@ class AbstractDevice:
             n_atoms = float('nan')
             n_atoms_roi = float('nan')
             max_od = float('nan')
+            n_atoms_bf = float('nan')
             images = None
             camera_images = None
             bf_images = None
-            time.sleep(5.0)
+            time.sleep(1.7)
             if self.camera:
                 try:
                     # read the image from the camera server
@@ -380,7 +347,7 @@ class AbstractDevice:
                     n_atoms = filtered_images.n_atoms_int
                     max_od = filtered_images.max_od
                     n_atoms_roi = filtered_images.n_atoms_roi
-                    n_atoms_bf = filtered_images.n_atoms_bf
+                    n_atoms_bf = filtered_images.n_atoms_bf_sum
                 
                 elif self.device_settings.imaging_type == "Fluorescence":
                     camera_images = CameraImages(foreground = images[0], background = None, empty = images[1], fluoimage=images[0] - images[1])
@@ -425,11 +392,14 @@ class AbstractDevice:
                     overwrite=False,
                 )
 
+                if self.device_settings.takebf and self.device_settings.save_runs:
+                    file_path_bf = os.path.join(save_dir, f"bf_{timestamp}.fits")
+                    save_bf(file_path_bf, filtered_images.bf_image)
+
             return n_atoms, max_od, images, n_atoms_roi, n_atoms, n_atoms_bf
         
         else:
             print("Temperature too high, skipping experiment")
-            # dds_amp_update(3, 1.0)
             return (float('nan'), float('nan'), None)
 
     # dummy method to be overridden by the device
@@ -454,74 +424,3 @@ class AbstractDevice:
     
     def update_device_settings(self, device_settings):
         self.device_settings = device_settings
-
-        # Check if MOT loading is enabled and handle pulsing accordingly
-        # if self.device_settings.load_mot:
-        #     enable_pulsing()
-        # else:
-        #     disable_pulsing()
-
-'''
-temporary functions to enable/disable pulsing
-'''
-
-# def enable_pulsing():
-#     import socket
-
-#     try:
-#         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#         s.settimeout(2)
-#         s.connect((TCP_IP, TCP_PORT))
-#         ml = 'PULSE,ON'
-#         s.send(ml.encode())
-
-#         s.close()
-#         time.sleep(0.1)
-#     except:
-#         pass
-
-
-
-# def disable_pulsing():
-#     import socket
-
-#     try:
-#         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#         s.settimeout(2)
-#         s.connect((TCP_IP, TCP_PORT))
-#         ml = 'PULSE,OFF'
-#         s.send(ml.encode())
-
-#         s.close()
-#         time.sleep(0.1)
-#     except:
-#         pass
-
-# def dds_amp_update(id, amplitude):
-#     import socket
-    
-#     try:
-#         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#         s.settimeout(1)
-#         s.connect((TCP_IP, TCP_PORT))
-#         ml = 'AMPL,%d,%f' % (id, amplitude)
-#         s.send(ml.encode())
-#         s.recv(5)
-#         s.close()
-#     except:
-#         pass
- 
-
-# def dds_freq_update(id, frequency):
-#     import socket
-    
-#     try:
-#         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#         s.settimeout(1)
-#         s.connect((TCP_IP, TCP_PORT))
-#         ml = 'FREQ,%d,%f' % (id, frequency)
-#         s.send(ml.encode())
-#         s.recv(5)
-#         s.close()
-#     except:
-#         pass

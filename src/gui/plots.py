@@ -204,25 +204,25 @@ class PlotsGui:
 
         plt.show(block=False)
 
-        def update_loading_result(self, result):
-            import matplotlib.pyplot as plt
-            text = self.window.log.document().toPlainText()
-            text += f'Mot Lifetime: {result.tau: .2f} +- {result.tau_error: .2f}\n' f'Baseline: {result.offset: .2f}\n' f'max_atoms: {result.max_atoms: .2f} +- {result.max_atoms_err: .2f}' f'Loading rate: {result.max_atoms / result.tau: .2f}'
-            self.window.log.setPlainText(text)
-            self.window.log.verticalScrollBar().setValue(self.window.log.verticalScrollBar().maximum())
-            
-            plt.figure("MOT Loading")
-            plt.clf()
+    def update_loading_result(self, result):
+        import matplotlib.pyplot as plt
+        text = self.window.log.document().toPlainText()
+        text += f'Mot Lifetime: {result.tau: .2f} +- {result.tau_error: .2f}\n' f'Baseline: {result.offset: .2f}\n' f'max_atoms: {result.max_atoms: .2f} +- {result.max_atoms_err: .2f}' f'Loading rate: {result.max_atoms / result.tau: .2f}'
+        self.window.log.setPlainText(text)
+        self.window.log.verticalScrollBar().setValue(self.window.log.verticalScrollBar().maximum())
+        
+        plt.figure("MOT Loading")
+        plt.clf()
 
-            plt.plot(result.times, result.atom_data, "o", label = "Measured Atoms")
+        plt.plot(result.times, result.atom_data, "o", label = "Measured Atoms")
 
-            plt.plot(result.times, result.fitted_atoms, "--", label = "Exponential Fit")
-            plt.xlabel("Time (s)")
-            plt.ylabel("atoms")
-            plt.legend(loc = 'best')
-            plt.tight_layout()
+        plt.plot(result.times, result.fitted_atoms, "--", label = "Exponential Fit")
+        plt.xlabel("Time (s)")
+        plt.ylabel("atoms")
+        plt.legend(loc = 'best')
+        plt.tight_layout()
 
-            plt.show(block=False)
+        plt.show(block=False)
 
     def update_bf_video(self, video):
         jpeg_data = video.frame
