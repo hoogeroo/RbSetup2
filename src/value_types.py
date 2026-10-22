@@ -189,7 +189,7 @@ class FloatValue:
         # mode: 'linear' or 'exponential'
         code = 4.0 if mode == 'linear' else 5.0
         self.array[0] = code
-        self.array[1] = 0.0  # start is hold (0.0)
+        self.array[1] = 0.0  
         self.array[2] = end
 
     def hold():
@@ -250,28 +250,24 @@ class FloatValue:
             raise ValueError("Cannot sample a hold value")
         if self.is_constant():
             return self.constant_value()
+        
         if self.is_ramp_hold_start():
             if prev_value is None:
                 raise ValueError("Previous value must be provided for ramp hold start sampling")
             start = prev_value
             end = self.array[2]
-            if samples <= 1:
-                return start
-            t = step / (samples - 1)
-            if self.ramp_mode() == 'linear':
-                return start + (end - start) * t
-            return start * (end / start) ** t # Exponential
-        if self.is_ramp():
+        elif self.is_ramp():
             start, end = self.array[1], self.array[2]
-            if samples <= 1:
-                return start
-            t = step / (samples - 1)
-            if self.ramp_mode() == 'linear':
-                return start + (end - start) * t
-            # exponential (assume positive start/end): geometric interpolation
-            return start * (end / start) ** t
         else:
             raise ValueError("unreachable")
+        
+        if samples <= 1:
+            return end
+        
+        t = step / (samples - 1)
+        if self.ramp_mode() == 'linear' or start <= 0 or end <= 0:
+            return start + (end - start) * t
+        return start * (end / start) ** t
 
     def interpolate(self, end, steps):
         if self.is_hold():

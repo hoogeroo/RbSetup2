@@ -45,7 +45,7 @@ class AiSubmission:
 
 # device settings that aren't directly related to the experiment stages or dc values
 class DeviceSettings:
-    def __init__(self, takebf=False, save_runs=False, fringe_removal=False, pca=False, low_pass=False, fft_filter=False, imaging_type="Absorption"):
+    def __init__(self, takebf=False, save_runs=False, fringe_removal=False, pca=False, low_pass=False, fft_filter=False, imaging_type="Absorption", fit_gaussian=False):
         self.takebf = takebf
         self.save_runs = save_runs
         self.fringe_removal = fringe_removal
@@ -53,6 +53,7 @@ class DeviceSettings:
         self.low_pass = low_pass
         self.fft_filter = fft_filter
         self.imaging_type = imaging_type
+        self.fit_gaussian = fit_gaussian 
 
 @dataclass
 class MeasureMOTLifetime:
@@ -95,6 +96,7 @@ class FlattenedStages:
 
             # get the number of samples
             samples = max(stage.samples.constant_value(), 1)
+            hold_starts = {}
 
             # add values to the lists for each sample
             for sample in range(samples):
@@ -119,7 +121,9 @@ class FlattenedStages:
                         if value.is_ramp():
                             flattened_list.append(value.sample(sample, samples))
                         elif value.is_ramp_hold_start():
-                            flattened_list.append(value.sample(sample, samples, prev_value=flattened_list[-1]))
+                            if sample == 0:
+                                hold_starts[variable.id] = flattened_list[-1]
+                            flattened_list.append(value.sample(sample, samples, prev_value=hold_starts[variable.id]))
 
         # set all the outputs back to the dc values at the end of the sequence
         for variable in variables:

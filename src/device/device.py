@@ -32,6 +32,9 @@ TCP_IP = "130.216.51.242"
 TCP_PORT = 8833
 temp_threshold = 40
 
+class GuiClosed(Exception):
+    pass
+
 '''
 Abstraction over the device to run the gui without artiq
 '''
@@ -87,133 +90,112 @@ class AbstractDevice:
         self.gui_process = Process(target=run_gui, args=(self.variables, gui_pipe,))
         self.gui_process.daemon = True # so gui exits when main process exits
         self.gui_process.start()
+        gui_pipe.close()
 
         self.camera = CameraConnection()
-        
         self.last_video_frame = -1
 
         try:
             self.camera.connect_bf()
             self.camera.start_cycle()
             self.camera.connect_video()
-
         except Exception as e:
             print(f'Blackfly startup error: {e}')
 
         # process all the messages from the gui
         queue = []
-        while True:
-            # grab all the messages from the gui into the queue
-            if device_pipe.poll(0.1):
-                while device_pipe.poll():
-                    msg = device_pipe.recv()
-                    queue.append(msg)
-
-            if not self.camera.bf_connected:
+        try:
+            while True:
+                # grab all the messages from the gui into the queue
                 try:
-                    self.camera.connect_bf()
-                    self.camera.start_cycle()
-                    self.camera.connect_video()
-                except Exception as e:
-                    print(f'Blackfly connection error: {e}')
+                    if device_pipe.poll(0.1):
+                        while device_pipe.poll():
+                            msg = device_pipe.recv()
+                            queue.append(msg)
+                except (EOFError, OSError) as e:
+                    raise GuiClosed() from e
 
-            elif self.camera.bf_connected and not self.camera.bf_cycling:
-                try:
-                    self.camera.start_cycle()
+                # process all the messages from the queue
+                while queue:
+                    # get the next message
+                    msg = queue.pop(0)
 
-                except Exception as e:
-                    print(f'Blackfly cycle error: {e}')
-            elif self.camera.bf_connected and not self.camera.video_running:
-                try:
-                    self.camera.connect_video()
-                except Exception as e:
-                    print(f'Error connecting live BF video: {e}')
+                    # process the message based on its type
+                    if isinstance(msg, Stage):
+                        # only use the latest dc message (skip message if newer one exists)
+                        found = False
+                        for m in queue:
+                            if isinstance(m, Stage):
+                                found = True
+                                break
+                        if found:
+                            continue
 
-            # process all the messages from the queue
-            while queue:
-                # get the next message
-                msg = queue.pop(0)
+                        # sets the outputs to the ones in a stage (for dc)
+                        self.run_stage(msg)
+                    elif isinstance(msg, Stages):
+                        # run the experiment with the provided stages
+                        self.run_experiment(msg)
+                    elif isinstance(msg, MultiGoSubmission):
+                        # run the multi-go routine
+                        self._begin_multigo_session(msg.multigo_settings)
+                        run_multigo_experiment(self, msg.multigo_settings, msg.stages)
+                    elif isinstance(msg, AiSubmission):
+                        # run the AI routine
+                        ai_executer = AiExecuter(self, msg.multigo_settings, msg.ai_settings, msg.stages)
+                        ai_executer.run_ai_experiment()
+                    elif isinstance(msg, DeviceSettings):
+                        # update the device settings
+                        self.update_device_settings(msg)
+                        if msg.fringe_removal or msg.pca or msg.low_pass or msg.fft_filter:
+                            filtered_images = self.image_analysis.filter_images(self.current_camera_images, fit_gaussian=msg.fit_gaussian)
+                            self._send(filtered_images)
+                    elif isinstance(msg, SLMSettings):
+                        # update the SLM settings
+                        self.slm_settings = msg
+                    elif isinstance(msg, MultiGoCancel):
+                        print("Can't cancel multigo - not running")
+                    elif isinstance(msg, AiCancel):
+                        print("Can't cancel AI - not running")
+                    elif isinstance(msg, MeasureMOTLifetime):
+                        # run the MOT lifetime measurement
+                        self.run_mot_lifetime(msg.samples)
+                    else:
+                        print(f"Received unknown message type: {type(msg)}")
+                        break
 
-                # process the message based on its type
-                if isinstance(msg, Stage):
-                    # only use the latest dc message (skip message if newer one exists)
-                    found = False
-                    for m in queue:
-                        if isinstance(m, Stage):
-                            found = True
-                            break
-                    if found:
-                        continue
-
-                    # sets the outputs to the ones in a stage (for dc)
-                    self.run_stage(msg)
-                elif isinstance(msg, Stages):
-                    # run the experiment with the provided stages
-                    self.run_experiment(msg)
-                elif isinstance(msg, MultiGoSubmission):
-                    # run the multi-go routine
-                    self._begin_multigo_session(msg.multigo_settings)
-                    run_multigo_experiment(self, msg.multigo_settings, msg.stages)
-                elif isinstance(msg, AiSubmission):
-                    # run the AI routine
-                    ai_executer = AiExecuter(self, msg.multigo_settings, msg.ai_settings, msg.stages)
-                    ai_executer.run_ai_experiment()
-                elif isinstance(msg, DeviceSettings):
-                    # update the device settings
-                    self.update_device_settings(msg)
-                    if msg.fringe_removal or msg.pca or msg.low_pass or msg.fft_filter:
-                        filtered_images = self.image_analysis.filter_images(self.current_camera_images)
-                        self.device_pipe.send(filtered_images)
-                elif isinstance(msg, SLMSettings):
-                    # update the SLM settings
-                    self.slm_settings = msg
-                elif isinstance(msg, MultiGoCancel):
-                    print("Can't cancel multigo - not running")
-                elif isinstance(msg, AiCancel):
-                    print("Can't cancel AI - not running")
-                elif isinstance(msg, MeasureMOTLifetime):
-                    # run the MOT lifetime measurement
-                    self.run_mot_lifetime(msg.samples)
-                else:
-                    print(f"Received unknown message type: {type(msg)}")
+                # check if the GUI process is still alive
+                if not self.gui_process.is_alive():
                     break
 
-            # check if the GUI process is still alive
-            if not self.gui_process.is_alive():
-                break
-
-            # read the fluorescence signal
-            try:
-                if self.camera.bf_connected and self.camera.bf_cycling:
-                    fluorescence_bf = self.read_fluorescence()
-                else:
-                    fluorescence_bf = 0.0
-                
-                fluorescence = 0.0
-                device_pipe.send(FluorescenceSample(sample=fluorescence, sample_bf=fluorescence_bf))
+                # read the fluorescence signal
+                try:
+                    if self.camera.bf_connected and self.camera.bf_cycling:
+                        fluorescence_bf = self.read_bf_fluorescence()
+                    else:
+                        fluorescence_bf = 0.0
                     
-            except:
-                pass
+                    fluorescence = 0.0
+                    self._send(FluorescenceSample(sample=fluorescence, sample_bf=fluorescence_bf))
+                        
+                except:
+                    pass
 
-            if self.camera.bf_connected and self.camera.video_running:
-                frame_number= self.camera.video_frame_number
-                frame = self.camera.latest_frame
+                if self.camera.bf_connected and self.camera.video_running:
+                    frame_number= self.camera.video_frame_number
+                    frame = self.camera.latest_frame
 
-                if frame is not None and frame_number != self.last_video_frame:
-                    self.last_video_frame = frame_number
-                    device_pipe.send(MOTVideo(frame))
+                    if frame is not None and frame_number != self.last_video_frame:
+                        self.last_video_frame = frame_number
+                        self._send(MOTVideo(frame))
 
+        except GuiClosed:
+            print("GUI Closed")
+        finally:
+            self._shutdown()
 
-        print("Exiting...")
-
-        # stop the gui process
-        self.gui_process.terminate()
-        self.camera.close_video()
-        self.gui_process.join()
-
-    def read_fluorescence():
-        fluorescence_bf = self.camera.get_fluo_bf()
-        return fluorescence_bf
+    def read_bf_fluorescence(self):
+        return self.camera.get_fluo_bf()
 
     def run_mot_lifetime(self, samples: int):
         fluorescence_data = np.empty(samples)
@@ -315,12 +297,13 @@ class AbstractDevice:
             # read back the camera images
             n_atoms = float('nan')
             n_atoms_roi = float('nan')
+            n_atoms_sum = float('nan')
             max_od = float('nan')
             n_atoms_bf = float('nan')
             images = None
             camera_images = None
             bf_images = None
-            time.sleep(1.7)
+            time.sleep(3.0)
             if self.camera:
                 try:
                     # read the image from the camera server
@@ -342,12 +325,13 @@ class AbstractDevice:
                         camera_images = CameraImages(images[0], images[1], images[2])
 
                     self.current_camera_images = camera_images  # store the current images for potential re-filtering when settings are changed
-                    filtered_images = self.image_analysis.filter_images(camera_images)
+                    filtered_images = self.image_analysis.filter_images(camera_images, fit_gaussian=self.device_settings.fit_gaussian)
                     self.device_pipe.send(filtered_images)
                     n_atoms = filtered_images.n_atoms_int
                     max_od = filtered_images.max_od
                     n_atoms_roi = filtered_images.n_atoms_roi
                     n_atoms_bf = filtered_images.n_atoms_bf_sum
+                    n_atoms_sum = filtered_images.n_atoms_sum
                 
                 elif self.device_settings.imaging_type == "Fluorescence":
                     camera_images = CameraImages(foreground = images[0], background = None, empty = images[1], fluoimage=images[0] - images[1])
@@ -396,7 +380,14 @@ class AbstractDevice:
                     file_path_bf = os.path.join(save_dir, f"bf_{timestamp}.fits")
                     save_bf(file_path_bf, filtered_images.bf_image)
 
-            return n_atoms, max_od, images, n_atoms_roi, n_atoms, n_atoms_bf
+            try:
+                if self.device_settings,takebf:
+                    self.camera.start_cycle()
+                    self.camera.connect_video()
+            except Exception as e:
+                print(f'Error restarting Blackfly cycle/video: {e}')
+
+            return n_atoms, max_od, images, n_atoms_roi, n_atoms_sum, n_atoms_bf
         
         else:
             print("Temperature too high, skipping experiment")
@@ -418,9 +409,46 @@ class AbstractDevice:
     def read_fluorescence(self) -> float:
         return 100.0
     
-    #Dummy push beam control method to be overridden by the device
-    def set_push_beam(self, enabled: bool):
-        print(f"Push beam set to {'ON' if enabled else 'OFF'}")
-    
     def update_device_settings(self, device_settings):
         self.device_settings = device_settings
+
+    def _send(self, msg):
+        try:
+            self.device_pipe.send(msg)
+        except (BrokenPipeError, ConnectionResetError, EOFError, OSError) as e:
+            raise GuiClosed() from e
+        
+    def _shutdown(self):
+        print("Exiting...")
+        try:
+            if self.gui_process.is_alive():
+                self.gui_process.terminate()
+            self.gui_process.join(timeout=5)
+        except Exception as e:
+            print(f"Error during shutdown: {e}")
+        
+        try:
+            self.camera.close_video()
+        except Exception as e:
+            print(f"Error closing camera video: {e}")
+
+    def _check_bf(self):
+        if not self.camera.bf_connected:
+            try:
+                self.camera.connect_bf()
+                self.camera.start_cycle()
+                self.camera.connect_video()
+            except Exception as e:
+                print(f'Blackfly connection error: {e}')
+
+        elif self.camera.bf_connected and not self.camera.bf_cycling:
+            try:
+                self.camera.start_cycle()
+
+            except Exception as e:
+                print(f'Blackfly cycle error: {e}')
+        elif self.camera.bf_connected and not self.camera.video_running:
+            try:
+                self.camera.connect_video()
+            except Exception as e:
+                print(f'Error connecting live BF video: {e}')

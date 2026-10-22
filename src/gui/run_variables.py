@@ -85,7 +85,7 @@ class RunVariableWidget(QWidget):
         for rv in self.run_variables:
             # read current widget values into the RunVariable
             if hasattr(rv, '_ramp_cb') and rv._ramp_cb.isChecked():
-                start_held = hasattr(rv, '_ramp_start_hold_label') and rv._ramp_start_hold_label.isVisible()
+                start_held = getattr(rv, '_start_held', False)
                 run_variables.append(RunVariable(
                     rv.stage_id, rv.variable_id, 
                     rv._start_w.get_value(), rv._end_w.get_value(),
@@ -156,7 +156,7 @@ class RunVariableWidget(QWidget):
         self.add_run_variable(run_variable)
 
     # helper: build a labelled from→to range widget for ramp sweeps
-    def _make_ramp_range(self, variable, label_text, from_val, to_val, show_hold=False, hold_active=False):
+    def _make_ramp_range(self, variable, label_text, from_val, to_val, show_hold=False, hold_active=False, on_hold_changed=None):
         container = QWidget()
         vbox = QVBoxLayout()
         vbox.setContentsMargins(0, 0, 0, 0)
@@ -194,11 +194,17 @@ class RunVariableWidget(QWidget):
                 al.setVisible(False)
                 hl.setVisible(True)
 
+                if on_hold_changed:
+                    on_hold_changed(True)
+
             def set_value(fs=from_spin, ts=to_spin, al=arrow_label, hl=hold_label):
                 fs.setVisible(True)
                 ts.setVisible(True)
                 al.setVisible(True)
                 hl.setVisible(False)
+
+                if on_hold_changed:
+                    on_hold_changed(False)
 
             def sync_to(val, ts=to_spin): #makes to value slightly larger than from value to appease mloop
                 ts.setValue(val*1.001)
@@ -259,9 +265,11 @@ class RunVariableWidget(QWidget):
             # stacked widget: page 0 = constant, page 1 = ramp
             start_stack = QStackedWidget()
             start_stack.addWidget(start_w)
+            run_variable._start_held = bool(getattr(run_variable, 'ramp_hold_start', False))
             rs_container, rs_from, rs_to, rs_hold_label = self._make_ramp_range(
                 variable, "Ramp Start", run_variable.ramp_start_start, run_variable.ramp_start_end,
-                show_hold=True, hold_active=getattr(run_variable, 'ramp_hold_start', False)
+                show_hold=True, hold_active=run_variable._start_held,
+                on_hold_changed=lambda held, rv=run_variable: setattr(rv, '_start_held', held)
             )
             start_stack.addWidget(rs_container)
             self.grid.addWidget(start_stack, row, 2)
@@ -307,9 +315,15 @@ class RunVariableWidget(QWidget):
 
     # remove a run variable and rebuild the grid
     def _remove(self, run_variable):
-        if run_variable in self.run_variables:
-            self.run_variables.remove(run_variable)
-        self._rebuild()
+        if run_variable not in self.run_variables:
+            return
+        idx = self.run_variables.index(run_variable)
+        current  = self.get_run_variables() # Records what the current values are before removing the variable
+        del current[idx]
+        self._clear_rows()
+        self.run_variables = []
+        for rv in current:
+            self.add_run_variable(rv)
 
     # wipe all variable rows (row 2+) from the grid
     def _clear_rows(self):
@@ -318,15 +332,7 @@ class RunVariableWidget(QWidget):
                 item = self.grid.itemAtPosition(row, col)
                 if item and item.widget():
                     item.widget().setParent(None)
-
-    # rebuild variable rows from the current list
-    def _rebuild(self):
-        self._clear_rows()
-        existing = self.run_variables[:]
-        self.run_variables = []
-        for rv in existing:
-            self.add_run_variable(rv)
-    
+                    
     # opens a dialog for saving run variables
     def save_dialog(self):
         file_path, _ = QFileDialog.getSaveFileName(self, "Save Run Variables", "", "FITS File (*.fits)")

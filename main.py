@@ -41,7 +41,7 @@ try:
                 VariableTypeInt("Samples", "samples", 1, 10000, 100),
                 VariableTypeBool("Camera", "camera"),
                 VariableTypeBool("BFCam", "bfcam"),
-                VariableTypeFloat("Analog", "analog", -10.0, 10.0, 0.1),
+                VariableTypeBool("B switch", "mag_switch"),
                 VariableTypeFloat("Dipole Amplitude", "dipole_amplitude", 0.0, 100.0, 0.5, calibration=dipole_calibration),
                 VariableTypeFloat("MOT 2 coils current", "mot2_coils_current", 0.0, 100.0, 0.5, calibration=coil_current_calibration),
                 VariableTypeFloat("x Field", "x_field", -5.0, 5.0, 0.01, hidden=True),
@@ -206,6 +206,7 @@ try:
                 dac[5] = s.z_field[i]
                 dac[6] = s.dipole_amplitude[i]
                 dac[7] = 5.0 if s.rf_disable[i] else 0.0
+                dac[8] = 9.9 if s.mag_switch[i] else 0.0
                 dac[9] = s.mot2_coils_current[i] 
                 self.fastino0.set_group(0, dac)
 

@@ -137,6 +137,7 @@ class Gui(QMainWindow):
         save_runs = self.save_runs.isChecked()
         imaging_type = self.imaging_type.currentText() # Default is absorption, other option is fluorescence
         takebf = self.takebf.isChecked() # Default is not taking blackfly images
+        fit_gaussian = self.gauss_fit.isChecked() # Default is not fitting gaussian to images
 
         # Get current filtering settings from the menu actions
         fringe_removal = self.action_fringe_removal.isChecked()
@@ -152,6 +153,7 @@ class Gui(QMainWindow):
             low_pass=low_pass,
             fft_filter=fft_filter,
             imaging_type=imaging_type,
+            fit_gaussian=fit_gaussian,
         )
 
         # send the device settings to the device
