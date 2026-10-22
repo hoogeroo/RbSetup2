@@ -31,10 +31,9 @@ class GuiStage:
         return self.button.text()
 
 class StagesGui:
-    def __init__(self, window, variables, hidden_gui):
+    def __init__(self, window, variables):
         self.window = window
         self.variables = variables
-        self.hidden_gui = hidden_gui
         self.multigo_settings = MultiGoSettings([], 0.0)
         self.ai_settings = AiSettings(0, 0, None, None)
 
@@ -46,11 +45,6 @@ class StagesGui:
 
         # fill dc, label, and copied containers with widgets
         for variable in self.variables:
-            # skip hidden variables for the stages GUI
-            if variable.hidden:
-                variable.hidden = False
-
-
             # add the widget to the dc container
             dc_widget = variable.widget()
             if variable.id == "time" or variable.id == "samples":
@@ -118,11 +112,7 @@ class StagesGui:
         # uses setattr to dynamically create a Dc object with the values from the widgets
         dc = Stage("DC Values", "dc", True, "DC")
         for variable in self.variables:
-            # get the widget for the variable based on its visibility
-            if variable.hidden:
-                widget = self.hidden_gui.widgets[variable.id]
-            else:
-                widget = self.dc_widgets[variable.id]
+            widget = self.dc_widgets[variable.id]
 
             # set the value of the variable in the dc object
             setattr(dc, variable.id, widget.get_value())
@@ -137,12 +127,9 @@ class StagesGui:
             name = gui_stage.button.text()
             stage = Stage(name, gui_stage.id, gui_stage.enabled, gui_stage.tab)
             for variable in self.variables:
-                # get the widget for the variable based on its visibility
-                if variable.hidden:
-                    widget = self.hidden_gui.widgets[variable.id]
-                else:
-                    widget = gui_stage.widgets[variable.id]
-                    # set the value of the variable in the stage object
+                # get the widget for the variable 
+                widget = gui_stage.widgets[variable.id]
+                # set the value of the variable in the stage object
                 setattr(stage, variable.id, widget.get_value())
             stages.append(stage)
         #dc = self.extract_dc()
@@ -216,10 +203,6 @@ class StagesGui:
         current_values = stages.dc
         for stage in stages.stages:
             for variable in self.variables:
-                # skip hidden variables
-                if variable.hidden:
-                    continue
-
                 # get the widget for the variable
                 widget = self.get_stage(stage.id).widgets[variable.id]
                 widget_value = widget.get_value()
@@ -304,10 +287,6 @@ class StagesGui:
         # create widgets for each variable and add them to the layout
         widgets = {}
         for variable in self.variables:
-            # skip hidden variables for the stages GUI
-            if variable.hidden:
-                continue
-
             # add the widget for the variable
             widget = variable.widget()
             widget.changed_signal.connect(self.update_holds)
@@ -357,16 +336,14 @@ class StagesGui:
     # copies the right clicked stage's values to the copied widgets
     def copy_stage(self, idx: int):
         for variable in self.variables:
-            if not variable.hidden:
-                value = self.stages[idx].widgets[variable.id].get_value()
-                self.copy_widgets[variable.id].set_value(value)
+            value = self.stages[idx].widgets[variable.id].get_value()
+            self.copy_widgets[variable.id].set_value(value)
 
     # pastes the copied values to the right clicked stage
     def paste_stage(self, idx: int):
         for variable in self.variables:
-            if not variable.hidden:
-                value = self.copy_widgets[variable.id].get_value()
-                self.stages[idx].widgets[variable.id].set_value(value)
+            value = self.copy_widgets[variable.id].get_value()
+            self.stages[idx].widgets[variable.id].set_value(value)
 
     # creates a new stage to the left
     def insert_stage_left(self, idx: int):

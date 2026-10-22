@@ -11,7 +11,6 @@ from src.device.device_types import DeviceSettings, MOTLifetimeResult
 from src.device.multigo import MultiGoProgress
 from src.gui.ai import AiPlotData
 from src.gui.fits import load_settings, save_settings
-from src.gui.hidden import HiddenGui
 from src.gui.plots import CameraImages, FluorescenceSample, PlotsGui, MOTVideo
 from src.gui.stages import StagesGui
 from src.gui.temperatures import ESP_url
@@ -64,11 +63,8 @@ class Gui(QMainWindow):
         self.action_low_pass_filter.triggered.connect(self.update_device_settings)
         self.action_fft_filter.triggered.connect(self.update_device_settings)
 
-        # create the hidden GUI
-        self.hidden_gui = HiddenGui(self, variables)
-
         # create the stages GUI
-        self.stages_gui = StagesGui(self, variables, self.hidden_gui)
+        self.stages_gui = StagesGui(self, variables)
 
         # create the plots GUI
         self.plots_gui = PlotsGui(self)

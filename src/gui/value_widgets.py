@@ -288,8 +288,6 @@ class FloatWidget(QWidget):
 
         boxes = [self.spinbox, self.ramp_spinbox1, self.ramp_spinbox2]
         for box in boxes:
-            if box.isHidden():
-                continue
             value = box.value()
             color = background_color(value, self.variable)
             box.setStyleSheet(f"background-color: {color.name()}")

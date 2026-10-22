@@ -51,8 +51,8 @@ class AbstractDevice:
             VariableTypeInt("Samples", "samples", 1, 10000, 100),
             VariableTypeBool("Digital", "digital"),
             VariableTypeFloat("Analog", "analog", calibration=calibration),
-            VariableTypeFloat("x Field", "x_field", 0.0, 5.0, 0.1, hidden=True),
-            VariableTypeFloat("z Field", "z_field", 0.0, 5.0, 0.1, hidden=True),
+            VariableTypeFloat("x Field", "x_field", 0.0, 5.0, 0.1),
+            VariableTypeFloat("z Field", "z_field", 0.0, 5.0, 0.1),
             VariableTypeFloat("Rf Magnitude", "rf_magnitude"),
             VariableTypeFloat("Rf Freq (MHz)", "rf_freq", 1.0, 100.0, 1.0),
         ] 
@@ -381,7 +381,7 @@ class AbstractDevice:
                     save_bf(file_path_bf, filtered_images.bf_image)
 
             try:
-                if self.device_settings,takebf:
+                if self.device_settings.takebf:
                     self.camera.start_cycle()
                     self.camera.connect_video()
             except Exception as e:

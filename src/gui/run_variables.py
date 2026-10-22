@@ -119,11 +119,12 @@ class RunVariableWidget(QWidget):
     # create a new run variable
     def new_run_variable(self, idx, variable):
         variable = self.stages.variables[variable]
-        if variable.hidden:
-            widget = self.stages.hidden_gui.widgets[variable.id]
+
+        if idx==0:
+            widget = self.stages.dc_widgets[variable.id]
             current_value = self._ramp_to_constant(widget.get_value())
             run_variable = RunVariable(
-                #self.stages.hidden_gui.widgets[variable.id],
+                #self.stages.dc_widgets[variable.id],
                 'dc',
                 variable.id,
                 current_value,
@@ -131,28 +132,16 @@ class RunVariableWidget(QWidget):
                 0
             )
         else:
-            if idx==0:
-                widget = self.stages.dc_widgets[variable.id]
-                current_value = self._ramp_to_constant(widget.get_value())
-                run_variable = RunVariable(
-                    #self.stages.dc_widgets[variable.id],
-                    'dc',
-                    variable.id,
-                    current_value,
-                    current_value,
-                    0
-                )
-            else:
-                #print(variable.id)
-                widget = self.stages.stages[idx-1].widgets[variable.id]
-                current_value = self._ramp_to_constant(widget.get_value())
-                run_variable = RunVariable(
-                    self.stages.stages[idx-1].id,
-                    variable.id,
-                    current_value,
-                    current_value,
-                    0
-                )
+            #print(variable.id)
+            widget = self.stages.stages[idx-1].widgets[variable.id]
+            current_value = self._ramp_to_constant(widget.get_value())
+            run_variable = RunVariable(
+                self.stages.stages[idx-1].id,
+                variable.id,
+                current_value,
+                current_value,
+                0
+            )
         self.add_run_variable(run_variable)
 
     # helper: build a labelled from→to range widget for ramp sweeps
